@@ -189,7 +189,8 @@ export function createGrassCompute(
     };
 
     // Apply wind facing and normalize angle to [0, 1] range
-    const applyWindFacingAndNormalize = (baseAngle: any, windDir: any, windStrength01: any) => {
+    const applyWindFacingAndNormalize = (baseAngle: any, windStrength01: any) => {
+      const windDir = safeNormalize(uWindDir);
       const facingAngle = applyWindFacing(baseAngle, windDir, windStrength01);
       return normalizeAngle(facingAngle).add(PI).div(TWO_PI);
     };
@@ -230,8 +231,7 @@ export function createGrassCompute(
     
     // Apply wind effects
     const windStrength = calculateWindStrength(worldXZ);
-    const windDirNorm = safeNormalize(uWindDir);
-    const facingAngle01 = applyWindFacingAndNormalize(baseAngle, windDirNorm, windStrength);
+    const facingAngle01 = applyWindFacingAndNormalize(baseAngle, windStrength);
     
     // Write all parameters back to data structure
     data.get('bladeHeight').assign(bladeParams.height);

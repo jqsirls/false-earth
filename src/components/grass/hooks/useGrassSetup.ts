@@ -91,7 +91,6 @@ export function useGrassSetup({
       tipColor: grassParams.tipColor,
       groundColor: groundColor,
       bladeSeedRange: grassParams.bladeSeedRange,
-      clumpInternalRange: grassParams.clumpInternalRange,
       clumpSeedRange: grassParams.clumpSeedRange,
       aoPower: grassParams.aoPower,
       // Lighting uniforms
@@ -114,7 +113,6 @@ export function useGrassSetup({
     mesh.count = grassBlades
     scene.add(mesh)
 
-    // Set envMap from scene if available
     if (scene.environment) {
       material.envMap = scene.environment
     }

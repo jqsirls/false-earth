@@ -59,8 +59,6 @@ export function useGrassUniforms({
       materialUniformsRef.current.uWindSwayStrength.value = params.swayStrength
       materialUniformsRef.current.uWindDistanceStart.value = params.windDistanceStart
       materialUniformsRef.current.uWindDistanceEnd.value = params.windDistanceEnd
-      materialUniformsRef.current.uCullStart.value = params.cullStart
-      materialUniformsRef.current.uCullEnd.value = params.cullEnd
     }
 
     // Update material properties
@@ -91,7 +89,6 @@ export function useGrassUniforms({
       materialUniformsRef.current.uGroundColor.value.set(groundColorObj.r, groundColorObj.g, groundColorObj.b)
 
       materialUniformsRef.current.uBladeSeedRange.value.set(params.bladeSeedRange.x, params.bladeSeedRange.y)
-      materialUniformsRef.current.uClumpInternalRange.value.set(params.clumpInternalRange.x, params.clumpInternalRange.y)
       materialUniformsRef.current.uClumpSeedRange.value.set(params.clumpSeedRange.x, params.clumpSeedRange.y)
       materialUniformsRef.current.uAOPower.value = params.aoPower
 

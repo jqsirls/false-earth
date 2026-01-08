@@ -11,12 +11,14 @@ import * as THREE from 'three'
 import { Perf } from "r3f-perf";
 import { WebGPURenderer } from "three/webgpu";
 import GrassWebGPU from "../components/GrassWebGPU";
-import { MeshBasicNodeMaterial, MeshStandardNodeMaterial } from "three/webgpu";
+import { MeshBasicNodeMaterial, MeshNormalNodeMaterial, MeshStandardNodeMaterial } from "three/webgpu";
 import { vec3, vec4, Fn, normalView, float, positionLocal, normalLocal, cameraProjectionMatrix, cameraViewMatrix, modelWorldMatrix, modelNormalMatrix, mx_rotate2d, vec2, transformNormalToView, normalize, mat3, faceDirection } from "three/tsl";
 
 import { extend } from "@react-three/fiber";
-extend({ MeshBasicNodeMaterial })
+extend({ MeshBasicNodeMaterial, MeshNormalNodeMaterial })
 
+
+const rotate = 90
 export default function App() {
     const [terrainParams, setTerrainParams] = useState<{ amplitude: number; frequency: number; seed: number; color: string } | undefined>(undefined)
     const [lightPosition, setLightPosition] = useState<THREE.Vector3 | undefined>(undefined)
@@ -63,26 +65,26 @@ export default function App() {
                 <planeGeometry args={[1, 1]} />
                 <primitive
                     object={(() => {
-                        const material = new MeshStandardNodeMaterial();
+                        const material = new MeshNormalNodeMaterial();
                         material.side = THREE.DoubleSide;
-                        material.fragmentNode = Fn(() => {
-                            const normalColor = normalView.mul(0.5).add(0.5);
-                            return vec4(normalColor, float(1.0));
-                        })();
+                        // material.fragmentNode = Fn(() => {
+                        //     const normalColor = normalView.mul(0.5).add(0.5);
+                        //     return vec4(normalColor, float(1.0));
+                        // })();
                         return material;
                     })()}
                 />
             </mesh>
 
-            <mesh position={[2, 2, 0]}>
+            <mesh position={[2, 3, 0]}>
                 <planeGeometry args={[1, 1]} />
                 <primitive
                     object={(() => {
-                        const material = new MeshStandardNodeMaterial();
+                        const material = new MeshNormalNodeMaterial();
                         material.side = THREE.DoubleSide;
 
                         material.vertexNode = Fn(({ material }: { material: THREE.Material }) => {
-                            const angle = float(175);
+                            const angle = float(rotate);
 
                             const pos = positionLocal;
                             const posXZ = mx_rotate2d(vec2(pos.x, pos.z), angle);
@@ -100,17 +102,17 @@ export default function App() {
                         })();
 
                         material.normalNode = Fn(() => {
-                            const angle = float(175);
+                            const angle = float(rotate);
                           
                             const n = normalLocal;
                             const nXZ = mx_rotate2d(vec2(n.x, n.z), angle);
-                            return transformNormalToView(vec3(nXZ.x, n.y, nXZ.y)).toVarying().mul(faceDirection); // local space only
+                            return transformNormalToView(vec3(nXZ.x, n.y, nXZ.y)).toVarying().mul(faceDirection);
                           })();
 
-                        material.fragmentNode = Fn(() => {
-                            const normalColor = normalView.mul(0.5).add(0.5);
-                            return vec4(normalColor, float(1.0));
-                        })();
+                        // material.fragmentNode = Fn(() => {
+                        //     const normalColor = normalView.mul(0.5).add(0.5);
+                        //     return vec4(normalColor, float(1.0));
+                        // })();
                         return material;
                     })()}
                 />

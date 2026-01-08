@@ -33,9 +33,9 @@ export function createGrassControls(config: GrassControlsConfig = {}) {
         typeTrendScale: { value: 0.1, min: 0.01, max: 1.0, step: 0.01 },
       }, { collapsed: true }),
       Angle: folder({
-        centerYaw: { value: 1.0, min: 0.0, max: 3.0, step: 0.1 },
+        centerYaw: { value: 0.5, min: 0.0, max: 3.0, step: 0.1 },
         bladeYaw: { value: 1.2, min: 0.0, max: 3.0, step: 0.1 },
-        clumpYaw: { value: 0.5, min: 0.0, max: 2.0, step: 0.1 },
+        clumpYaw: { value: 1.2, min: 0.0, max: 5.0, step: 0.1 },
       }, { collapsed: true }),
     }, { collapsed: true }),
 
@@ -44,7 +44,6 @@ export function createGrassControls(config: GrassControlsConfig = {}) {
         tipColor: { value: TIP_COLOR_PRESETS[0] },
         baseColor: { value: '#000000' },
         bladeSeedRange: { value: { x: 0.95, y: 1.03 }, step: 0.01, min: 0.5, max: 1.5 },
-        clumpInternalRange: { value: { x: 0.95, y: 1.05 }, step: 0.01, min: 0.5, max: 1.5 },
         clumpSeedRange: { value: { x: 0.9, y: 1.1 }, step: 0.01, min: 0.5, max: 1.5 },
         aoPower: { value: 5, min: 0.1, max: 20.0, step: 0.1 },
       }, { collapsed: true }),

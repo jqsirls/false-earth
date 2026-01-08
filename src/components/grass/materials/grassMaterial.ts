@@ -35,9 +35,10 @@ import {
   remapClamp,
   clamp,
   mul,
-  normalView,
   transformNormalToView,
   faceDirection,
+  reflectVector,
+  pmremTexture,
 } from "three/tsl";
 
 /**
@@ -47,7 +48,7 @@ import {
 export function createGrassMaterial(
   grassData: ReturnType<typeof instancedArray>,
   positions: ReturnType<typeof instancedArray>,
-  options?: {
+  initialValues?: {
     baseWidth?: number;
     tipThin?: number;
     windTime?: number;
@@ -70,7 +71,6 @@ export function createGrassMaterial(
     tipColor?: THREE.Color | string;
     groundColor?: THREE.Color | string;
     bladeSeedRange?: { x: number; y: number };
-    clumpInternalRange?: { x: number; y: number };
     clumpSeedRange?: { x: number; y: number };
     aoPower?: number;
     lightDirection?: THREE.Vector3;
@@ -79,124 +79,107 @@ export function createGrassMaterial(
     noiseParams?: { x: number; y: number; z: number; w: number };
   }
 ) {
-  const baseWidth = options?.baseWidth ?? 0.35;
-  const tipThin = options?.tipThin ?? 0.9;
+  const baseWidth = initialValues?.baseWidth ?? 0.35;
+  const tipThin = initialValues?.tipThin ?? 0.9;
 
   // Wind uniforms
-  const uWindTime = uniform(float(options?.windTime ?? 0.0)).setName(
-    "uWindTime"
-  );
+  const uWindTime = uniform(initialValues?.windTime ?? 0.0);
   const uWindDir = uniform(
-    vec2(options?.windDir?.x ?? 1.0, options?.windDir?.y ?? 0.0)
-  ).setName("uWindDir");
-  const uWindSwayFreqMin = uniform(float(options?.swayFreqMin ?? 0.4)).setName(
-    "uWindSwayFreqMin"
+    vec2(initialValues?.windDir?.x ?? 1.0, initialValues?.windDir?.y ?? 0.0)
   );
-  const uWindSwayFreqMax = uniform(float(options?.swayFreqMax ?? 1.5)).setName(
-    "uWindSwayFreqMax"
-  );
-  const uWindSwayStrength = uniform(
-    float(options?.swayStrength ?? 0.1)
-  ).setName("uWindSwayStrength");
-  const uWindDistanceStart = uniform(
-    float(options?.windDistanceStart ?? 10.0)
-  ).setName("uWindDistanceStart");
-  const uWindDistanceEnd = uniform(
-    float(options?.windDistanceEnd ?? 30.0)
-  ).setName("uWindDistanceEnd");
-
-  // Cull params for ground blending
-  const uCullStart = uniform(float(options?.cullStart ?? 15.0)).setName(
-    "uCullStart"
-  );
-  const uCullEnd = uniform(float(options?.cullEnd ?? 30.0)).setName("uCullEnd");
+  const uWindSwayFreqMin = uniform(initialValues?.swayFreqMin ?? 0.4);
+  const uWindSwayFreqMax = uniform(initialValues?.swayFreqMax ?? 1.5);
+  const uWindSwayStrength = uniform(initialValues?.swayStrength ?? 0.1);
+  const uWindDistanceStart = uniform(initialValues?.windDistanceStart ?? 10.0);
+  const uWindDistanceEnd = uniform(initialValues?.windDistanceEnd ?? 30.0);
 
   // Width shaping uniforms
-  const uMidSoft = uniform(float(options?.midSoft ?? 0.25)).setName("uMidSoft");
-  const uRimPos = uniform(float(options?.rimPos ?? 0.42)).setName("uRimPos");
-  const uRimSoft = uniform(float(options?.rimSoft ?? 0.03)).setName("uRimSoft");
+  const uMidSoft = uniform(initialValues?.midSoft ?? 0.25);
+  const uRimPos = uniform(initialValues?.rimPos ?? 0.42);
+  const uRimSoft = uniform(initialValues?.rimSoft ?? 0.03);
 
   // Color uniforms
   const baseColorValue =
-    options?.baseColor instanceof THREE.Color
-      ? options.baseColor
-      : new THREE.Color(options?.baseColor ?? "#000000");
+    initialValues?.baseColor instanceof THREE.Color
+      ? initialValues.baseColor
+      : new THREE.Color(initialValues?.baseColor ?? "#000000");
   const tipColorValue =
-    options?.tipColor instanceof THREE.Color
-      ? options.tipColor
-      : new THREE.Color(options?.tipColor ?? "#ffffff");
+    initialValues?.tipColor instanceof THREE.Color
+      ? initialValues.tipColor
+      : new THREE.Color(initialValues?.tipColor ?? "#ffffff");
   const groundColorValue =
-    options?.groundColor instanceof THREE.Color
-      ? options.groundColor
-      : new THREE.Color(options?.groundColor ?? "#1a3319");
+    initialValues?.groundColor instanceof THREE.Color
+      ? initialValues.groundColor
+      : new THREE.Color(initialValues?.groundColor ?? "#1a3319");
   const lightColorValue =
-    options?.lightColor instanceof THREE.Color
-      ? options.lightColor
-      : new THREE.Color(options?.lightColor ?? "#ffffff");
+    initialValues?.lightColor instanceof THREE.Color
+      ? initialValues.lightColor
+      : new THREE.Color(initialValues?.lightColor ?? "#ffffff");
 
   const uBaseColor = uniform(
     vec3(baseColorValue.r, baseColorValue.g, baseColorValue.b)
-  ).setName("uBaseColor");
+  );
   const uTipColor = uniform(
     vec3(tipColorValue.r, tipColorValue.g, tipColorValue.b)
-  ).setName("uTipColor");
+  );
   const uGroundColor = uniform(
     vec3(groundColorValue.r, groundColorValue.g, groundColorValue.b)
-  ).setName("uGroundColor");
+  );
   const uBladeSeedRange = uniform(
-    vec2(options?.bladeSeedRange?.x ?? 0.95, options?.bladeSeedRange?.y ?? 1.03)
-  ).setName("uBladeSeedRange");
-  const uClumpInternalRange = uniform(
     vec2(
-      options?.clumpInternalRange?.x ?? 0.95,
-      options?.clumpInternalRange?.y ?? 1.05
+      initialValues?.bladeSeedRange?.x ?? 0.95,
+      initialValues?.bladeSeedRange?.y ?? 1.03
     )
-  ).setName("uClumpInternalRange");
+  );
   const uClumpSeedRange = uniform(
-    vec2(options?.clumpSeedRange?.x ?? 0.9, options?.clumpSeedRange?.y ?? 1.1)
-  ).setName("uClumpSeedRange");
-  const uAOPower = uniform(float(options?.aoPower ?? 0.6)).setName("uAOPower");
+    vec2(
+      initialValues?.clumpSeedRange?.x ?? 0.9,
+      initialValues?.clumpSeedRange?.y ?? 1.1
+    )
+  );
+  const uAOPower = uniform(initialValues?.aoPower ?? 0.6);
   const uLightDirection = uniform(
     vec3(
-      options?.lightDirection?.x ?? 0.0,
-      options?.lightDirection?.y ?? 0.0,
-      options?.lightDirection?.z ?? -1.0
+      initialValues?.lightDirection?.x ?? 0.0,
+      initialValues?.lightDirection?.y ?? 0.0,
+      initialValues?.lightDirection?.z ?? -1.0
     )
-  ).setName("uLightDirection");
+  );
   const uLightColor = uniform(
     vec3(lightColorValue.r, lightColorValue.g, lightColorValue.b)
-  ).setName("uLightColor");
-  const uLightBackStrength = uniform(
-    float(options?.lightBackStrength ?? 0.6)
-  ).setName("uLightBackStrength");
+  );
+  const uLightBackStrength = uniform(initialValues?.lightBackStrength ?? 0.6);
   const uNoiseParams = uniform(
     vec4(
-      options?.noiseParams?.x ?? 1.0,
-      options?.noiseParams?.y ?? 3.0,
-      options?.noiseParams?.z ?? 0.7,
-      options?.noiseParams?.w ?? 1.0
+      initialValues?.noiseParams?.x ?? 1.0,
+      initialValues?.noiseParams?.y ?? 3.0,
+      initialValues?.noiseParams?.z ?? 0.7,
+      initialValues?.noiseParams?.w ?? 1.0
     )
-  ).setName("uNoiseParams");
+  );
 
   // Define varyings for passing data from vertex to fragment
-  const vGeoNormal = varying(vec3(0.0)).setName("vGeoNormal");
-  const vHeight = varying(float(0.0)).setName("vHeight");
-  const vToCenter = varying(vec2(0.0)).setName("vToCenter");
-  const vWorldPos = varying(vec3(0.0)).setName("vWorldPos");
-  const vSide = varying(vec3(0.0)).setName("vSide");
-  const vClumpSeed = varying(float(0.0)).setName("vClumpSeed");
-  const vBladeSeed = varying(float(0.0)).setName("vBladeSeed");
+  const vGeoNormal = varying(vec3(0.0));
+  const vHeight = varying(float(0.0));
+  const vToCenter = varying(vec2(0.0));
+  const vWorldPos = varying(vec3(0.0));
+  const vSide = varying(vec3(0.0));
+  const vClumpSeed = varying(float(0.0));
+  const vBladeSeed = varying(float(0.0));
+
+  const near = 15;
+  const far = 30;
 
   const material = new THREE.MeshStandardNodeMaterial();
   material.side = THREE.DoubleSide;
 
   // Apply material properties
-  material.roughness = options?.roughness ?? 0.3;
-  material.metalness = options?.metalness ?? 0.5;
-  if (options?.emissive) {
-    material.emissive = new THREE.Color(options.emissive);
+  material.roughness = initialValues?.roughness ?? 0.3;
+  material.metalness = initialValues?.metalness ?? 0.5;
+  if (initialValues?.emissive) {
+    material.emissive = new THREE.Color(initialValues.emissive);
   }
-  material.envMapIntensity = options?.envMapIntensity ?? 0.5;
+  material.envMapIntensity = initialValues?.envMapIntensity ?? 0.5;
 
   const grassVertex = Fn(() => {
     // Bezier Curve Functions
@@ -255,7 +238,6 @@ export function createGrassMaterial(
       return { p1, p2 };
     };
 
-    // Wind Functions
     const safeNormalize2D = (v: any) => {
       const m2 = dot(v, v);
       const len = sqrt(m2);
@@ -353,32 +335,23 @@ export function createGrassMaterial(
     const data = grassData.element(instanceIndex);
     const instancePos = positions.element(instanceIndex);
 
-    const width = data.get("bladeWidth").toConst("bladeWidth");
-    const height = data.get("bladeHeight").toConst("bladeHeight");
-    const bend = data.get("bladeBend").toConst("bladeBend");
-    const bladeTypeRaw = data.get("bladeType").toConst("bladeType");
-    // Convert to discrete type (0, 1, or 2) matching GLSL: floor(bladeParams.w * 3.0)
-    const bladeType = floor(bladeTypeRaw.mul(3.0));
+    const width = data.get("bladeWidth").toConst();
+    const height = data.get("bladeHeight").toConst();
+    const bend = data.get("bladeBend").toConst();
+    const bladeType = floor(data.get("bladeType").toConst().mul(3.0));
 
-    // Get facing angle from compute shader (matching GLSL: facingAngle01 * PI * 2.0)
-    const facingAngle01 = data.get("facingAngle01").toConst("facingAngle01");
-    const facingAngle = facingAngle01.mul(360.0);
+    const facingAngle = data.get("facingAngle01").toConst().mul(360);
 
     // Get wind strength and per-blade hash from compute shader
-    const windStrength01Raw = data
-      .get("windStrength01")
-      .toConst("windStrength01");
-    const perBladeHash01 = data.get("perBladeHash01").toConst("perBladeHash01");
+    const windStrength01 = data.get("windStrength01").toConst();
+    const perBladeHash01 = data.get("perBladeHash01").toConst();
 
-    // Calculate distance for wind falloff (farther = less wind)
-    // Transform instance position to world space using modelWorldMatrix
-    const instancePosVec4 = vec4(
-      instancePos.x,
-      instancePos.y,
-      instancePos.z,
-      float(1.0)
-    );
-    const worldBasePos = modelWorldMatrix.mul(instancePosVec4).xyz;
+    const toCenter = data.get("toCenter").toConst();
+    const clumpSeed01 = data.get("clumpSeed01").toConst();
+
+    const worldBasePos = modelWorldMatrix.mul(
+      vec4(instancePos.x, instancePos.y, instancePos.z, float(1.0))
+    ).xyz;
     const dist = length(cameraPosition.sub(worldBasePos));
 
     // Calculate wind distance falloff (1.0 = full wind at near, 0.0 = no wind at far)
@@ -388,11 +361,9 @@ export function createGrassMaterial(
       oneMinus(smoothstep(uWindDistanceStart, uWindDistanceEnd, dist)),
       float(1.0)
     );
+    const windStrength = windStrength01.mul(windDistanceFalloff);
 
-    // Apply distance-based wind falloff
-    const windStrength01 = windStrength01Raw.mul(windDistanceFalloff);
-
-    // Get UV coordinates (t is the position along the blade, 0.0 to 1.0)
+    // Get UV coordinates
     const uvCoords = uv();
     const t = uvCoords.y; // Position along blade (0 = base, 1 = tip)
     const s = uvCoords.x.sub(0.5).mul(2.0); // Side position (-1 to 1)
@@ -402,20 +373,17 @@ export function createGrassMaterial(
     let p3 = vec3(0.0, height, 0.0); // Tip point
     let { p1, p2 } = getBezierControlPoints(bladeType, height, bend);
 
-    // Get world XZ position for wind calculations
-    const worldXZ = vec2(instancePos.x, instancePos.z);
-
     // Apply Wind Effects
-    const windPushed = applyWindPush(p1, p2, p3, windStrength01, height);
+    const windPushed = applyWindPush(p1, p2, p3, windStrength, height);
     const windSwayed = applyWindSway(
       windPushed.p1,
       windPushed.p2,
       windPushed.p3,
-      windStrength01,
+      windStrength,
       height,
       perBladeHash01,
       t,
-      worldXZ
+      vec2(instancePos.x, instancePos.z)
     );
     p1 = windSwayed.p1;
     p2 = windSwayed.p2;
@@ -425,7 +393,6 @@ export function createGrassMaterial(
     const spine = bezier3(p0, p1, p2, p3, t);
     const tangent = normalize(bezier3Tangent(p0, p1, p2, p3, t));
 
-    // TBN Frame (matching GLSL: vec3 ref = vec3(0.0, 0.0, 1.0);)
     const ref = vec3(0.0, 0.0, 1.0);
     const side = normalize(cross(ref, tangent));
     const normal = normalize(cross(side, tangent));
@@ -452,17 +419,13 @@ export function createGrassMaterial(
     const sideXZ = mx_rotate2d(vec2(side.x, side.z), facingAngle);
     const sideRotated = normalize(vec3(sideXZ.x, side.y, sideXZ.y));
 
-    // Get toCenter and seed values from compute shader data
-    const toCenter = data.get("toCenter").toConst("toCenter");
-    const clumpSeed01 = data.get("clumpSeed01").toConst("clumpSeed01");
-
     // Calculate world position for fragment shader
     const position = lposRotated.add(instancePos);
     const positionWorldVec4 = modelWorldMatrix.mul(
       vec4(position.x, position.y, position.z, float(1.0))
     );
     const worldPos = positionWorldVec4.xyz;
-    
+
     // Write to varyings for fragment shader
     vGeoNormal.assign(normalRotated);
     vHeight.assign(shapeT);
@@ -485,26 +448,20 @@ export function createGrassMaterial(
       // Height mask: bottom is influenced more by the clump; top by geometry
       const heightMask = pow(float(1.0).sub(height), float(0.7));
 
-      // Distance mask: further from the camera, blend more toward clump normal (reduces grain)
+      // Distance mask: further from the camera, blend more toward clump normal
       const dist = length(cameraPosition.sub(worldPos));
-      const distMask = smoothstep(float(4.0), float(12.0), dist);
+      const distMask = smoothstep(float(near), float(far), dist);
 
       // Blend geometry normal and clump normal
       const blendFactor = heightMask.mul(distMask);
       const blendedNormal = normalize(mix(geoNormal, clumpNormal, blendFactor));
-
-      // Ground blending: at distance, blend fully to ground up-normal
-      const mixToGround = smoothstep(uCullStart, uCullEnd, dist);
-      const groundNormal = vec3(0.0, 1.0, 0.0);
-
-      return normalize(mix(blendedNormal, groundNormal, mixToGround));
+      return blendedNormal;
     }
   );
 
   // Set normal node for PBR lighting
-  // Note: This runs in fragment shader, using varyings from vertex shader
   material.normalNode = Fn(() => {
-    // Width shaping (Rim + Midrib) - matching GLSL fragment shader
+    // Width shaping (Rim + Midrib)
     const uvCoords = uv();
     const u = uvCoords.x.sub(0.5);
     const au = abs(u);
@@ -517,15 +474,17 @@ export function createGrassMaterial(
     const widthNormalStrength = float(0.35);
     const sideNorm = normalize(vSide);
     const baseNormal = normalize(vGeoNormal);
-
-    // Apply width-based normal offset
     const geoNormal = normalize(
       baseNormal.add(sideNorm.mul(ny).mul(widthNormalStrength))
     );
 
-    // Calculate final lighting normal using computeLightingNormal function
     // This blends geometry normal with clump normal based on height and distance
-    const finalWorldNormal = computeLightingNormal(geoNormal, vToCenter, vHeight, vWorldPos);
+    const finalWorldNormal = computeLightingNormal(
+      geoNormal,
+      vToCenter,
+      vHeight,
+      vWorldPos
+    );
 
     // Transform to view space
     // Multiply by faceDirection to handle double-sided rendering correctly
@@ -535,16 +494,10 @@ export function createGrassMaterial(
 
   // Fragment shader for color calculation
   material.colorNode = Fn(() => {
-    // 1. Base Color (Height Gradient)
+    // Base Color (Height Gradient)
     const color = mix(uBaseColor, uTipColor, vHeight);
 
-    // 2. Ghost-style Color Layering (three layers)
-    const innerClump = smoothstep(float(0.0), float(1.0), length(vToCenter));
-    const clumpInternalFactor = mix(
-      uClumpInternalRange.x,
-      uClumpInternalRange.y,
-      innerClump
-    );
+    // Color Layering
     const clumpSeedFactor = mix(
       uClumpSeedRange.x,
       uClumpSeedRange.y,
@@ -555,12 +508,9 @@ export function createGrassMaterial(
       uBladeSeedRange.y,
       vBladeSeed
     );
-    let finalColor = mul(
-      mul(mul(color, clumpInternalFactor), clumpSeedFactor),
-      bladeSeedFactor
-    );
+    let finalColor = mul(mul(color, clumpSeedFactor), bladeSeedFactor);
 
-    // 3. Height-based AO (must multiply)
+    // Height-based AO
     const ao = mix(
       float(0.35),
       float(1.0),
@@ -568,77 +518,84 @@ export function createGrassMaterial(
     );
     finalColor = mul(finalColor, ao);
 
-    // 4. Distance-based Shading Simplification
+    // Distance-based Shading Simplification
     const dist = length(cameraPosition.sub(vWorldPos));
-    const distFade = smoothstep(float(6.0), float(14.0), dist);
-
-    // Reduce contrast and color variation at distance
+    const distFade = smoothstep(float(near), float(far), dist);
     const grayValue = dot(finalColor, vec3(float(0.333)));
-    // Calculate blend factor: distFade * 0.35, using lerp equivalent
     const distFadeFactor = distFade.mul(float(0.35));
     finalColor = finalColor
       .mul(oneMinus(distFadeFactor))
       .add(vec3(grayValue).mul(distFadeFactor));
 
     // Material Blending: fade to ground color at distance
-    const mixToGroundColor = smoothstep(uCullStart, uCullEnd, dist);
+    const mixToGroundColor = smoothstep(float(near), float(far), dist);
     const mixToGroundFactor = mixToGroundColor.mul(float(0.5));
     finalColor = finalColor
       .mul(oneMinus(mixToGroundFactor))
       .add(uGroundColor.mul(mixToGroundFactor));
 
-    // 5. Fake Translucency / Backlight
-    const baseNormal = normalize(vGeoNormal);
-    const V = normalize(cameraPosition.sub(vWorldPos));
-    const L = normalize(uLightDirection);
-    const lightingNormal = computeLightingNormal(
-      vGeoNormal,
-      vToCenter,
-      vHeight,
-      vWorldPos
-    );
-    const N = lightingNormal;
+    // Fake Translucency / Backlight
+    // const baseNormal = normalize(vGeoNormal);
+    // const V = normalize(cameraPosition.sub(vWorldPos));
+    // const L = normalize(uLightDirection);
+    // const lightingNormal = computeLightingNormal(
+    //   vGeoNormal,
+    //   vToCenter,
+    //   vHeight,
+    //   vWorldPos
+    // );
+    // const N = lightingNormal;
+    // const backNdL = clamp(dot(N.negate(), L), float(0.0), float(1.0));
+    // const NdV = dot(baseNormal, V);
+    // const viewGrazing = smoothstep(float(0.0), float(0.6), oneMinus(NdV));
 
-    // Backlight condition: light on back + grazing angle
-    const backNdL = clamp(dot(N.negate(), L), float(0.0), float(1.0));
-    const NdV = dot(baseNormal, V);
-    const viewGrazing = smoothstep(float(0.0), float(0.6), oneMinus(NdV));
+    // const thickness = pow(oneMinus(vHeight), float(1.3));
+    // const backLight = mul(mul(backNdL, viewGrazing), thickness);
 
-    const thickness = pow(oneMinus(vHeight), float(1.3));
-    const backLight = mul(mul(backNdL, viewGrazing), thickness);
+    // const trans = mul(mul(uLightColor, backLight), uLightBackStrength);
+    // finalColor = finalColor.add(trans);
 
-    const trans = mul(mul(uLightColor, backLight), uLightBackStrength);
-    finalColor = finalColor.add(trans);
-    return vec4(finalColor, float(1.0));
-
-    // 6. Noise
-    const uvCoords = uv();
-    const noiseUv = mul(uvCoords, vec2(uNoiseParams.x, uNoiseParams.y)).add(
-      vec2(vBladeSeed, vClumpSeed)
-    );
-    const noiseValue = mx_fractal_noise_float(noiseUv);
-    // Remap noise from [-1, 1] to [uNoiseParams.z, uNoiseParams.w]
-    const noiseRemapped = remapClamp(
-      noiseValue,
-      float(-1.0),
-      float(1.0),
-      uNoiseParams.z,
-      uNoiseParams.w
-    );
-    finalColor = mul(finalColor, noiseRemapped);
+    // Noise
+    // const uvCoords = uv();
+    // const noiseUv = mul(uvCoords, vec2(uNoiseParams.x, uNoiseParams.y)).add(
+    //   vec2(vBladeSeed, vClumpSeed)
+    // );
+    // const noiseValue = mx_fractal_noise_float(noiseUv);
+    // // Remap noise from [-1, 1] to [uNoiseParams.z, uNoiseParams.w]
+    // const noiseRemapped = remapClamp(
+    //   noiseValue,
+    //   float(-1.0),
+    //   float(1.0),
+    //   uNoiseParams.z,
+    //   uNoiseParams.w
+    // );
+    // finalColor = mul(finalColor, noiseRemapped);
 
     return vec4(finalColor, float(1.0));
   })();
 
-//   material.fragmentNode = Fn(() => {
-//     const data = grassData.element(instanceIndex);
-//     const facingAngle01 = data.get("facingAngle01").toConst("facingAngle01");
-//     return vec4(facingAngle01, 0, 0, 1);
+  material.envNode = Fn(() => {
+    const envMap = material.envMap;
+    if (envMap) {
+      const ao = mix(
+        float(0.35),
+        float(1.0),
+        clamp(pow(vHeight, uAOPower), float(0.0), float(1.0))
+      );
+      const envSample = pmremTexture(envMap).mul(ao);
+      return envSample;
+    }
+    return vec3(0.0, 0.0, 0.0);
+  })();
 
+  // material.fragmentNode = Fn(() => {
+  //   const data = grassData.element(instanceIndex);
+  //   const presence = data.get("presence").toConst("presence");
+  //   const baseNormal = normalize(vGeoNormal);
 
-//     const normalColor = normalView.mul(0.5).add(0.5);
-//     return vec4(normalColor, float(1.0));
-//   })();
+  //   const normalColor = normalView.mul(0.5).add(0.5);
+  //   return vec4(vHeight, 0,0, float(1.0));
+  // })();
 
   return {
     material,
@@ -650,8 +607,6 @@ export function createGrassMaterial(
       uWindSwayStrength,
       uWindDistanceStart,
       uWindDistanceEnd,
-      uCullStart,
-      uCullEnd,
       uMidSoft,
       uRimPos,
       uRimSoft,
@@ -659,7 +614,6 @@ export function createGrassMaterial(
       uTipColor,
       uGroundColor,
       uBladeSeedRange,
-      uClumpInternalRange,
       uClumpSeedRange,
       uAOPower,
       uLightDirection,
