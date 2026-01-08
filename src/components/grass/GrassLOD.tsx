@@ -3,12 +3,11 @@ import { useThree } from "@react-three/fiber";
 import * as THREE from "three/webgpu";
 import { createBladeGeometry, createGrassData, createPositions } from "./core/grassGeometry";
 import { createGrassMaterial } from "./core/grassMaterial";
-import { updateMaterialUniforms } from "./core/uniforms";
-import type { TerrainParams, LODBufferConfig } from "./core/types";
+import type { LODBufferConfig } from "./core/types";
 
 interface GrassLODProps {
   grassParams: any;
-  terrainParams?: TerrainParams;
+  terrainUniforms?: { uTerrainAmp: any; uTerrainFreq: any; uTerrainSeed: any; uColor: any };
   grassData: ReturnType<typeof createGrassData> | null;
   positions: ReturnType<typeof createPositions> | null;
   lodBuffer: LODBufferConfig;
@@ -17,7 +16,7 @@ interface GrassLODProps {
 
 export function GrassLOD({
   grassParams,
-  terrainParams,
+  terrainUniforms,
   grassData,
   positions,
   lodBuffer,
@@ -47,8 +46,13 @@ export function GrassLOD({
       grassData,
       positions,
       lodBuffer.indices,
-      uniforms
+      uniforms,
+      terrainUniforms
     );
+    material.metalness = grassParams.metalness;
+    material.roughness = grassParams.roughness;
+    material.emissive = new THREE.Color(grassParams.emissive);
+    material.envMapIntensity = grassParams.envMapIntensity;
     materialRef.current = material;
 
     // Create mesh and add to scene
@@ -72,7 +76,8 @@ export function GrassLOD({
     grassData,
     positions,
     lodBuffer,
-    uniforms
+    uniforms,
+    terrainUniforms
   ]);
 
   useEffect(() => {

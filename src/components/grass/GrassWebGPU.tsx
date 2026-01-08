@@ -11,9 +11,9 @@ import { createGrassCompute, createResetDrawBufferCompute } from './core/grassCo
 import { updateComputeUniforms, updateMaterialUniforms } from './core/uniforms'
 import { findDirectionalLight } from './core/utils'
 import { GrassLOD } from './GrassLOD'
-import type { GrassProps, LODBufferConfig, TerrainParams } from './core/types'
+import type { GrassProps, LODBufferConfig } from './core/types'
 
-export default function GrassWebGPU({ terrainParams, patchSize: initialPatchSize = DEFAULT_PATCH_SIZE }: GrassProps = {} as GrassProps) {
+export default function GrassWebGPU({ terrainUniforms, patchSize: initialPatchSize = DEFAULT_PATCH_SIZE }: GrassProps = {} as GrassProps) {
   const { gl, camera, scene } = useThree()
 
   const [grassParams] = useControls('Grass', () => createGrassControls({ initialPatchSize }), { collapsed: true })
@@ -152,10 +152,10 @@ export default function GrassWebGPU({ terrainParams, patchSize: initialPatchSize
     updateComputeUniforms(computeUniforms, grassParams)
   }, [computeUniforms, grassParams])
 
-  // Update material uniforms when grassParams or terrainParams change (shared across all LODs)
+  // Update material uniforms when grassParams change (shared across all LODs)
   useEffect(() => {
-    updateMaterialUniforms(materialUniforms, grassParams, terrainParams)
-  }, [materialUniforms, grassParams, terrainParams])
+    updateMaterialUniforms(materialUniforms, grassParams, terrainUniforms)
+  }, [materialUniforms, grassParams, terrainUniforms])
 
   useFrame(({ clock }) => {
     const renderer = gl as unknown as WebGPURenderer
@@ -187,7 +187,7 @@ export default function GrassWebGPU({ terrainParams, patchSize: initialPatchSize
         <GrassLOD
           key={`lod-${lodBuffer.segments}-${lodBuffer.minDistance}-${lodBuffer.maxDistance}`}
           grassParams={grassParams}
-          terrainParams={terrainParams}
+          terrainUniforms={terrainUniforms}
           grassData={grassDataRef.current}
           positions={positionsRef.current}
           lodBuffer={lodBuffer}

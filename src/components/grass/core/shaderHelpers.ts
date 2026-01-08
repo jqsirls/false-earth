@@ -14,7 +14,12 @@ import {
   length,
   smoothstep,
   cameraPosition,
+  cross,
+  clamp,
+  acos,
+  If,
 } from "three/tsl";
+import { rotateAxis } from "../../terrain/terrainHelpers";
 
 /**
  * Safely normalizes a 2D vector, returning a default if length is too small
@@ -221,5 +226,36 @@ export function computeLightingNormal(near: number, far: number) {
       return blendedNormal;
     }
   );
+}
+
+/**
+ * Applies slope alignment rotation to align grass blade with terrain normal
+ * Rotates position, tangent, side, and normal vectors to match terrain slope
+ */
+export function applySlopeAlignment(
+  terrainNormal: any,
+  lpos: any,
+  tangentRotated: any,
+  sideRotated: any,
+  normalRotated: any
+) {
+  // Slope Alignment: Align the local "Up" vector (0,1,0) to the "Terrain Normal"
+  const up = vec3(float(0.0), float(1.0), float(0.0));
+  const axis = cross(up, terrainNormal);
+  const dotProd = clamp(dot(up, terrainNormal), float(-1.0), float(1.0));
+  const angle = acos(dotProd);
+  
+  // Only rotate if slope is significant
+  const axisLen = length(axis);
+  const minAxisLen = float(0.001);
+  const shouldRotate = axisLen.greaterThan(minAxisLen);
+  
+  If(shouldRotate, () => {
+    const axisNorm = normalize(axis);
+    lpos.assign(rotateAxis(lpos, axisNorm, angle));
+    tangentRotated.assign(rotateAxis(tangentRotated, axisNorm, angle));
+    sideRotated.assign(rotateAxis(sideRotated, axisNorm, angle));
+    normalRotated.assign(rotateAxis(normalRotated, axisNorm, angle));
+  });
 }
 

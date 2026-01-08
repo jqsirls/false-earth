@@ -18,7 +18,6 @@ import {
   cross,
   pow,
   mx_rotate2d,
-  acos,
   mix,
   dot,
   length,
@@ -28,15 +27,14 @@ import {
   abs,
   clamp,
   mul,
-  If,
   transformNormalToView,
   faceDirection,
   pmremTexture,
+  uniform,
 } from "three/tsl";
 import {
   getTerrainHeight,
   getTerrainNormal,
-  rotateAxis,
 } from "../../terrain/terrainHelpers";
 import {
   bezier3,
@@ -46,6 +44,7 @@ import {
   applyWindPush,
   applyWindSway,
   computeLightingNormal,
+  applySlopeAlignment,
 } from "./shaderHelpers";
 
 /**
@@ -56,7 +55,8 @@ export function createGrassMaterial(
   grassData: ReturnType<typeof instancedArray>,
   positions: ReturnType<typeof instancedArray>,
   visibleIndicesBuffer: ReturnType<typeof instancedArray>,
-  uniforms: Record<string, any>
+  uniforms: Record<string, any>,
+  terrainUniforms?: { uTerrainAmp: any; uTerrainFreq: any; uTerrainSeed: any; uColor: any }
 ) {
 
   // Define varyings for passing data from vertex to fragment
@@ -74,12 +74,17 @@ export function createGrassMaterial(
   const material = new THREE.MeshStandardNodeMaterial();
   material.side = THREE.DoubleSide;
 
+  // Use terrain uniforms (required)
+  const terrainAmp = terrainUniforms?.uTerrainAmp ?? uniform(2.5);
+  const terrainFreq = terrainUniforms?.uTerrainFreq ?? uniform(0.1);
+  const terrainSeed = terrainUniforms?.uTerrainSeed ?? uniform(0.0);
+
   const grassVertex = Fn(() => {
     // Terrain helper functions
     const terrainHeight = getTerrainHeight(
-      uniforms.uTerrainAmp,
-      uniforms.uTerrainFreq,
-      uniforms.uTerrainSeed
+      terrainAmp,
+      terrainFreq,
+      terrainSeed
     );
     const terrainNormal = getTerrainNormal(terrainHeight);
 
@@ -109,8 +114,8 @@ export function createGrassMaterial(
     ).xyz;
     
     // Calculate terrain height and normal
-    const terrainHeightValue = terrainHeight(vec2(worldBasePos.x, worldBasePos.z));
-    const terrainNormalValue = terrainNormal(vec2(worldBasePos.x, worldBasePos.z));
+    const th = terrainHeight(vec2(worldBasePos.x, worldBasePos.z));
+    const tn = terrainNormal(vec2(worldBasePos.x, worldBasePos.z));
     
     const dist = length(cameraPosition.sub(worldBasePos));
 
@@ -192,29 +197,12 @@ export function createGrassMaterial(
     const tangentXZ = mx_rotate2d(vec2(tangent.x, tangent.z), facingAngle);
     let tangentRotated = normalize(vec3(tangentXZ.x, tangent.y, tangentXZ.y));
 
-    // // Slope Alignment: Align the local "Up" vector (0,1,0) to the "Terrain Normal"
-    // const up = vec3(float(0.0), float(1.0), float(0.0));
-    // const axis = cross(up, terrainNormalValue);
-    // const dotProd = clamp(dot(up, terrainNormal), float(-1.0), float(1.0));
-    // const angle = acos(dotProd);
-    
-    // // Only rotate if slope is significant
-    // const axisLen = length(axis);
-    // const minAxisLen = float(0.001);
-    // const shouldRotate = axisLen.greaterThan(minAxisLen);
-    
-    // If(shouldRotate, () => {
-    //   const axisNorm = normalize(axis);
-    //   lpos.assign(rotateAxis(lpos, axisNorm, angle));
-    //   tangentRotated.assign(rotateAxis(tangentRotated, axisNorm, angle));
-    //   sideRotated.assign(rotateAxis(sideRotated, axisNorm, angle));
-    //   normalRotated.assign(rotateAxis(normalRotated, axisNorm, angle));
-    // });
+    // Slope Alignment: Align the local "Up" vector (0,1,0) to the "Terrain Normal"
+    applySlopeAlignment(tn, lpos, tangentRotated, sideRotated, normalRotated);
 
-    // Calculate world position for fragment shader
     const position = lpos.add(instancePos);
     // Apply terrain height offset (Y-up in world space)
-    const positionWithTerrain = vec3(position.x, position.y, position.z);
+    const positionWithTerrain = vec3(position.x, position.y.add(th), position.z);
     const positionWorldVec4 = modelWorldMatrix.mul(
       vec4(positionWithTerrain.x, positionWithTerrain.y, positionWithTerrain.z, float(1.0))
     );

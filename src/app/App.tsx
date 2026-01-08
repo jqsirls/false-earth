@@ -4,21 +4,16 @@ import { LevaWrapper } from "@packages/r3f-gist/components";
 import { Canvas } from "@react-three/fiber";
 import { useState } from "react";
 import Effects from "../components/Effects";
-import { Terrain } from "../components/Terrain";
+import { Terrain } from "../components/terrain/Terrain";
 import { DirectionalLight } from "../components/DirectionalLight";
 import { Background } from "../components/background/Background";
 import * as THREE from 'three'
 import { Perf } from "r3f-perf";
 import { WebGPURenderer } from "three/webgpu";
 import GrassWebGPU from "../components/grass/GrassWebGPU";
-import { MeshBasicNodeMaterial, MeshNormalNodeMaterial, MeshStandardNodeMaterial } from "three/webgpu";
-import { vec3, vec4, Fn, normalView, float, positionLocal, normalLocal, cameraProjectionMatrix, cameraViewMatrix, modelWorldMatrix, modelNormalMatrix, mx_rotate2d, vec2, transformNormalToView, normalize, mat3, faceDirection } from "three/tsl";
-
-import { extend } from "@react-three/fiber";
-extend({ MeshBasicNodeMaterial, MeshNormalNodeMaterial })
 
 export default function App() {
-    const [terrainParams, setTerrainParams] = useState<{ amplitude: number; frequency: number; seed: number; color: string } | undefined>(undefined)
+    const [terrainUniforms, setTerrainUniforms] = useState<{ uTerrainAmp: any; uTerrainFreq: any; uTerrainSeed: any; uColor: any } | undefined>(undefined)
     const [lightPosition, setLightPosition] = useState<THREE.Vector3 | undefined>(undefined)
     const [patchSize, setPatchSize] = useState<number | undefined>(undefined)
 
@@ -53,8 +48,8 @@ export default function App() {
             <Environment preset="city" environmentIntensity={0.5} />
             <DirectionalLight onPositionChange={setLightPosition} />
             {/* <Background sunPosition={lightPosition} /> */}
-            {/* <Terrain onParamsChange={setTerrainParams} patchSize={patchSize} /> */}
-            <GrassWebGPU />
+            <Terrain onUniformsChange={setTerrainUniforms} patchSize={patchSize} />
+            <GrassWebGPU terrainUniforms={terrainUniforms} patchSize={patchSize} />
             <CanvasCapture />
 
             {/* <Effects /> */}

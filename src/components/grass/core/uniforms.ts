@@ -43,7 +43,7 @@ export function updateComputeUniforms(uniforms: Record<string, any>, params: any
 export function updateMaterialUniforms(
   uniforms: Record<string, any>,
   grassParams: any,
-  terrainParams?: { color?: string }
+  terrainUniforms?: { uTerrainAmp: any; uTerrainFreq: any; uTerrainSeed: any; uColor: any }
 ) {
   const params = grassParams as any;
 
@@ -67,9 +67,10 @@ export function updateMaterialUniforms(
   const tipColor = new THREE.Color(params.tipColor);
   uniforms.uTipColor.value.set(tipColor.r, tipColor.g, tipColor.b);
 
-  const groundColor = terrainParams?.color || '#1a3319';
-  const groundColorObj = new THREE.Color(groundColor);
-  uniforms.uGroundColor.value.set(groundColorObj.r, groundColorObj.g, groundColorObj.b);
+  if (terrainUniforms?.uColor) {
+    const colorVec = terrainUniforms.uColor.value;
+    uniforms.uGroundColor.value.set(colorVec.x, colorVec.y, colorVec.z);
+  } 
 
   uniforms.uBladeSeedRange.value.set(params.bladeSeedRange.x, params.bladeSeedRange.y);
   uniforms.uClumpSeedRange.value.set(params.clumpSeedRange.x, params.clumpSeedRange.y);

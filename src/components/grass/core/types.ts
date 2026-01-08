@@ -9,7 +9,7 @@ export interface TerrainParams {
 }
 
 export interface GrassProps {
-  terrainParams?: TerrainParams
+  terrainUniforms?: { uTerrainAmp: any; uTerrainFreq: any; uTerrainSeed: any; uColor: any }
   patchSize?: number
   onPatchSizeChange?: (patchSize: number) => void
 }
