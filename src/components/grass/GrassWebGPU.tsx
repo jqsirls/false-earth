@@ -1,16 +1,16 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useControls } from 'leva'
 import { useFrame, useThree } from '@react-three/fiber'
-import { DEFAULT_PATCH_SIZE } from './grass/constants'
+import { DEFAULT_PATCH_SIZE } from './constants'
 import { WebGPURenderer } from 'three/webgpu'
 import * as THREE from 'three/webgpu'
 import { storage } from 'three/tsl'
-import { createGrassControls } from './grass/controls'
-import { createPositions, createGrassData, createVisibleIndicesBuffer, createBladeGeometry } from './grass/geometry'
-import { createGrassCompute, createResetDrawBufferCompute } from './grass/compute/grassCompute'
-import { drawIndirectStructure } from './grass/constants'
-import { useGrassSetup } from './grass/hooks'
-import type { GrassProps, LODBufferConfig, LODSegmentsConfig } from './grass/types'
+import { createGrassControls } from './controls'
+import { createPositions, createGrassData, createVisibleIndicesBuffer, createBladeGeometry } from './geometry'
+import { createGrassCompute, createResetDrawBufferCompute } from './compute/grassCompute'
+import { drawIndirectStructure } from './constants'
+import { GrassLOD } from './GrassLOD'
+import type { GrassProps, LODBufferConfig, LODSegmentsConfig } from './types'
 
 export default function GrassWebGPU({ terrainParams, patchSize: initialPatchSize = DEFAULT_PATCH_SIZE }: GrassProps = {} as GrassProps) {
   const { gl, camera } = useThree()
@@ -21,12 +21,12 @@ export default function GrassWebGPU({ terrainParams, patchSize: initialPatchSize
   const resetComputeRef = useRef<any>(null)
   const computeUniformsRef = useRef<Record<string, any>>({})
 
-  // Buffer refs (created at top level, passed to useGrassSetup)
+  // Buffer refs (created at top level, passed to GrassLOD components)
   const grassDataRef = useRef<ReturnType<typeof createGrassData> | null>(null)
   const positionsRef = useRef<ReturnType<typeof createPositions> | null>(null)
-  const lodBuffersRef = useRef<LODBufferConfig[]>([])
+  const [lodBuffers, setLodBuffers] = useState<LODBufferConfig[]>([])
 
-  // Create compute shader and shared buffers
+  // Create compute shader and shared buffers only when structural properties change
   useEffect(() => {
     const gridSize = grassParams.gridSize
     const patchSize = grassParams.patchSize
@@ -74,15 +74,17 @@ export default function GrassWebGPU({ terrainParams, patchSize: initialPatchSize
       }
     })
 
-    // Store LOD buffers in refs
-    lodBuffersRef.current = lodConfigs
+    // Store LOD buffers in state (triggers re-render for GrassLOD components)
+    setLodBuffers(lodConfigs)
 
-    // Create compute shader with LOD support
+    // Create compute shader with LOD support (using default initial values)
+    // Actual values will be updated via uniforms in the separate useEffect
     const { computeFn, uniforms } = createGrassCompute(
       grassData,
       positions,
       lodConfigs,
       {
+        // Use current params as initial values, but these will be updated via uniforms
         bladeHeightMin: grassParams.bladeHeightMin,
         bladeHeightMax: grassParams.bladeHeightMax,
         bladeWidthMin: grassParams.bladeWidthMin,
@@ -102,7 +104,6 @@ export default function GrassWebGPU({ terrainParams, patchSize: initialPatchSize
         windStrength: grassParams.windStrength,
         windDir: { x: grassParams.windDirX, y: grassParams.windDirZ },
         windFacing: grassParams.windFacing,
-        maxCullDistance: (grassParams as any).maxCullDistance ?? 50.0,
         cullOffset: grassParams.bladeHeightMax ?? 0.8,
       }
     )
@@ -114,45 +115,18 @@ export default function GrassWebGPU({ terrainParams, patchSize: initialPatchSize
     const resetCompute = createResetDrawBufferCompute(lodConfigs)
     resetComputeRef.current = resetCompute
   }, [
+    // Only recreate compute shader when structural properties change
     grassParams.gridSize,
     grassParams.patchSize,
-    grassParams.bladeHeightMin,
-    grassParams.bladeHeightMax,
-    grassParams.bladeWidthMin,
-    grassParams.bladeWidthMax,
-    grassParams.bendAmountMin,
-    grassParams.bendAmountMax,
-    grassParams.bladeRandomness,
-    grassParams.clumpSize,
-    grassParams.clumpRadius,
-    grassParams.centerYaw,
-    grassParams.bladeYaw,
-    grassParams.clumpYaw,
-    grassParams.typeTrendScale,
-    grassParams.windScale,
-    grassParams.windSpeed,
-    grassParams.windStrength,
-    grassParams.windDirX,
-    grassParams.windDirZ,
-    grassParams.windFacing,
   ])
 
-  useGrassSetup({
-    grassParams,
-    terrainParams,
-    grassData: grassDataRef.current,
-    positions: positionsRef.current,
-    lodBuffers: lodBuffersRef.current,
-  })
-
-  // Update compute uniforms when grassParams change
+  // Update compute uniforms when grassParams change (only updates uniforms, doesn't recreate shader)
   useEffect(() => {
     if (!computeUniformsRef.current) return
 
     const params = grassParams as any
     const uniforms = computeUniformsRef.current
 
-    // Update shape parameter uniforms from Leva controls
     uniforms.uBladeHeightMin.value = params.bladeHeightMin
     uniforms.uBladeHeightMax.value = params.bladeHeightMax
     uniforms.uBladeWidthMin.value = params.bladeWidthMin
@@ -165,7 +139,6 @@ export default function GrassWebGPU({ terrainParams, patchSize: initialPatchSize
       params.bladeRandomness.z
     )
 
-    // Update clump parameter uniforms
     uniforms.uClumpSize.value = params.clumpSize
     uniforms.uClumpRadius.value = params.clumpRadius
     uniforms.uCenterYaw.value = params.centerYaw
@@ -173,18 +146,16 @@ export default function GrassWebGPU({ terrainParams, patchSize: initialPatchSize
     uniforms.uClumpYaw.value = params.clumpYaw
     uniforms.uTypeTrendScale.value = params.typeTrendScale
 
-    // Update wind parameter uniforms (compute shader only has these)
     uniforms.uWindScale.value = params.windScale ?? 0.25
     uniforms.uWindSpeed.value = params.windSpeed
     uniforms.uWindStrength.value = params.windStrength
     uniforms.uWindDir.value.set(params.windDirX, params.windDirZ)
     uniforms.uWindFacing.value = params.windFacing
 
-    // Update LOD parameter uniforms
-    if (uniforms.uLODDistance) {
-      uniforms.uLODDistance.value = params.lodDistance ?? 15.0
-    }
-  }, [grassParams, computeUniformsRef])
+    uniforms.uCullOffset.value = params.bladeHeightMax ?? 0.8
+  }, [
+    grassParams, computeUniformsRef
+  ])
 
   useFrame(({ clock }) => {
     const renderer = gl as unknown as WebGPURenderer
@@ -208,5 +179,18 @@ export default function GrassWebGPU({ terrainParams, patchSize: initialPatchSize
     renderer.compute(grassComputeRef.current)
   })
 
-  return null
+  return (
+    <>
+      {lodBuffers.map((lodBuffer) => (
+        <GrassLOD
+          key={`lod-${lodBuffer.segments}-${lodBuffer.minDistance}-${lodBuffer.maxDistance}`}
+          grassParams={grassParams}
+          terrainParams={terrainParams}
+          grassData={grassDataRef.current}
+          positions={positionsRef.current}
+          lodBuffer={lodBuffer}
+        />
+      ))}
+    </>
+  )
 }

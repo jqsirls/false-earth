@@ -63,7 +63,6 @@ export function createGrassCompute(
     windDir?: { x: number; y: number };
     windFacing?: number;
     // Culling Parameters
-    maxCullDistance?: number;
     cullOffset?: number; // Offset to account for blade height/width in frustum culling
   }
 ) {
@@ -101,8 +100,6 @@ export function createGrassCompute(
   const uWindDir = uniform(new THREE.Vector2(windDir.x, windDir.y));
   const uWindFacing = uniform(initialValues?.windFacing ?? 0.6);
 
-  // Culling Parameters
-  const uMaxCullDistance = uniform(initialValues?.maxCullDistance ?? 50.0);
   const uCullOffset = uniform(initialValues?.cullOffset ?? 0.8); // Default to max blade height
   
   const uViewMatrix = uniform(new THREE.Matrix4());
@@ -213,10 +210,7 @@ export function createGrassCompute(
     
     // Blade is in frustum if either bottom or top is visible
     const inFrustum = bottomInFrustum.or(topInFrustum);
-    const distToCamera = calculateDistance(instancePos);
-    const inDistance = distToCamera.lessThanEqual(uMaxCullDistance);
-
-    return inFrustum.and(inDistance);
+    return inFrustum;
   });
 
   const computeFn = Fn(() => {
@@ -490,8 +484,6 @@ export function createGrassCompute(
       uWindStrength,
       uWindDir,
       uWindFacing,
-      // Culling Parameters
-      uMaxCullDistance,
       uCullOffset,
       // Camera and Model matrices for culling (manually updated each frame)
       uViewMatrix,

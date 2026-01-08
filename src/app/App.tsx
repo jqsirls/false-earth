@@ -10,7 +10,7 @@ import { Background } from "../components/background/Background";
 import * as THREE from 'three'
 import { Perf } from "r3f-perf";
 import { WebGPURenderer } from "three/webgpu";
-import GrassWebGPU from "../components/GrassWebGPU";
+import GrassWebGPU from "../components/grass/GrassWebGPU";
 import { MeshBasicNodeMaterial, MeshNormalNodeMaterial, MeshStandardNodeMaterial } from "three/webgpu";
 import { vec3, vec4, Fn, normalView, float, positionLocal, normalLocal, cameraProjectionMatrix, cameraViewMatrix, modelWorldMatrix, modelNormalMatrix, mx_rotate2d, vec2, transformNormalToView, normalize, mat3, faceDirection } from "three/tsl";
 
