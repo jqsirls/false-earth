@@ -30,7 +30,7 @@ export default function App() {
             camera={{
                 fov: 45,
                 near: 0.1,
-                far: 50,
+                far: 80,
                 position: [0, 3, 10]
             }}
             gl={(canvas) => {
@@ -38,8 +38,6 @@ export default function App() {
                     ...canvas as any,
                     powerPreference: "high-performance",
                     antialias: true,
-                    alpha: false,
-                    stencil: false,
                 });
                 return renderer.init().then(() => renderer);
             }}
@@ -51,7 +49,7 @@ export default function App() {
             <color attach="background" args={['#000000']} />
             {/* <AdaptiveDpr pixelated /> */}
 
-            <CameraControls makeDefault maxDistance={20} minDistance={5} maxPolarAngle={Math.PI / 2.2} minPolarAngle={Math.PI / 4} dollySpeed={0.5} />
+            <CameraControls makeDefault maxPolarAngle={Math.PI / 2.2} minPolarAngle={Math.PI / 4} dollySpeed={0.5} />
             <Environment preset="city" environmentIntensity={0.5} />
             <DirectionalLight onPositionChange={setLightPosition} />
             {/* <Background sunPosition={lightPosition} /> */}

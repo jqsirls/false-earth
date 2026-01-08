@@ -1,2 +1,0 @@
-export { findDirectionalLight } from './findDirectionalLight'
-

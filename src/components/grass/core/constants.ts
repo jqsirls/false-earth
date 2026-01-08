@@ -3,8 +3,8 @@
 // ============================================================================
 import { struct } from 'three/tsl'
 
-export const DEFAULT_GRID_SIZE = 512;
-export const DEFAULT_PATCH_SIZE = 20;
+export const DEFAULT_GRID_SIZE = 2048;
+export const DEFAULT_PATCH_SIZE = 40;
 
 // Legacy exports for backwards compatibility
 export const GRID_SIZE = DEFAULT_GRID_SIZE;
@@ -14,6 +14,25 @@ export const PATCH_SIZE = DEFAULT_PATCH_SIZE;
 export function getGrassBladesCount(gridSize: number): number {
   return gridSize * gridSize;
 }
+
+// Default LOD segments configuration
+export const DEFAULT_LOD_SEGMENTS_CONFIG = [
+  {
+    segments: 14,
+    minDistance: 0,
+    maxDistance: 10,
+  },
+  {
+    segments: 8,
+    minDistance: 10,
+    maxDistance: 20,
+  },
+  {
+    segments: 4,
+    minDistance: 20,
+    maxDistance: Infinity,
+  },
+] as const
 
 // Color presets for tipColor
 export const TIP_COLOR_PRESETS = [
@@ -43,7 +62,6 @@ export const grassStructure = struct({
   facingAngle01: 'float',
   perBladeHash01: 'float',
   windStrength01: 'float',
-  lodSeed01: 'float',
 })
 
 // Indirect draw buffer structure (WebGPU draw indirect format)

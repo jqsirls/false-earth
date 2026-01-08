@@ -1,2 +1,0 @@
-export { createGrassMaterial } from './grassMaterial';
-

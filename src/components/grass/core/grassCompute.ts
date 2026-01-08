@@ -28,7 +28,7 @@ import {
   atomicStore,
 } from "three/tsl";
 import * as THREE from "three";
-import type { LODBufferConfig } from "../types";
+import type { LODBufferConfig } from "./types";
 
 /**
  * Creates a grass compute function that calculates blade parameters based on position
@@ -92,7 +92,7 @@ export function createGrassCompute(
   const uTypeTrendScale = uniform(initialValues?.typeTrendScale ?? 0.1);
 
   // Wind Parameters
-  const uWindTime = uniform(initialValues?.windTime ?? 0.0);
+  const uTime = uniform(initialValues?.windTime ?? 0.0);
   const uWindScale = uniform(initialValues?.windScale ?? 0.25);
   const uWindSpeed = uniform(initialValues?.windSpeed ?? 0.6);
   const uWindStrength = uniform(initialValues?.windStrength ?? 0.35);
@@ -386,7 +386,7 @@ export function createGrassCompute(
       const windDirNorm = safeNormalize(uWindDir);
       const windUv = worldXZ
         .mul(uWindScale)
-        .add(windDirNorm.mul(uWindTime).mul(uWindSpeed));
+        .add(windDirNorm.mul(uTime).mul(uWindSpeed));
 
       const windStrength01 = mx_fractal_noise_float(windUv);
       // Remap noise value from [-1, 1] to [0, uWindStrength] and clamp to [0, 1]
@@ -418,7 +418,6 @@ export function createGrassCompute(
 
     // Generate seeds
     const perBladeHash01 = hash11(dot(worldXZ, vec2(37.0, 17.0)));
-    const lodSeed01 = hash11(dot(worldXZ, vec2(19.3, 53.7)));
     const clumpSeed01 = hash11(dot(cellId, vec2(47.3, 61.7)));
 
     // Calculate blade facing angle
@@ -446,7 +445,6 @@ export function createGrassCompute(
     data.get("facingAngle01").assign(facingAngle01);
     data.get("perBladeHash01").assign(perBladeHash01);
     data.get("windStrength01").assign(windStrength);
-    data.get("lodSeed01").assign(lodSeed01);
 
     // Perform culling to check visibility
     const isVisible = performCulling(instancePos);
@@ -478,7 +476,7 @@ export function createGrassCompute(
       uClumpYaw,
       uTypeTrendScale,
       // Wind Parameters
-      uWindTime,
+      uTime,
       uWindScale,
       uWindSpeed,
       uWindStrength,
@@ -518,3 +516,4 @@ export function createResetDrawBufferCompute(
   // Only need 1 thread to reset all counters
   return resetFn().compute(1);
 }
+

@@ -1,6 +1,6 @@
 import * as THREE from 'three/webgpu'
 import { instancedArray } from 'three/tsl'
-import { grassStructure } from '../constants'
+import { grassStructure } from './constants'
 
 // Re-export IndirectStorageBufferAttribute for convenience
 export type IndirectStorageBufferAttribute = THREE.IndirectStorageBufferAttribute
@@ -45,7 +45,13 @@ export function createPositions(gridSize: number, patchSize: number) {
 }
 
 export function createGrassData(grassBlades: number) {
-  // Calculate grass struct size: 4 floats + 1 vec2 (2 floats) + 2 floats + 4 floats = 12 floats = 48 bytes
+  // Calculate grass struct size with GPU alignment:
+  // - 4 floats (blade params) = 16 bytes
+  // - 1 vec2 (toCenter, 2 floats) = 8 bytes (aligned to 8-byte boundary)
+  // - 2 floats (presence, clumpSeed01) = 8 bytes
+  // - 3 floats (motion seeds) = 12 bytes
+  // - Padding to align to 16-byte boundary = 4 bytes
+  // Total: 12 floats = 48 bytes (required for WebGPU alignment)
   const grassStructSize = 12
   const grassDataArray = new Float32Array(grassBlades * grassStructSize)
   grassDataArray.fill(0)

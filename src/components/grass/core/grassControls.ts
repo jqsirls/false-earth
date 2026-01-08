@@ -1,5 +1,5 @@
 import { folder } from 'leva'
-import { DEFAULT_GRID_SIZE, DEFAULT_PATCH_SIZE, TIP_COLOR_PRESETS } from '../constants'
+import { DEFAULT_GRID_SIZE, DEFAULT_PATCH_SIZE, TIP_COLOR_PRESETS } from './constants'
 
 export interface GrassControlsConfig {
   initialPatchSize?: number

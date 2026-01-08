@@ -84,7 +84,7 @@ export function createGrassMaterial(
   const sharedUniforms = initialValues?.sharedUniforms;
   
   // Wind uniforms
-  const uWindTime = sharedUniforms?.uWindTime ?? uniform(initialValues?.windTime ?? 0.0);
+  const uTime = sharedUniforms?.uTime ?? uniform(initialValues?.windTime ?? 0.0);
   const uWindDir = sharedUniforms?.uWindDir ?? uniform(
     vec2(initialValues?.windDir?.x ?? 1.0, initialValues?.windDir?.y ?? 0.0)
   );
@@ -290,7 +290,7 @@ export function createGrassMaterial(
       // Gust envelope (slow breathing)
       const seed = mod(perBladeHash01.mul(3.567), float(1.0));
       const gust = float(0.65).add(
-        float(0.35).mul(sin(uWindTime.mul(0.35).add(seed.mul(6.28318))))
+        float(0.35).mul(sin(uTime.mul(0.35).add(seed.mul(6.28318))))
       );
 
       // Traveling wave along wind direction (big-scale flow)
@@ -301,9 +301,9 @@ export function createGrassMaterial(
       const phase = perBladeHash01.mul(6.28318).add(wave);
 
       // Low freq (main sway) + high freq (small flutter)
-      const low = sin(uWindTime.mul(baseFreq).add(phase).add(t.mul(2.2)));
+      const low = sin(uTime.mul(baseFreq).add(phase).add(t.mul(2.2)));
       const high = sin(
-        uWindTime.mul(baseFreq.mul(5.0)).add(phase.mul(1.7)).add(t.mul(5.0))
+        uTime.mul(baseFreq.mul(5.0)).add(phase.mul(1.7)).add(t.mul(5.0))
       );
 
       // Amplitude: keep it small
@@ -599,7 +599,7 @@ export function createGrassMaterial(
   return {
     material,
     uniforms: {
-      uWindTime,
+      uTime,
       uWindDir,
       uWindSwayFreqMin,
       uWindSwayFreqMax,
@@ -622,3 +622,4 @@ export function createGrassMaterial(
     },
   };
 }
+
