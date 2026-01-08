@@ -161,7 +161,7 @@ export function createGrassCompute(
     // Distance culling: Check if blade (using bottom position) is within max distance
     const distToCamera = length(worldPosBottom.sub(camPos));
     const inDistance = distToCamera.lessThanEqual(uMaxCullDistance);
-    
+
     // Blade is visible if it passes both frustum and distance tests
     return inFrustum.and(inDistance);
   });
@@ -467,7 +467,7 @@ export function createResetDrawBufferCompute(
     atomicStore(drawBuffer.get("instanceCount"), uint(0));
     drawBuffer.get("firstVertex").assign(uint(0));
     drawBuffer.get("firstInstance").assign(uint(0));
-    drawBuffer.get("baseVertex").assign(uint(0));
+    drawBuffer.get("offset").assign(uint(0));
   });
 
   // Only need 1 thread to reset the counter

@@ -39,11 +39,14 @@ export function useGrassSetup({
     // Create culling buffers for indirect drawing
     const visibleIndicesBuffer = createVisibleIndicesBuffer(grassBlades)
     const vertexCount = bladeGeometry.attributes.position.count
+    // For indexed geometry, use index count; for non-indexed, use vertex count
+    const indexCount = bladeGeometry.index ? bladeGeometry.index.count : vertexCount
     
     // Create indirect draw buffer for WebGPU indirect drawing
-    // Structure: [vertexCount, instanceCount, firstVertex, firstInstance, baseVertex]
+    // Structure matches WebGPU drawIndirect/drawIndexedIndirect format
+    const drawBufferArray = new Uint32Array(5)
     const drawBuffer = new THREE.IndirectStorageBufferAttribute(
-      new Uint32Array(5),
+      drawBufferArray,
       5
     )
     const drawStorage = storage(drawBuffer, drawIndirectStructure, 1)
@@ -88,7 +91,8 @@ export function useGrassSetup({
     grassComputeRef.current = grassCompute
 
     // Create reset compute shader to reset draw buffer each frame
-    const resetCompute = createResetDrawBufferCompute(drawStorage, vertexCount)
+    // Use indexCount for indexed geometry, vertexCount for non-indexed
+    const resetCompute = createResetDrawBufferCompute(drawStorage, indexCount)
     resetComputeRef.current = resetCompute
 
     // Find light and create material

@@ -10,8 +10,8 @@ export function createGrassControls(config: GrassControlsConfig = {}) {
 
   return {
     Size: folder({
-      gridSize: { value: DEFAULT_GRID_SIZE, min: 64, max: 512, step: 64 },
-      patchSize: { value: initialPatchSize, min: 5, max: 50, step: 1 },
+      gridSize: { value: DEFAULT_GRID_SIZE, min: 0, max: 512, step: 64 },
+      patchSize: { value: initialPatchSize, min: 0, max: 50, step: 1 },
     }, { collapsed: true }),
 
     Geometry: folder({
@@ -85,7 +85,7 @@ export function createGrassControls(config: GrassControlsConfig = {}) {
         lodEnd: { value: 15, min: 0, max: 50, step: 1 },
       }, { collapsed: true }),
       Culling: folder({
-        compensation: { value: 1.5, min: 1.0, max: 3.0, step: 0.1 },
+        enableCulling: { value: true },
       }, { collapsed: true }),
     }, { collapsed: true }),
 

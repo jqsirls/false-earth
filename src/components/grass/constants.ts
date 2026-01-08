@@ -48,11 +48,12 @@ export const grassStructure = struct({
 })
 
 // Indirect draw buffer structure (WebGPU draw indirect format)
-// Structure: [vertexCount, instanceCount, firstVertex, firstInstance, baseVertex]
+// Structure matches WebGPU drawIndirect/drawIndexedIndirect format
+// [vertexCount/indexCount, instanceCount, firstVertex/firstIndex, firstInstance, offset/baseVertex]
 export const drawIndirectStructure = struct({
-  vertexCount: 'uint',
+  vertexCount: 'uint', // For non-indexed: vertex count, for indexed: index count
   instanceCount: { type: 'uint', atomic: true }, // Atomic counter for visible instances
-  firstVertex: 'uint',
+  firstVertex: 'uint', // For non-indexed: firstVertex, for indexed: firstIndex
   firstInstance: 'uint',
-  baseVertex: 'uint',
+  offset: 'uint', // For non-indexed: offset, for indexed: baseVertex
 })

@@ -592,12 +592,7 @@ export function createGrassMaterial(
   })();
 
   // material.fragmentNode = Fn(() => {
-  //   const data = grassData.element(instanceIndex);
-  //   const presence = data.get("presence").toConst("presence");
-  //   const baseNormal = normalize(vGeoNormal);
-
-  //   const normalColor = normalView.mul(0.5).add(0.5);
-  //   return vec4(vHeight, 0,0, float(1.0));
+  //   return vec4(1,0,0, float(1.0));
   // })();
 
   return {
