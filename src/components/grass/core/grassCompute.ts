@@ -9,7 +9,6 @@ import {
   mix,
   instancedArray,
   instanceIndex,
-  uniform,
   sqrt,
   length,
   atan,
@@ -27,7 +26,6 @@ import {
   atomicAdd,
   atomicStore,
 } from "three/tsl";
-import * as THREE from "three";
 import type { LODBufferConfig } from "./types";
 
 /**
@@ -39,73 +37,8 @@ export function createGrassCompute(
   grassData: ReturnType<typeof instancedArray>,
   positions: ReturnType<typeof instancedArray>,
   lodConfigs: LODBufferConfig[],
-  initialValues?: {
-    // Shape Parameters
-    bladeHeightMin?: number;
-    bladeHeightMax?: number;
-    bladeWidthMin?: number;
-    bladeWidthMax?: number;
-    bendAmountMin?: number;
-    bendAmountMax?: number;
-    bladeRandomness?: { x: number; y: number; z: number };
-    // Clump Parameters
-    clumpSize?: number;
-    clumpRadius?: number;
-    centerYaw?: number;
-    bladeYaw?: number;
-    clumpYaw?: number;
-    typeTrendScale?: number;
-    // Wind Parameters
-    windTime?: number;
-    windScale?: number;
-    windSpeed?: number;
-    windStrength?: number;
-    windDir?: { x: number; y: number };
-    windFacing?: number;
-    // Culling Parameters
-    cullOffset?: number; // Offset to account for blade height/width in frustum culling
-  }
+  uniforms: Record<string, any>
 ) {
-  // Shape Parameters
-  const uBladeHeightMin = uniform(initialValues?.bladeHeightMin ?? 0.4);
-  const uBladeHeightMax = uniform(initialValues?.bladeHeightMax ?? 0.8);
-  const uBladeWidthMin = uniform(initialValues?.bladeWidthMin ?? 0.01);
-  const uBladeWidthMax = uniform(initialValues?.bladeWidthMax ?? 0.05);
-  const uBendAmountMin = uniform(initialValues?.bendAmountMin ?? 0.2);
-  const uBendAmountMax = uniform(initialValues?.bendAmountMax ?? 0.6);
-
-  const bladeRandomness = initialValues?.bladeRandomness ?? {
-    x: 0.3,
-    y: 0.3,
-    z: 0.2,
-  };
-  const uBladeRandomness = uniform(
-    new THREE.Vector3(bladeRandomness.x, bladeRandomness.y, bladeRandomness.z)
-  );
-
-  // Clump Parameters
-  const uClumpSize = uniform(initialValues?.clumpSize ?? 0.8);
-  const uClumpRadius = uniform(initialValues?.clumpRadius ?? 1.5);
-  const uCenterYaw = uniform(initialValues?.centerYaw ?? 1.0);
-  const uBladeYaw = uniform(initialValues?.bladeYaw ?? 1.2);
-  const uClumpYaw = uniform(initialValues?.clumpYaw ?? 0.5);
-  const uTypeTrendScale = uniform(initialValues?.typeTrendScale ?? 0.1);
-
-  // Wind Parameters
-  const uTime = uniform(initialValues?.windTime ?? 0.0);
-  const uWindScale = uniform(initialValues?.windScale ?? 0.25);
-  const uWindSpeed = uniform(initialValues?.windSpeed ?? 0.6);
-  const uWindStrength = uniform(initialValues?.windStrength ?? 0.35);
-  const windDir = initialValues?.windDir ?? { x: 1, y: 0 };
-  const uWindDir = uniform(new THREE.Vector2(windDir.x, windDir.y));
-  const uWindFacing = uniform(initialValues?.windFacing ?? 0.6);
-
-  const uCullOffset = uniform(initialValues?.cullOffset ?? 0.8); // Default to max blade height
-  
-  const uViewMatrix = uniform(new THREE.Matrix4());
-  const uProjectionMatrix = uniform(new THREE.Matrix4());
-  const uCameraPosition = uniform(new THREE.Vector3());
-  const uModelMatrix = uniform(new THREE.Matrix4());
 
   // Build LOD routing chain factory function
   // This creates a function that builds the If-Else chain when called with TSL variables
@@ -164,20 +97,20 @@ export function createGrassCompute(
 
   // Helper function to calculate distance to camera (reused in culling and LOD)
   const calculateDistance = Fn(([instancePos]: [any]) => {
-    const worldPosBottom = uModelMatrix.mul(vec4(instancePos.x, instancePos.y, instancePos.z, float(1.0))).xyz;
-    const camPos = uCameraPosition;
+    const worldPosBottom = uniforms.uModelMatrix.mul(vec4(instancePos.x, instancePos.y, instancePos.z, float(1.0))).xyz;
+    const camPos = uniforms.uCameraPosition;
     return length(worldPosBottom.sub(camPos));
   });
   
   // Culling function: Performs frustum and distance culling with offset support
   // Returns visibility (boolean) - reuses calculateDistance for distance calculation
   const performCulling = Fn(([instancePos]: [any]) => {
-    const worldPosBottom = uModelMatrix.mul(vec4(instancePos.x, instancePos.y, instancePos.z, float(1.0))).xyz;
-    const worldPosTop = vec4(worldPosBottom.x, worldPosBottom.y.add(uCullOffset), worldPosBottom.z, float(1.0));
+    const worldPosBottom = uniforms.uModelMatrix.mul(vec4(instancePos.x, instancePos.y, instancePos.z, float(1.0))).xyz;
+    const worldPosTop = vec4(worldPosBottom.x, worldPosBottom.y.add(uniforms.uCullOffset), worldPosBottom.z, float(1.0));
     
     // Get camera matrices from uniforms (manually updated each frame)
-    const viewMatrix = uViewMatrix;
-    const projMatrix = uProjectionMatrix;
+    const viewMatrix = uniforms.uViewMatrix;
+    const projMatrix = uniforms.uProjectionMatrix;
     const viewProjMatrix = projMatrix.mul(viewMatrix);
     
     // Transform bottom position to clip space
@@ -219,9 +152,9 @@ export function createGrassCompute(
     const TWO_PI = float(6.28318530718);
 
     // Extract vector components early to avoid circular references
-    const bladeRandX = uBladeRandomness.x;
-    const bladeRandY = uBladeRandomness.y;
-    const bladeRandZ = uBladeRandomness.z;
+    const bladeRandX = uniforms.uBladeRandomness.x;
+    const bladeRandY = uniforms.uBladeRandomness.y;
+    const bladeRandZ = uniforms.uBladeRandomness.z;
 
     // Hash functions - matching compute shader
     const hash11 = (x: any) => fract(mul(sin(mul(x, 37.0)), 43758.5453123));
@@ -251,7 +184,7 @@ export function createGrassCompute(
 
     // Voronoi clump calculation - getClumpInfo
     const getClumpInfo = (worldXZ: any) => {
-      const cell = worldXZ.div(uClumpSize);
+      const cell = worldXZ.div(uniforms.uClumpSize);
       const baseCellX = floor(cell.x);
       const baseCellY = floor(cell.y);
       const baseCell = vec2(baseCellX, baseCellY);
@@ -285,7 +218,7 @@ export function createGrassCompute(
 
       // Calculate direction from blade position to clump center (unnormalized)
       const clumpSeed = hash2(bestCellId);
-      const clumpCenterWorld = bestCellId.add(clumpSeed).mul(uClumpSize);
+      const clumpCenterWorld = bestCellId.add(clumpSeed).mul(uniforms.uClumpSize);
       const toCenter = clumpCenterWorld.sub(worldXZ);
 
       return { toCenter, cellId: bestCellId };
@@ -294,7 +227,7 @@ export function createGrassCompute(
     // Calculate presence (fade-out factor) based on distance from clump center
     const calculatePresence = (toCenter: any) => {
       const distToCenter = length(toCenter);
-      const r = clamp(distToCenter.div(uClumpRadius), float(0.0), float(1.0));
+      const r = clamp(distToCenter.div(uniforms.uClumpRadius), float(0.0), float(1.0));
       const t = clamp(
         r.sub(float(0.7)).div(oneMinus(float(0.7))),
         float(0.0),
@@ -309,12 +242,12 @@ export function createGrassCompute(
       const c1 = hash21(cellId.mul(11.0));
       const c2 = hash21(cellId.mul(23.0));
 
-      const clumpBaseHeight = mix(uBladeHeightMin, uBladeHeightMax, c1.x);
-      const clumpBaseWidth = mix(uBladeWidthMin, uBladeWidthMax, c1.y);
-      const clumpBaseBend = mix(uBendAmountMin, uBendAmountMax, c2.x);
+      const clumpBaseHeight = mix(uniforms.uBladeHeightMin, uniforms.uBladeHeightMax, c1.x);
+      const clumpBaseWidth = mix(uniforms.uBladeWidthMin, uniforms.uBladeWidthMax, c1.y);
+      const clumpBaseBend = mix(uniforms.uBendAmountMin, uniforms.uBendAmountMax, c2.x);
 
       // Use mx_fractal_noise_float for typeTrend (matching simplexNoise2d from GLSL)
-      const typeTrend = mx_fractal_noise_float(cellId.mul(uTypeTrendScale));
+      const typeTrend = mx_fractal_noise_float(cellId.mul(uniforms.uTypeTrendScale));
       const typeTrendNormalized = typeTrend.mul(0.5).add(0.5);
 
       return {
@@ -351,10 +284,10 @@ export function createGrassCompute(
       cellId: any,
       perBladeHash01: any
     ) => {
-      const clumpAngle = atan(toCenter.y, toCenter.x).mul(uCenterYaw);
-      const randomOffset = perBladeHash01.sub(0.5).mul(uBladeYaw);
+      const clumpAngle = atan(toCenter.y, toCenter.x).mul(uniforms.uCenterYaw);
+      const randomOffset = perBladeHash01.sub(0.5).mul(uniforms.uBladeYaw);
       const clumpHash = hash11(dot(cellId, vec2(97.7, 3.1)));
-      const clumpYaw = clumpHash.sub(0.5).mul(uClumpYaw);
+      const clumpYaw = clumpHash.sub(0.5).mul(uniforms.uClumpYaw);
       return clumpAngle.add(randomOffset).add(clumpYaw);
     };
 
@@ -369,7 +302,7 @@ export function createGrassCompute(
         sin(windAngle.sub(baseAngle)),
         cos(windAngle.sub(baseAngle))
       );
-      return baseAngle.add(angleDiff.mul(uWindFacing.mul(windStrength01)));
+      return baseAngle.add(angleDiff.mul(uniforms.uWindFacing.mul(windStrength01)));
     };
 
     // Apply wind facing and normalize angle to [0, 1] range
@@ -377,16 +310,16 @@ export function createGrassCompute(
       baseAngle: any,
       windStrength01: any
     ) => {
-      const windDir = safeNormalize(uWindDir);
+      const windDir = safeNormalize(uniforms.uWindDir);
       const facingAngle = applyWindFacing(baseAngle, windDir, windStrength01);
       return normalizeAngle(facingAngle).add(PI).div(TWO_PI);
     };
 
     const calculateWindStrength = (worldXZ: any) => {
-      const windDirNorm = safeNormalize(uWindDir);
+      const windDirNorm = safeNormalize(uniforms.uWindDir);
       const windUv = worldXZ
-        .mul(uWindScale)
-        .add(windDirNorm.mul(uTime).mul(uWindSpeed));
+        .mul(uniforms.uWindScale)
+        .add(windDirNorm.mul(uniforms.uTime).mul(uniforms.uWindSpeed));
 
       const windStrength01 = mx_fractal_noise_float(windUv);
       // Remap noise value from [-1, 1] to [0, uWindStrength] and clamp to [0, 1]
@@ -395,7 +328,7 @@ export function createGrassCompute(
         float(-1.0),
         float(1.0),
         float(0.0),
-        uWindStrength
+        uniforms.uWindStrength
       );
     };
 
@@ -459,36 +392,6 @@ export function createGrassCompute(
 
   return {
     computeFn,
-    uniforms: {
-      // Shape Parameters
-      uBladeHeightMin,
-      uBladeHeightMax,
-      uBladeWidthMin,
-      uBladeWidthMax,
-      uBendAmountMin,
-      uBendAmountMax,
-      uBladeRandomness,
-      // Clump Parameters
-      uClumpSize,
-      uClumpRadius,
-      uCenterYaw,
-      uBladeYaw,
-      uClumpYaw,
-      uTypeTrendScale,
-      // Wind Parameters
-      uTime,
-      uWindScale,
-      uWindSpeed,
-      uWindStrength,
-      uWindDir,
-      uWindFacing,
-      uCullOffset,
-      // Camera and Model matrices for culling (manually updated each frame)
-      uViewMatrix,
-      uProjectionMatrix,
-      uCameraPosition,
-      uModelMatrix,
-    },
   };
 }
 

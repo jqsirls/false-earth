@@ -1,10 +1,9 @@
 import { useEffect, useRef } from "react";
-import { useThree, useFrame } from "@react-three/fiber";
+import { useThree } from "@react-three/fiber";
 import * as THREE from "three/webgpu";
-import { createBladeGeometry, createPositions, createGrassData } from "./core/grassGeometry";
-import { findDirectionalLight } from "./core/utils";
+import { createBladeGeometry, createGrassData, createPositions } from "./core/grassGeometry";
 import { createGrassMaterial } from "./core/grassMaterial";
-import { extractMaterialInitialValues, updateMaterialUniforms } from "./core/helpers";
+import { updateMaterialUniforms } from "./core/uniforms";
 import type { TerrainParams, LODBufferConfig } from "./core/types";
 
 interface GrassLODProps {
@@ -13,6 +12,7 @@ interface GrassLODProps {
   grassData: ReturnType<typeof createGrassData> | null;
   positions: ReturnType<typeof createPositions> | null;
   lodBuffer: LODBufferConfig;
+  uniforms: Record<string, any>;
 }
 
 export function GrassLOD({
@@ -21,12 +21,12 @@ export function GrassLOD({
   grassData,
   positions,
   lodBuffer,
+  uniforms,
 }: GrassLODProps) {
   const gridSize = grassParams.gridSize;
   const patchSize = grassParams.patchSize;
   const { scene } = useThree();
 
-  const materialUniformsRef = useRef<Record<string, any> | null>(null);
   const materialRef = useRef<THREE.MeshStandardNodeMaterial | null>(null);
 
   // Create mesh and geometry only when structural properties change
@@ -42,15 +42,13 @@ export function GrassLOD({
     const bladeGeometry = createBladeGeometry(lodBuffer.segments);
     bladeGeometry.setIndirect(lodBuffer.drawBuffer);
 
-    // Find light and create material
-    const light = findDirectionalLight(scene);
-    const { material, uniforms: materialUniforms } = createGrassMaterial(
+    // Create material with uniforms
+    const { material } = createGrassMaterial(
       grassData,
       positions,
       lodBuffer.indices,
-      extractMaterialInitialValues(grassParams, terrainParams, light)
+      uniforms
     );
-    materialUniformsRef.current = materialUniforms;
     materialRef.current = material;
 
     // Create mesh and add to scene
@@ -73,27 +71,19 @@ export function GrassLOD({
     scene,
     grassData,
     positions,
-    lodBuffer
+    lodBuffer,
+    uniforms
   ]);
 
-  // Update material uniforms when grassParams or terrainParams change
   useEffect(() => {
-    if (!materialUniformsRef.current || !materialRef.current) return
-    updateMaterialUniforms(
-      materialUniformsRef.current,
-      materialRef.current,
-      grassParams,
-      terrainParams
-    )
-  }, [grassParams, terrainParams])
-
-  // Update material wind time uniform every frame
-  useFrame(({ clock }) => {
-    if (materialUniformsRef.current) {
-      const elapsedTime = clock.getElapsedTime();
-      materialUniformsRef.current.uTime.value = elapsedTime;
-    }
-  });
+    if (!materialRef.current) return;
+    const mat = materialRef.current;
+    mat.roughness = grassParams.roughness ?? 0.3;
+    mat.metalness = grassParams.metalness ?? 0.5;
+    mat.emissive = new THREE.Color(grassParams.emissive);
+    mat.envMapIntensity = grassParams.envMapIntensity ?? 0.5;
+  }, [grassParams.roughness, grassParams.metalness, grassParams.emissive, grassParams.envMapIntensity]);
 
   return null;
 }
+
