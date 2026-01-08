@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useControls } from 'leva'
 import { useFrame, useThree } from '@react-three/fiber'
-import { DEFAULT_PATCH_SIZE, HIGH_DETAIL_SEGMENTS, LOW_DETAIL_SEGMENTS } from './grass/constants'
+import { DEFAULT_PATCH_SIZE } from './grass/constants'
 import { WebGPURenderer } from 'three/webgpu'
 import * as THREE from 'three/webgpu'
 import { storage } from 'three/tsl'
@@ -10,7 +10,7 @@ import { createPositions, createGrassData, createVisibleIndicesBuffer, createBla
 import { createGrassCompute, createResetDrawBufferCompute } from './grass/compute/grassCompute'
 import { drawIndirectStructure } from './grass/constants'
 import { useGrassSetup } from './grass/hooks'
-import type { GrassProps } from './grass/types'
+import type { GrassProps, LODBufferConfig, LODSegmentsConfig } from './grass/types'
 
 export default function GrassWebGPU({ terrainParams, patchSize: initialPatchSize = DEFAULT_PATCH_SIZE }: GrassProps = {} as GrassProps) {
   const { gl, camera } = useThree()
@@ -24,69 +24,64 @@ export default function GrassWebGPU({ terrainParams, patchSize: initialPatchSize
   // Buffer refs (created at top level, passed to useGrassSetup)
   const grassDataRef = useRef<ReturnType<typeof createGrassData> | null>(null)
   const positionsRef = useRef<ReturnType<typeof createPositions> | null>(null)
-  const indicesHighRef = useRef<ReturnType<typeof createVisibleIndicesBuffer> | null>(null)
-  const indicesLowRef = useRef<ReturnType<typeof createVisibleIndicesBuffer> | null>(null)
-  const drawBufferHighRef = useRef<THREE.IndirectStorageBufferAttribute | null>(null)
-  const drawBufferLowRef = useRef<THREE.IndirectStorageBufferAttribute | null>(null)
-  const drawStorageHighRef = useRef<ReturnType<typeof storage> | null>(null)
-  const drawStorageLowRef = useRef<ReturnType<typeof storage> | null>(null)
+  const lodBuffersRef = useRef<LODBufferConfig[]>([])
 
   // Create compute shader and shared buffers
   useEffect(() => {
     const gridSize = grassParams.gridSize
     const patchSize = grassParams.patchSize
-    const lodDistance = grassParams.lodDistance ?? 15.0
-    const highDetailSegments = grassParams.highDetailSegments ?? HIGH_DETAIL_SEGMENTS
-    const lowDetailSegments = grassParams.lowDetailSegments ?? LOW_DETAIL_SEGMENTS
-    
+
+    // LOD segments configuration - defines detail levels with distance ranges
+    const lodSegmentsConfig: LODSegmentsConfig[] = [
+      {
+        segments: 14,
+        minDistance: 0,
+        maxDistance: 15,
+      },
+      {
+        segments: 4,
+        minDistance: 15,
+        maxDistance: Infinity,
+      },
+    ]
+
     const grassBlades = gridSize * gridSize
     const positions = createPositions(gridSize, patchSize)
     const grassData = createGrassData(grassBlades)
-    
+
     // Store shared buffers in refs
     positionsRef.current = positions
     grassDataRef.current = grassData
-    
-    // Create LOD buffers: High and Low detail
-    const bladeGeometryHigh = createBladeGeometry(highDetailSegments)
-    const bladeGeometryLow = createBladeGeometry(lowDetailSegments)
-    
-    const indicesHigh = createVisibleIndicesBuffer(grassBlades)
-    const indicesLow = createVisibleIndicesBuffer(grassBlades)
-    
-    // Store indices buffers in refs
-    indicesHighRef.current = indicesHigh
-    indicesLowRef.current = indicesLow
-    
-    // Calculate counts for High and Low geometries
-    const vertexCountHigh = bladeGeometryHigh.attributes.position.count
-    const indexCountHigh = bladeGeometryHigh.index ? bladeGeometryHigh.index.count : vertexCountHigh
-    const vertexCountLow = bladeGeometryLow.attributes.position.count
-    const indexCountLow = bladeGeometryLow.index ? bladeGeometryLow.index.count : vertexCountLow
-    
-    // Create indirect draw buffers for High and Low detail
-    const drawBufferArrayHigh = new Uint32Array(5)
-    const drawBufferHigh = new THREE.IndirectStorageBufferAttribute(drawBufferArrayHigh, 5)
-    const drawStorageHigh = storage(drawBufferHigh, drawIndirectStructure, 1)
-    
-    const drawBufferArrayLow = new Uint32Array(5)
-    const drawBufferLow = new THREE.IndirectStorageBufferAttribute(drawBufferArrayLow, 5)
-    const drawStorageLow = storage(drawBufferLow, drawIndirectStructure, 1)
 
-    // Store buffer attributes and storage buffers in refs
-    drawBufferHighRef.current = drawBufferHigh
-    drawBufferLowRef.current = drawBufferLow
-    drawStorageHighRef.current = drawStorageHigh
-    drawStorageLowRef.current = drawStorageLow
+    // Generate LOD buffers from segments config
+    const lodConfigs: LODBufferConfig[] = lodSegmentsConfig.map((lodSegConfig) => {
+      const bladeGeometry = createBladeGeometry(lodSegConfig.segments)
+      const vertexCount = bladeGeometry.attributes.position.count
+      const indexCount = bladeGeometry.index ? bladeGeometry.index.count : vertexCount
+      const drawBuffer = new THREE.IndirectStorageBufferAttribute(new Uint32Array(5), 5)
+      const drawStorage = storage(drawBuffer, drawIndirectStructure, 1)
+
+      bladeGeometry.dispose()
+
+      return {
+        segments: lodSegConfig.segments,
+        indices: createVisibleIndicesBuffer(grassBlades),
+        drawBuffer,
+        drawStorage,
+        vertexCount: indexCount,
+        minDistance: lodSegConfig.minDistance,
+        maxDistance: lodSegConfig.maxDistance,
+      }
+    })
+
+    // Store LOD buffers in refs
+    lodBuffersRef.current = lodConfigs
 
     // Create compute shader with LOD support
     const { computeFn, uniforms } = createGrassCompute(
       grassData,
       positions,
-      indicesHigh,
-      indicesLow,
-      drawStorageHigh,
-      drawStorageLow,
+      lodConfigs,
       {
         bladeHeightMin: grassParams.bladeHeightMin,
         bladeHeightMax: grassParams.bladeHeightMax,
@@ -109,7 +104,6 @@ export default function GrassWebGPU({ terrainParams, patchSize: initialPatchSize
         windFacing: grassParams.windFacing,
         maxCullDistance: (grassParams as any).maxCullDistance ?? 50.0,
         cullOffset: grassParams.bladeHeightMax ?? 0.8,
-        lodDistance: lodDistance,
       }
     )
     const grassCompute = computeFn().compute(grassBlades)
@@ -117,18 +111,11 @@ export default function GrassWebGPU({ terrainParams, patchSize: initialPatchSize
     grassComputeRef.current = grassCompute
 
     // Create reset compute shader
-    const resetCompute = createResetDrawBufferCompute(drawStorageHigh, indexCountHigh, drawStorageLow, indexCountLow)
+    const resetCompute = createResetDrawBufferCompute(lodConfigs)
     resetComputeRef.current = resetCompute
-
-    // Cleanup geometries
-    bladeGeometryHigh.dispose()
-    bladeGeometryLow.dispose()
   }, [
     grassParams.gridSize,
     grassParams.patchSize,
-    grassParams.lodDistance,
-    grassParams.highDetailSegments,
-    grassParams.lowDetailSegments,
     grassParams.bladeHeightMin,
     grassParams.bladeHeightMax,
     grassParams.bladeWidthMin,
@@ -153,16 +140,51 @@ export default function GrassWebGPU({ terrainParams, patchSize: initialPatchSize
   useGrassSetup({
     grassParams,
     terrainParams,
-    grassComputeRef,
-    resetComputeRef,
-    computeUniformsRef,
     grassData: grassDataRef.current,
     positions: positionsRef.current,
-    indicesHigh: indicesHighRef.current,
-    indicesLow: indicesLowRef.current,
-    drawBufferHigh: drawBufferHighRef.current,
-    drawBufferLow: drawBufferLowRef.current,
+    lodBuffers: lodBuffersRef.current,
   })
+
+  // Update compute uniforms when grassParams change
+  useEffect(() => {
+    if (!computeUniformsRef.current) return
+
+    const params = grassParams as any
+    const uniforms = computeUniformsRef.current
+
+    // Update shape parameter uniforms from Leva controls
+    uniforms.uBladeHeightMin.value = params.bladeHeightMin
+    uniforms.uBladeHeightMax.value = params.bladeHeightMax
+    uniforms.uBladeWidthMin.value = params.bladeWidthMin
+    uniforms.uBladeWidthMax.value = params.bladeWidthMax
+    uniforms.uBendAmountMin.value = params.bendAmountMin
+    uniforms.uBendAmountMax.value = params.bendAmountMax
+    uniforms.uBladeRandomness.value.set(
+      params.bladeRandomness.x,
+      params.bladeRandomness.y,
+      params.bladeRandomness.z
+    )
+
+    // Update clump parameter uniforms
+    uniforms.uClumpSize.value = params.clumpSize
+    uniforms.uClumpRadius.value = params.clumpRadius
+    uniforms.uCenterYaw.value = params.centerYaw
+    uniforms.uBladeYaw.value = params.bladeYaw
+    uniforms.uClumpYaw.value = params.clumpYaw
+    uniforms.uTypeTrendScale.value = params.typeTrendScale
+
+    // Update wind parameter uniforms (compute shader only has these)
+    uniforms.uWindScale.value = params.windScale ?? 0.25
+    uniforms.uWindSpeed.value = params.windSpeed
+    uniforms.uWindStrength.value = params.windStrength
+    uniforms.uWindDir.value.set(params.windDirX, params.windDirZ)
+    uniforms.uWindFacing.value = params.windFacing
+
+    // Update LOD parameter uniforms
+    if (uniforms.uLODDistance) {
+      uniforms.uLODDistance.value = params.lodDistance ?? 15.0
+    }
+  }, [grassParams, computeUniformsRef])
 
   useFrame(({ clock }) => {
     const renderer = gl as unknown as WebGPURenderer
@@ -174,32 +196,16 @@ export default function GrassWebGPU({ terrainParams, patchSize: initialPatchSize
     // Update windTime based on elapsed time
     computeUniformsRef.current.uWindTime.value = elapsedTime
 
-    // Update camera and model matrices for frustum culling
-    // These uniforms are required because renderer.compute() has no camera context
     const uniforms = computeUniformsRef.current
-    
+
     camera.updateMatrixWorld()
     uniforms.uViewMatrix.value.copy(camera.matrixWorldInverse)
     uniforms.uProjectionMatrix.value.copy(camera.projectionMatrix)
     uniforms.uCameraPosition.value.copy(camera.position)
     uniforms.uModelMatrix.value.identity()
 
-    // Execute compute shaders in correct order:
-    // 1. Reset: Set instanceCount to 0 (GPU-side)
-    try {
-      renderer.compute(resetComputeRef.current)
-    } catch (error) {
-      console.error('Reset compute shader error:', error)
-      return // Don't proceed if reset fails
-    }
-
-    // 2. Compute & Culling: Calculate grass parameters and perform culling
-    //    This will atomically increment instanceCount from 0
-    try {
-      renderer.compute(grassComputeRef.current)
-    } catch (error) {
-      console.error('Grass compute shader error:', error)
-    }
+    renderer.compute(resetComputeRef.current)
+    renderer.compute(grassComputeRef.current)
   })
 
   return null

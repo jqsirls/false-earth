@@ -1,38 +1,25 @@
 import { useEffect, useRef } from 'react'
 import { useThree, useFrame } from '@react-three/fiber'
 import * as THREE from 'three/webgpu'
-import { createBladeGeometry, createPositions, createGrassData, createVisibleIndicesBuffer } from '../geometry'
-import { HIGH_DETAIL_SEGMENTS, LOW_DETAIL_SEGMENTS } from '../constants'
+import { createBladeGeometry, createGrassData, createPositions } from '../geometry'
 import { findDirectionalLight } from '../utils/index'
 import { createGrassMaterial } from '../materials/grassMaterial'
-import type { TerrainParams } from '../types'
+import type { TerrainParams, LODBufferConfig } from '../types'
 
 interface UseGrassSetupParams {
   grassParams: any
   terrainParams?: TerrainParams
-  grassComputeRef: React.MutableRefObject<any>
-  resetComputeRef: React.MutableRefObject<any>
-  computeUniformsRef: React.MutableRefObject<Record<string, any>>
   grassData: ReturnType<typeof createGrassData> | null
   positions: ReturnType<typeof createPositions> | null
-  indicesHigh: ReturnType<typeof createVisibleIndicesBuffer> | null
-  indicesLow: ReturnType<typeof createVisibleIndicesBuffer> | null
-  drawBufferHigh: THREE.IndirectStorageBufferAttribute | null
-  drawBufferLow: THREE.IndirectStorageBufferAttribute | null
+  lodBuffers: LODBufferConfig[]
 }
 
 export function useGrassSetup({
   grassParams,
   terrainParams,
-  grassComputeRef,
-  resetComputeRef,
-  computeUniformsRef,
   grassData,
   positions,
-  indicesHigh,
-  indicesLow,
-  drawBufferHigh,
-  drawBufferLow,
+  lodBuffers,
 }: UseGrassSetupParams) {
   const gridSize = grassParams.gridSize
   const patchSize = grassParams.patchSize
@@ -46,21 +33,24 @@ export function useGrassSetup({
 
   useEffect(() => {
     // Don't proceed if buffers aren't ready yet
-    if (!grassData || !positions || !indicesHigh || !indicesLow || !drawBufferHigh || !drawBufferLow) {
+    if (!grassData || !positions || lodBuffers.length === 0) {
       return
     }
 
-    const highDetailSegments = grassParams.highDetailSegments ?? HIGH_DETAIL_SEGMENTS
-    const lowDetailSegments = grassParams.lowDetailSegments ?? LOW_DETAIL_SEGMENTS
-    
-    const bladeGeometryHigh = createBladeGeometry(highDetailSegments)
-    const bladeGeometryLow = createBladeGeometry(lowDetailSegments)
-    
     const grassBlades = gridSize * gridSize
     
-    // Set indirect draw buffers (passed from parent)
-    bladeGeometryHigh.setIndirect(drawBufferHigh)
-    bladeGeometryLow.setIndirect(drawBufferLow)
+    // Create geometries for each LOD
+    const geometries: THREE.PlaneGeometry[] = []
+    for (const lodBuffer of lodBuffers) {
+      const bladeGeometry = createBladeGeometry(lodBuffer.segments)
+      bladeGeometry.setIndirect(lodBuffer.drawBuffer)
+      geometries.push(bladeGeometry)
+    }
+    
+    const bladeGeometryHigh = geometries[0]
+    const bladeGeometryLow = geometries[1]
+    const indicesHigh = lodBuffers[0].indices
+    const indicesLow = lodBuffers[1].indices
 
     // Find light and create material
     const light = findDirectionalLight(scene)
@@ -151,47 +141,11 @@ export function useGrassSetup({
       material.dispose()
       materialLow.dispose()
     }
-  }, [gridSize, patchSize, scene, grassParams.lodDistance, grassParams.highDetailSegments, grassParams.lowDetailSegments, grassParams, grassData, positions, indicesHigh, indicesLow, drawBufferHigh, drawBufferLow])
+  }, [gridSize, patchSize, scene, grassParams.lodDistance, grassParams.highDetailSegments, grassParams.lowDetailSegments, grassParams, grassData, positions, lodBuffers])
 
-  // Update uniforms when grassParams or terrainParams change
+  // Update material uniforms when grassParams or terrainParams change
   useEffect(() => {
-    if (!computeUniformsRef.current) return
-
     const params = grassParams as any
-    const uniforms = computeUniformsRef.current
-
-    // Update shape parameter uniforms from Leva controls
-    uniforms.uBladeHeightMin.value = params.bladeHeightMin
-    uniforms.uBladeHeightMax.value = params.bladeHeightMax
-    uniforms.uBladeWidthMin.value = params.bladeWidthMin
-    uniforms.uBladeWidthMax.value = params.bladeWidthMax
-    uniforms.uBendAmountMin.value = params.bendAmountMin
-    uniforms.uBendAmountMax.value = params.bendAmountMax
-    uniforms.uBladeRandomness.value.set(
-      params.bladeRandomness.x,
-      params.bladeRandomness.y,
-      params.bladeRandomness.z
-    )
-
-    // Update clump parameter uniforms
-    uniforms.uClumpSize.value = params.clumpSize
-    uniforms.uClumpRadius.value = params.clumpRadius
-    uniforms.uCenterYaw.value = params.centerYaw
-    uniforms.uBladeYaw.value = params.bladeYaw
-    uniforms.uClumpYaw.value = params.clumpYaw
-    uniforms.uTypeTrendScale.value = params.typeTrendScale
-
-    // Update wind parameter uniforms (compute shader only has these)
-    uniforms.uWindScale.value = params.windScale ?? 0.25
-    uniforms.uWindSpeed.value = params.windSpeed
-    uniforms.uWindStrength.value = params.windStrength
-    uniforms.uWindDir.value.set(params.windDirX, params.windDirZ)
-    uniforms.uWindFacing.value = params.windFacing
-    
-    // Update LOD parameter uniforms
-    if (uniforms.uLODDistance) {
-      uniforms.uLODDistance.value = params.lodDistance ?? 15.0
-    }
 
     // Update material wind parameter uniforms (vertex shader has these additional ones)
     if (materialUniformsRef.current) {
@@ -255,7 +209,7 @@ export function useGrassSetup({
         params.noiseRemapMax
       )
     }
-  }, [grassParams, terrainParams, computeUniformsRef, materialUniformsRef, materialRef, materialLowRef])
+  }, [grassParams, terrainParams, materialUniformsRef, materialRef, materialLowRef])
 
   // Update material wind time uniform every frame
   useFrame(({ clock }) => {

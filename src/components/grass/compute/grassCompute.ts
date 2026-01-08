@@ -26,9 +26,9 @@ import {
   remapClamp,
   atomicAdd,
   atomicStore,
-  storage,
 } from "three/tsl";
 import * as THREE from "three";
+import type { LODBufferConfig } from "../types";
 
 /**
  * Creates a grass compute function that calculates blade parameters based on position
@@ -38,11 +38,7 @@ import * as THREE from "three";
 export function createGrassCompute(
   grassData: ReturnType<typeof instancedArray>,
   positions: ReturnType<typeof instancedArray>,
-  // LOD: Two index buffers for High and Low detail
-  indicesHigh: ReturnType<typeof instancedArray>,
-  indicesLow: ReturnType<typeof instancedArray>,
-  drawStorageHigh: ReturnType<typeof storage>,
-  drawStorageLow: ReturnType<typeof storage>,
+  lodConfigs: LODBufferConfig[],
   initialValues?: {
     // Shape Parameters
     bladeHeightMin?: number;
@@ -69,8 +65,6 @@ export function createGrassCompute(
     // Culling Parameters
     maxCullDistance?: number;
     cullOffset?: number; // Offset to account for blade height/width in frustum culling
-    // LOD Parameters
-    lodDistance?: number; // Distance threshold for High/Low LOD switching
   }
 ) {
   // Shape Parameters
@@ -111,15 +105,65 @@ export function createGrassCompute(
   const uMaxCullDistance = uniform(initialValues?.maxCullDistance ?? 50.0);
   const uCullOffset = uniform(initialValues?.cullOffset ?? 0.8); // Default to max blade height
   
-  // LOD Parameters
-  const uLODDistance = uniform(initialValues?.lodDistance ?? 15.0);
-  
-  // Camera and Model matrices for frustum culling (manually passed as uniforms)
-  // These are required because renderer.compute() has no camera context
   const uViewMatrix = uniform(new THREE.Matrix4());
   const uProjectionMatrix = uniform(new THREE.Matrix4());
   const uCameraPosition = uniform(new THREE.Vector3());
   const uModelMatrix = uniform(new THREE.Matrix4());
+
+  // Build LOD routing chain factory function
+  // This creates a function that builds the If-Else chain when called with TSL variables
+  const createLODRoutingChainBuilder = (configs: LODBufferConfig[]) => {
+    return (distToCamera: any, instanceIndex: any) => {
+      if (configs.length === 0) return;
+      if (configs.length === 1) {
+        // Single LOD - no condition needed, just add to it
+        const config = configs[0];
+        const lodIndex = atomicAdd(config.drawStorage.get("instanceCount"), uint(1));
+        config.indices.element(lodIndex).assign(uint(instanceIndex));
+        return;
+      }
+
+      // Build chain forwards: If(condition1, block1).Else(If(condition2, block2).Else(...))
+      const buildChain = (index: number): any => {
+        if (index >= configs.length) return;
+        
+        const config = configs[index];
+        const isLast = index === configs.length - 1;
+        
+        // Check if distance falls within this LOD's range
+        const minDist = float(config.minDistance);
+        const maxDist = config.maxDistance === Infinity 
+          ? float(1e9) // Use a very large number for Infinity
+          : float(config.maxDistance);
+        
+        const inRange = distToCamera.greaterThanEqual(minDist).and(
+          isLast || config.maxDistance === Infinity
+            ? distToCamera.lessThanEqual(maxDist)
+            : distToCamera.lessThan(maxDist)
+        );
+
+        const lodBlock = () => {
+          const lodIndex = atomicAdd(config.drawStorage.get("instanceCount"), uint(1));
+          config.indices.element(lodIndex).assign(uint(instanceIndex));
+        };
+
+        if (isLast) {
+          return If(inRange, lodBlock);
+        } else {
+          const nextChain = buildChain(index + 1);
+          return If(inRange, lodBlock).Else(() => {
+            if (nextChain) nextChain;
+          });
+        }
+      };
+
+      const chain = buildChain(0);
+      if (chain) chain;
+    };
+  };
+
+  // Create the routing chain builder at JavaScript time
+  const buildLODRouting = createLODRoutingChainBuilder(lodConfigs);
 
   // Helper function to calculate distance to camera (reused in culling and LOD)
   const calculateDistance = Fn(([instancePos]: [any]) => {
@@ -417,19 +461,7 @@ export function createGrassCompute(
     const distToCamera = calculateDistance(instancePos);
 
     If(isVisible, () => {
-      // LOD Decision: Split into High and Low detail queues based on distance
-      const isHighDetail = distToCamera.lessThan(uLODDistance);
-      
-      // Route to High or Low based on distance
-      If(isHighDetail, () => {
-        // [High Detail Path] - Near camera, use detailed geometry
-        const highIndex = atomicAdd(drawStorageHigh.get("instanceCount"), uint(1));
-        indicesHigh.element(highIndex).assign(uint(instanceIndex));
-      }).Else(() => {
-        // [Low Detail Path] - Far from camera, use simplified geometry
-        const lowIndex = atomicAdd(drawStorageLow.get("instanceCount"), uint(1));
-        indicesLow.element(lowIndex).assign(uint(instanceIndex));
-      });
+      buildLODRouting(distToCamera, instanceIndex);
     });
   });
 
@@ -471,37 +503,26 @@ export function createGrassCompute(
 }
 
 /**
- * Creates a lightweight compute shader to reset the indirect draw buffer
+ * Creates a lightweight compute shader to reset the indirect draw buffers
  * This should be executed before the main culling compute shader each frame
- * Supports both single buffer and dual buffer (High/Low) modes
+ * Supports multiple LOD buffers via array
  */
 export function createResetDrawBufferCompute(
-  drawBufferStorage: ReturnType<typeof storage>,
-  vertexCount: number,
-  drawBufferStorageLow?: ReturnType<typeof storage>,
-  vertexCountLow?: number
+  lodConfigs: LODBufferConfig[]
 ) {
   const resetFn = Fn(() => {
-    const drawBuffer = drawBufferStorage;
-    
-    // Initialize all draw indirect buffer fields for High detail
-    drawBuffer.get("vertexCount").assign(uint(vertexCount));
-    atomicStore(drawBuffer.get("instanceCount"), uint(0));
-    drawBuffer.get("firstVertex").assign(uint(0));
-    drawBuffer.get("firstInstance").assign(uint(0));
-    drawBuffer.get("offset").assign(uint(0));
-    
-    // Reset Low detail buffer if provided
-    if (drawBufferStorageLow !== undefined) {
-      const drawBufferLow = drawBufferStorageLow;
-      drawBufferLow.get("vertexCount").assign(uint(vertexCountLow ?? vertexCount));
-      atomicStore(drawBufferLow.get("instanceCount"), uint(0));
-      drawBufferLow.get("firstVertex").assign(uint(0));
-      drawBufferLow.get("firstInstance").assign(uint(0));
-      drawBufferLow.get("offset").assign(uint(0));
-    }
+    // Reset all LOD buffers - generate reset code for each buffer
+    lodConfigs.forEach((lodConfig) => {
+      const drawBuffer = lodConfig.drawStorage;
+      
+      drawBuffer.get("vertexCount").assign(uint(lodConfig.vertexCount));
+      atomicStore(drawBuffer.get("instanceCount"), uint(0));
+      drawBuffer.get("firstVertex").assign(uint(0));
+      drawBuffer.get("firstInstance").assign(uint(0));
+      drawBuffer.get("offset").assign(uint(0));
+    });
   });
 
-  // Only need 1 thread to reset the counter(s)
+  // Only need 1 thread to reset all counters
   return resetFn().compute(1);
 }
