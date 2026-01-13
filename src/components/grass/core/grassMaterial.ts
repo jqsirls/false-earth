@@ -98,6 +98,19 @@ export function createGrassMaterial(
       : vec3(1.0, 1.0, 1.0) // Default white if not provided
   );
 
+  // FIX: Correct PBR lighting coordinate system when Group snaps
+  // Problem: When Group snaps, ModelMatrix jumps, causing lighting to use wrong world position
+  // Solution: Calculate local position = WorldPos - GroupOffset
+  // Result: ModelMatrix (+GroupOffset) × positionNode (-GroupOffset) = correct continuous WorldPos
+  const uGroupOffset = uniforms.uGroupOffset ?? uniform(new THREE.Vector3(0, 0, 0));
+  
+  material.positionNode = Fn(() => {
+    const trueIndex = visibleIndicesBuffer.element(instanceIndex);
+    const instanceWorldPos = positions.element(trueIndex);
+    const localPos = instanceWorldPos.sub(uGroupOffset);
+    return localPos;
+  })();
+
   const grassVertex = Fn(() => {
     // Terrain helper functions
     const terrainHeight = getTerrainHeight(
@@ -381,6 +394,8 @@ export function createGrassMaterial(
 
   // Uncomment to enable LOD debug coloring
   // material.fragmentNode = Fn(() => {
+  //   const normalColor = directionToColor(normalWorld);
+  //   return vec4(normalColor, 1.0);
   //   return vec4(uLodDebugColor, 1.0);
   // })();
 

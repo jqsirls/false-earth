@@ -64,6 +64,7 @@ export default function GrassWebGPU({ terrainUniforms }: GrassProps = {} as Gras
       uBaseWidth: uniform(0.35),
       uTipThin: uniform(0.9),
       uThicknessStrength: uniform(0.10),
+      uGroupOffset: uniform(new THREE.Vector3(0, 0, 0)), // For lighting coordinate system correction
     };
   }, []);
 
@@ -194,6 +195,8 @@ export default function GrassWebGPU({ terrainUniforms }: GrassProps = {} as Gras
 
       computeUniforms.uGroupOffset.value.setFromMatrixPosition(groupRef.current.matrixWorld)
       computeUniforms.uGridCellSize.value = gridCellSize
+      
+      materialUniforms.uGroupOffset.value.copy(computeUniforms.uGroupOffset.value)
     }
 
     // Update camera matrices (for Culling)
