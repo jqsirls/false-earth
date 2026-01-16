@@ -20,7 +20,7 @@ export function updateComputeUniforms(uniforms: Record<string, any>, params: any
 
   // Clump parameters
   uniforms.uClumpSize.value = params.clumpSize
-  uniforms.uClumpRadius.value = params.clumpRadius
+  uniforms.uClumpBlendSmoothness.value = params.clumpBlendSmoothness ?? 0.2
   uniforms.uCenterYaw.value = params.centerYaw
   uniforms.uBladeYaw.value = params.bladeYaw
   uniforms.uClumpYaw.value = params.clumpYaw

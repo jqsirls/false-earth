@@ -17,11 +17,11 @@ export function createGrassControls() {
         thicknessStrength: { value: 0.10, min: 0.0, max: 0.2, step: 0.001 },
       }, { collapsed: true }),
       Clump: folder({
-        clumpSize: { value: 3.5, min: 0.1, max: 5.0, step: 0.1 },
-        clumpRadius: { value: 4, min: 0., max: 5.0, step: 0.1 },
+        clumpSize: { value: 1.5, min: 0.1, max: 5.0, step: 0.1 },
+        clumpBlendSmoothness: { value: 1, min: 0.0, max: 1.0, step: 0.01 },
       }, { collapsed: true }),
       Angle: folder({
-        centerYaw: { value: 0, min: 0.0, max: 3.0, step: 0.1 },
+        centerYaw: { value: 0.1, min: 0.0, max: 0.5, step: 0.01 },
         bladeYaw: { value: 1.2, min: 0.0, max: 3.0, step: 0.1 },
         clumpYaw: { value: 2.7, min: 0.0, max: 5.0, step: 0.1 },
       }, { collapsed: true }),

@@ -25,9 +25,13 @@ import {
   oneMinus,
   select,
   mx_fractal_noise_float,
+  hash,
+  smoothstep,
   remapClamp,
   atomicAdd,
   atomicStore,
+  int,
+  mx_noise_float,
 } from "three/tsl";
 import type { LODBufferConfig } from "./types";
 
@@ -204,65 +208,56 @@ export function createGrassCompute(
     const bladeRandY = uniforms.uBladeRandomness.y;
     const bladeRandZ = uniforms.uBladeRandomness.z;
 
-    // Calculate Voronoi clump information
+    // Calculate Voronoi clump information with attribute blending (F1 and F2)
     const getClumpInfo = (worldXZ: any) => {
       const cell = worldXZ.div(uniforms.uClumpSize);
-      const baseCellX = floor(cell.x);
-      const baseCellY = floor(cell.y);
-      const baseCell = vec2(baseCellX, baseCellY);
+      const i_base = floor(cell);
+      const f_base = fract(cell);
+  
+      const minD2_1 = float(1e9).toVar();
+      const minD2_2 = float(1e9).toVar();
+  
+      const bestCellId = vec2(0.0).toVar();
+      const secondBestCellId = vec2(0.0).toVar();
+      const bestDiff = vec2(0.0).toVar();
+  
+      const offsets = [
+        [-1, -1], [0, -1], [1, -1],
+        [-1, 0], [0, 0], [1, 0],
+        [-1, 1], [0, 1], [1, 1]
+      ];
 
-      const minDist = float(1e9).toVar();
-      const bestCellId = vec2(0.0, 0.0).toVar();
+      offsets.forEach(([x, y]) => {
+        const neighbor = vec2(float(x), float(y));
+        const currentCellId = i_base.add(neighbor);
 
-      // Check 3x3 neighborhood to find closest Voronoi cell
-      Loop(
-        { start: uint(0), end: uint(3), type: "uint", condition: "<" },
-        ({ i: j }) => {
-          Loop(
-            { start: uint(0), end: uint(3), type: "uint", condition: "<" },
-            ({ i }) => {
-              const jVal = float(j).sub(1.0);
-              const iVal = float(i).sub(1.0);
-              const neighborCell = baseCell.add(vec2(iVal, jVal));
-              const seed = hash2(neighborCell);
-              const seedCoord = neighborCell.add(seed);
-              const diff = cell.sub(seedCoord);
-              const d2 = dot(diff, diff);
+        const seed = hash2(currentCellId);
+        const diff = neighbor.add(seed).sub(f_base);
+        const d2 = dot(diff, diff);
 
-              If(d2.lessThan(minDist), () => {
-                minDist.assign(d2);
-                bestCellId.assign(neighborCell);
-              });
-            }
-          );
-        }
-      );
-
-      // Calculate direction from blade position to clump center (unnormalized)
-      const clumpSeed = hash2(bestCellId);
-      const clumpCenterWorld = bestCellId
-        .add(clumpSeed)
-        .mul(uniforms.uClumpSize);
-      const toCenter = clumpCenterWorld.sub(worldXZ);
-
-      return { toCenter, cellId: bestCellId };
-    };
-
-    // Calculate presence (fade-out factor) based on distance from clump center
-    const calculatePresence = (toCenter: any) => {
-      const distToCenter = length(toCenter);
-      const r = clamp(
-        distToCenter.div(uniforms.uClumpRadius),
-        float(0.0),
-        float(1.0)
-      );
-      const t = clamp(
-        r.sub(float(0.7)).div(oneMinus(float(0.7))),
-        float(0.0),
-        float(1.0)
-      );
-      const smoothstepVal = t.mul(t).mul(float(3.0).sub(t.mul(float(2.0))));
-      return oneMinus(smoothstepVal);
+        If(d2.lessThan(minD2_1), () => {
+          minD2_2.assign(minD2_1);
+          secondBestCellId.assign(bestCellId);
+          
+          minD2_1.assign(d2);
+          bestCellId.assign(currentCellId);
+          bestDiff.assign(diff);
+        }).ElseIf(d2.lessThan(minD2_2), () => {
+          minD2_2.assign(d2);
+          secondBestCellId.assign(currentCellId);
+        });
+      });
+  
+      const d1 = sqrt(minD2_1);
+      const d2 = sqrt(minD2_2);
+      const smoothness = uniforms.uClumpBlendSmoothness ?? float(0.2); // Blend region width (controllable)
+      
+      // centerFactor represents "how close to cell center": 0.0 = boundary, 1.0 = center
+      const centerFactor = smoothstep(float(0.0), smoothness, d2.sub(d1));
+  
+      const toCenter = bestDiff.mul(uniforms.uClumpSize);
+      
+      return { toCenter, bestCellId, secondBestCellId, centerFactor };
     };
 
     // Generate per-clump parameters
@@ -321,12 +316,13 @@ export function createGrassCompute(
       toCenter: any,
       _worldXZ: any,
       cellId: any,
-      perBladeHash01: any
+      perBladeHash01: any,
+      centerFactor: any
     ) => {
-      const clumpAngle = atan(toCenter.y, toCenter.x).mul(uniforms.uCenterYaw);
+      const clumpAngle = atan(toCenter.y, toCenter.x).mul(uniforms.uCenterYaw).mul(centerFactor);
       const randomOffset = perBladeHash01.sub(0.5).mul(uniforms.uBladeYaw);
       const clumpHash = hash11(dot(cellId, vec2(97.7, 3.1)));
-      const clumpYaw = clumpHash.sub(0.5).mul(uniforms.uClumpYaw);
+      const clumpYaw = clumpHash.sub(0.5).mul(uniforms.uClumpYaw).mul(centerFactor);
       return clumpAngle.add(randomOffset).add(clumpYaw);
     };
 
@@ -424,27 +420,41 @@ export function createGrassCompute(
     // Get worldXZ position (x and z components) - now in world space for consistent clumping/wind
     const worldXZ = vec2(worldPos.x, worldPos.z);
 
-    // Calculate Voronoi clump information
-    const { toCenter, cellId } = getClumpInfo(worldXZ);
+    // Calculate Voronoi clump information with attribute blending
+    const { toCenter, bestCellId, secondBestCellId, centerFactor } = getClumpInfo(worldXZ);
 
-    // Calculate clump-related data
-    const presence = calculatePresence(toCenter);
+    // Calculate blendFactor from centerFactor:
+    // At boundary (centerFactor=0) -> 0.5 (50% each cell)
+    // At center (centerFactor=1) -> 1.0 (100% best cell)
+    const blendFactor = mix(float(0.5), float(1.0), centerFactor);
 
-    // Generate blade and clump parameters
-    // Use presence to add random type variation at clump edges
-    const clumpParams = getClumpParams(cellId);
+    // Calculate two sets of clump parameters for blending
+    const params1 = getClumpParams(bestCellId);
+    const params2 = getClumpParams(secondBestCellId);
+
+    const clumpParams = {
+      height:  mix(params2.height, params1.height, blendFactor),
+      width: mix(params2.width, params1.width, blendFactor),
+      bend: mix(params2.bend, params1.bend, blendFactor),
+      type: params1.type
+    };
+
     const bladeParams = getBladeParams(worldXZ, clumpParams);
 
-    // Generate seeds
+    // Calculate presence using blendFactor (1.0 at center, 0.5 at boundary)
+    // This creates smooth transitions without gaps
+    const presence = blendFactor;
+    
     const perBladeHash01 = hash11(dot(worldXZ, vec2(37.0, 17.0)));
-    const clumpSeed01 = hash11(dot(cellId, vec2(47.3, 61.7)));
+    const clumpSeed01 = hash11(dot(bestCellId, vec2(47.3, 61.7)));
 
-    // Calculate blade facing angle
+    // Calculate blade facing angle (use bestCellId for consistency)
     const baseAngle = calculateBaseAngle(
       toCenter,
       worldXZ,
-      cellId,
-      perBladeHash01
+      bestCellId,
+      perBladeHash01,
+      centerFactor
     );
 
     // Apply wind effects

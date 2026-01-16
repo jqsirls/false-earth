@@ -84,7 +84,7 @@ export default function GrassWebGPU({ terrainUniforms, cullCamera }: GrassProps 
       uBladeRandomness: uniform(new THREE.Vector3(0.3, 0.3, 0.2)),
       // Clump Parameters
       uClumpSize: uniform(0.8),
-      uClumpRadius: uniform(1.5),
+      uClumpBlendSmoothness: uniform(0.2), // Blend region width for attribute mixing
       uCenterYaw: uniform(1.0),
       uBladeYaw: uniform(1.2),
       uClumpYaw: uniform(0.5),

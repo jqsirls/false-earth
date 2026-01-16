@@ -1,5 +1,6 @@
 import * as THREE from "three/webgpu";
 import {
+  If,
   Fn,
   vec3,
   vec2,
@@ -394,7 +395,7 @@ export function createGrassMaterial(
   //   const data = grassData.element(trueIndex);
   //   const bladeType = floor(data.get("bladeType").toConst().mul(3.0));
   //   const presence = data.get("presence").toConst();
-  //   // return vec4(presence, 0,0, 1.0);
+  //   return vec4(presence, 0,0, 1.0);
 
   //   const typeColor = vec3(0.0, 0.0, 0.0).toVar();
   //   const isType0 = bladeType.equal(float(0.0));
@@ -409,9 +410,6 @@ export function createGrassMaterial(
   //     typeColor.assign(vec3(0.0, 0.0, 1.0));
   //   });
   //   return vec4(typeColor, 1.0);
-  //   const normalColor = directionToColor(normalWorld);
-  //   return vec4(normalColor, 1.0);
-  //   return vec4(uLodDebugColor, 1.0);
   // })();
 
   return {
