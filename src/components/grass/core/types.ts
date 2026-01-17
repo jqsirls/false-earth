@@ -1,5 +1,6 @@
 import { instancedArray, storage } from 'three/tsl'
 import * as THREE from 'three/webgpu'
+import { TerrainUniforms } from '../../terrain/types'
 
 export interface TerrainParams {
   amplitude: number
@@ -9,7 +10,7 @@ export interface TerrainParams {
 }
 
 export interface GrassProps {
-  heightmap?: THREE.StorageTexture
+  terrainUniforms?: TerrainUniforms;
   cullCamera?: THREE.PerspectiveCamera // Camera used for culling calculation (separate from render camera)
 }
 

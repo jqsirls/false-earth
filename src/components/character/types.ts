@@ -1,9 +1,10 @@
 import * as THREE from 'three/webgpu';
+import { TerrainUniforms } from '../terrain/types';
 
 export interface CharacterProps {
   position?: [number, number, number];
   scale?: number;
-  heightmap?: THREE.StorageTexture | THREE.DataTexture;
+  terrainUniforms?: TerrainUniforms;
 }
 
 export interface CharacterState {

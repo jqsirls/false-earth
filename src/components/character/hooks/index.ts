@@ -5,4 +5,4 @@ export { useCharacterAnimations } from './useCharacterAnimations';
 export { useCharacterControls } from './useCharacterControls';
 export { useCharacterMovement } from './useCharacterMovement';
 export { useCharacterTextures } from './useCharacterTextures';
-export { useCharacterHeightmap } from './useCharacterHeightmap';
+export { useCharacterTerrain } from './useCharacterTerrain';

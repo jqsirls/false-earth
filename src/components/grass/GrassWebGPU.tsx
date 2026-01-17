@@ -13,7 +13,7 @@ import { updateComputeUniforms, updateMaterialUniforms } from './core/uniforms'
 import { GrassLOD } from './GrassLOD'
 import type { GrassProps, LODBufferConfig } from './core/types'
 
-export default function GrassWebGPU({ heightmap, cullCamera }: GrassProps = {} as GrassProps) {
+export default function GrassWebGPU({ terrainUniforms, cullCamera }: GrassProps = {} as GrassProps) {
   const { gl, camera: defaultCamera } = useThree()
   
   // Use cullCamera if provided, otherwise use default render camera
@@ -209,7 +209,7 @@ export default function GrassWebGPU({ heightmap, cullCamera }: GrassProps = {} a
         <GrassLOD
           key={`lod-${lodBuffer.segments}-${lodBuffer.minDistance}-${lodBuffer.maxDistance}`}
           grassParams={grassParams}
-          heightmap={heightmap}
+          terrainUniforms={terrainUniforms}
           grassData={grassDataRef.current}
           positions={positionsRef.current}
           lodBuffer={lodBuffer}

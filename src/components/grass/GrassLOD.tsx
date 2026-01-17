@@ -5,10 +5,11 @@ import { createBladeGeometry, createGrassData, createPositions } from "./core/gr
 import { createGrassMaterial } from "./core/grassMaterial";
 import { DEFAULT_BLADES_PER_AXIS } from "./core/constants";
 import type { LODBufferConfig } from "./core/types";
+import { TerrainUniforms } from "../terrain/types";
 
 interface GrassLODProps {
   grassParams: any;
-  heightmap?: THREE.StorageTexture;
+  terrainUniforms?: TerrainUniforms;
   grassData: ReturnType<typeof createGrassData> | null;
   positions: ReturnType<typeof createPositions> | null;
   lodBuffer: LODBufferConfig;
@@ -17,7 +18,7 @@ interface GrassLODProps {
 
 export function GrassLOD({
   grassParams,
-  heightmap,
+  terrainUniforms,
   grassData,
   positions,
   lodBuffer,
@@ -46,7 +47,7 @@ export function GrassLOD({
       positions,
       lodBuffer.indices,
       uniforms,
-      heightmap,
+      terrainUniforms,
       lodDebugColor
     );
 
@@ -66,7 +67,7 @@ export function GrassLOD({
     positions,
     lodBuffer,
     uniforms,
-    heightmap,
+    terrainUniforms,
     scene.environment,
   ]);
 

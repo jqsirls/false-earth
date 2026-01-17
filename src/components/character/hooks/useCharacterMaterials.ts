@@ -3,9 +3,14 @@ import * as THREE from 'three/webgpu';
 import { Object3D, Group } from 'three';
 import { BODY_MESH_NAMES } from '../constants';
 import { useCharacterTextures } from './useCharacterTextures';
-import { useCharacterHeightmap } from './useCharacterHeightmap';
+import { useCharacterTerrain } from './useCharacterTerrain';
+import { TerrainUniforms } from '../../terrain/types';
 
-export function useCharacterMaterials(clonedMesh: Object3D | null, heightmap?: THREE.StorageTexture | THREE.DataTexture, groupRef?: MutableRefObject<Group | null>) {
+export function useCharacterMaterials(
+  clonedMesh: Object3D | null,
+  terrainUniforms?: TerrainUniforms,
+  groupRef?: MutableRefObject<Group | null>
+) {
   // Load textures
   const { bodyTex, detailTex } = useCharacterTextures();
 
@@ -13,7 +18,7 @@ export function useCharacterMaterials(clonedMesh: Object3D | null, heightmap?: T
   const materialsAssignedRef = useRef(false);
   const lastBodyTexMapRef = useRef<THREE.Texture | null>(null);
   const lastDetailTexMapRef = useRef<THREE.Texture | null>(null);
-  const lastHeightmapRef = useRef<THREE.StorageTexture | THREE.DataTexture | null>(null);
+  const lastTerrainUniformsRef = useRef<TerrainUniforms | null>(null);
   const bodyMatRef = useRef<THREE.MeshStandardNodeMaterial | null>(null);
   const detailMatRef = useRef<THREE.MeshStandardNodeMaterial | null>(null);
 
@@ -24,10 +29,10 @@ export function useCharacterMaterials(clonedMesh: Object3D | null, heightmap?: T
     // Check if textures have actually changed
     const bodyTexChanged = lastBodyTexMapRef.current !== bodyTex.map;
     const detailTexChanged = lastDetailTexMapRef.current !== detailTex.map;
-    const heightmapChanged = lastHeightmapRef.current !== heightmap;
+    const terrainUniformsChanged = lastTerrainUniformsRef.current !== terrainUniforms;
     
     // Only reassign if textures changed or materials haven't been assigned yet
-    if (materialsAssignedRef.current && !bodyTexChanged && !detailTexChanged && !heightmapChanged) {
+    if (materialsAssignedRef.current && !bodyTexChanged && !detailTexChanged && !terrainUniformsChanged) {
       return;
     }
 
@@ -67,14 +72,11 @@ export function useCharacterMaterials(clonedMesh: Object3D | null, heightmap?: T
     materialsAssignedRef.current = true;
     lastBodyTexMapRef.current = bodyTex.map;
     lastDetailTexMapRef.current = detailTex.map;
-    lastHeightmapRef.current = heightmap || null;
-  }, [clonedMesh, bodyTex.map, bodyTex.aoMap, bodyTex.normalMap, bodyTex.metalnessMap, detailTex.map, detailTex.aoMap, detailTex.normalMap, detailTex.metalnessMap, heightmap]);
+    lastTerrainUniformsRef.current = terrainUniforms || null;
+  }, [clonedMesh, bodyTex.map, bodyTex.aoMap, bodyTex.normalMap, bodyTex.metalnessMap, detailTex.map, detailTex.aoMap, detailTex.normalMap, detailTex.metalnessMap, terrainUniforms]);
 
-  // Apply heightmap displacement if materials are created
-  // Note: This hook must be called unconditionally (React hooks rule)
-  // It will only apply shader if heightmap and materials are available
-  useCharacterHeightmap({
-    heightmap,
+  useCharacterTerrain({
+    terrainUniforms,
     groupRef,
     bodyMat: bodyMatRef.current || ({} as THREE.MeshStandardNodeMaterial),
     detailMat: detailMatRef.current || ({} as THREE.MeshStandardNodeMaterial),

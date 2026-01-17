@@ -1,5 +1,6 @@
 import * as THREE from "three/webgpu";
 import {
+  If,
   Fn,
   vec3,
   vec2,
@@ -34,8 +35,12 @@ import {
   mx_noise_float,
   remapClamp,
   materialRoughness,
-  texture,
 } from "three/tsl";
+import {
+  getTerrainHeight,
+  getTerrainNormal,
+} from "../../terrain/terrainHelpers";
+import { TerrainUniforms } from "../../terrain/types";
 import {
   bezier3,
   bezier3Tangent,
@@ -45,9 +50,7 @@ import {
   applyVertexSway,
   applySlopeAlignment,
   applyViewDependentTilt,
-  sampleTerrainHeightAndNormal,
 } from "./shaderHelpers";
-import { DEFAULT_GRASS_AREA_SIZE } from "./constants";
 
 /**
  * Creates a grass material with vertex shader that scales blade geometry
@@ -58,10 +61,9 @@ export function createGrassMaterial(
   positions: ReturnType<typeof instancedArray>,
   visibleIndicesBuffer: ReturnType<typeof instancedArray>,
   uniforms: Record<string, any>,
-  heightmap?: THREE.StorageTexture,
+  terrainUniforms?: TerrainUniforms,
   lodDebugColor?: THREE.Color // LOD debug color for visualization
 ) {
-
   // Define varyings for passing data from vertex to fragment
   const vGeoNormal = varying(vec3(0.0));
   const vHeight = varying(float(0.0));
@@ -77,6 +79,18 @@ export function createGrassMaterial(
   const material = new THREE.MeshStandardNodeMaterial();
   material.side = THREE.DoubleSide;
 
+  // Use terrain uniforms (required)
+  const terrainAmp = terrainUniforms?.uTerrainAmp ?? uniform(2.5);
+  const terrainFreq = terrainUniforms?.uTerrainFreq ?? uniform(0.1);
+  const terrainSeed = terrainUniforms?.uTerrainSeed ?? uniform(0.0);
+
+  // LOD debug color uniform (for coloring different LODs)
+  const uLodDebugColor = uniform(
+    lodDebugColor 
+      ? vec3(lodDebugColor.r, lodDebugColor.g, lodDebugColor.b)
+      : vec3(1.0, 1.0, 1.0) // Default white if not provided
+  );
+
   // FIX: Correct PBR lighting coordinate system when Group snaps
   // Problem: When Group snaps, ModelMatrix jumps, causing lighting to use wrong world position
   // Solution: Calculate local position = WorldPos - GroupOffset
@@ -91,6 +105,14 @@ export function createGrassMaterial(
   })();
 
   const grassVertex = Fn(() => {
+    // Terrain helper functions
+    const terrainHeight = getTerrainHeight(
+      terrainAmp,
+      terrainFreq,
+      terrainSeed
+    );
+    const terrainNormal = getTerrainNormal(terrainHeight);
+
     // Get data from compute shader
     // Read the actual blade index from visible indices buffer (indirect drawing)
     const trueIndex = visibleIndicesBuffer.element(instanceIndex);
@@ -113,13 +135,16 @@ export function createGrassMaterial(
     const clumpSeed01 = data.get("clumpSeed01").toConst();
 
     // instancePos is already in world space (stored from compute shader)
+    const worldBasePos = instancePos;
+    
     // Get world XZ position for wind calculations (already in world space)
-    const worldXZ = vec2(instancePos.x, instancePos.z);
+    const worldXZ = vec2(worldBasePos.x, worldBasePos.z);
 
-    // Sample terrain height and normal from heightmap texture
-    const { th, tn } = sampleTerrainHeightAndNormal(worldXZ, uGroupOffset, heightmap);
+    // Calculate terrain height and normal
+    const th = terrainHeight(worldXZ);
+    const tn = terrainNormal(worldXZ);
 
-    const dist = length(cameraPosition.sub(instancePos));
+    const dist = length(cameraPosition.sub(worldBasePos));
 
     // Calculate wind distance falloff (1.0 = full wind at near, 0.0 = no wind at far)
     // If uWindDistanceEnd is not set (0), use full wind strength
@@ -194,9 +219,13 @@ export function createGrassMaterial(
     applySlopeAlignment(tn, lpos, tangentRotated, sideRotated, normalRotated);
 
     // instancePos is already in world space
-    // lpos is local space blade geometry - add it directly to world position with terrain height
+    // lpos is local space blade geometry - add it directly to world position
     // (parent group only has translation, no rotation/scale, so local-space lpos can be added directly)
-    const worldPos = instancePos.add(lpos).add(vec3(float(0.0), th, float(0.0)));
+    const worldPos = vec3(
+      instancePos.x.add(lpos.x),
+      instancePos.y.add(lpos.y).add(th),
+      instancePos.z.add(lpos.z)
+    );
 
     // Apply view-dependent tilt for thickness effect
     // positionFinal is in local space (object space), but we're working in world space now
@@ -357,30 +386,10 @@ export function createGrassMaterial(
 
   // Uncomment to enable LOD debug coloring
   // material.fragmentNode = Fn(() => {
-
   //   const trueIndex = visibleIndicesBuffer.element(instanceIndex);
 
   //   const data = grassData.element(trueIndex);
-  //   const instancePos = positions.element(trueIndex);
-
   //   const bladeType = floor(data.get("bladeType").toConst().mul(3.0));
-
-  //   // instancePos is already in world space (stored from compute shader)
-  //   const worldBasePos = instancePos;
-    
-  //   // Get world XZ position for wind calculations (already in world space)
-  //   const worldXZ = vec2(worldBasePos.x, worldBasePos.z);
-
-  //   // Calculate terrain height and normal
-  //   // const th = terrainHeight(worldXZ);
-
-
-  //   const uvCoord = worldXZ.sub(uGroupOffset.xz).div(DEFAULT_GRASS_AREA_SIZE).add(vec2(0.5));
-  //   uvCoord.y = oneMinus(uvCoord.y);
-
-
-  //   return vec4(uvCoord.x, uvCoord.y, float(0), float(1.0));
-
   //   const presence = data.get("presence").toConst();
   //   return vec4(presence, 0,0, 1.0);
 
