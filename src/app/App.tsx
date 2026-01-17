@@ -10,10 +10,10 @@ import GrassWebGPU from "../components/grass/GrassWebGPU";
 import { GrassCullingDebug } from "../components/debug/GrassCullingDebug";
 import { DebugModeToggle } from "../components/debug/DebugModeToggle";
 import Effects from "../components/Effects";
-import { Character } from "../components/Character";
+import { Character } from "../components/character";
 
 export default function App() {
-    const [terrainUniforms, setTerrainUniforms] = useState<{ uTerrainAmp: any; uTerrainFreq: any; uTerrainSeed: any; uColor: any } | undefined>(undefined)
+    const [heightmapTexture, setHeightmapTexture] = useState<THREE.StorageTexture | undefined>(undefined)
     const [lightPosition, setLightPosition] = useState<THREE.Vector3 | undefined>(undefined)
     const [debugMode, setDebugMode] = useState(false) // Toggle for culling debug mode
 
@@ -59,9 +59,9 @@ export default function App() {
                 <GrassCullingDebug />
             ) : (
                 <>
-                    <Terrain onUniformsChange={setTerrainUniforms} />
-                    <GrassWebGPU terrainUniforms={terrainUniforms} />
-                    <Character position={[0, 0, 0]} scale={0.01} />
+                    <Terrain onHeightmapChange={setHeightmapTexture} />
+                    <GrassWebGPU heightmapTexture={heightmapTexture} />
+                    {/* <Character position={[0, 0, 0]} scale={0.01} /> */}
                 </>
             )}
             

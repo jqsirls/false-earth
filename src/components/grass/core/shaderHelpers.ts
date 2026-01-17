@@ -20,8 +20,11 @@ import {
   acos,
   If,
   abs,
+  texture,
+  oneMinus,
 } from "three/tsl";
 import { rotateAxis } from "../../terrain/terrainHelpers";
+import { DEFAULT_GRASS_AREA_SIZE } from "./constants";
 
 /**
  * Safely normalizes a 2D vector, returning a default if length is too small
@@ -370,4 +373,44 @@ export function applyViewDependentTilt(
   // Apply tilt offset
   return posObj.add(normalXZ.mul(tilt));
 }
+
+/**
+ * Samples terrain height and normal from heightmap texture
+ * @param worldXZ - World XZ position (vec2)
+ * @param uGroupOffset - Group offset uniform (vec3)
+ * @param heightmapTexture - Storage texture containing height (R) and normal (GBA)
+ * @returns Object with height (th) and normalized terrain normal (tn)
+ */
+export const sampleTerrainHeightAndNormal = (
+  worldXZ: any,
+  uGroupOffset: any,
+  heightmapTexture: any
+) => {
+  // Calculate UV coordinates for terrain sampling
+  const uvCoord = worldXZ.sub(uGroupOffset.xz).div(DEFAULT_GRASS_AREA_SIZE).add(vec2(0.5));
+  uvCoord.y = oneMinus(uvCoord.y);
+  
+  // Sample height and normal from texture
+  const heightmapSample = texture(heightmapTexture, uvCoord);
+  const th = heightmapSample.r;
+  
+  // Extract normal from GBA channels and remap from [0, 1] back to [-1, 1]
+  // Formula: (value - 0.5) * 2.0 = value * 2.0 - 1.0
+  const normalX = heightmapSample.g.mul(float(2.0)).sub(float(1.0));
+  const normalY = heightmapSample.b.mul(float(2.0)).sub(float(1.0));
+  const normalZ = heightmapSample.a.mul(float(2.0)).sub(float(1.0));
+  const normalRaw = vec3(normalX, normalY, normalZ);
+  
+  // Normalize to ensure it's a unit vector (handles any precision loss from storage)
+  const normalLen = length(normalRaw);
+  const threshold = float(0.0001);
+  const defaultNormal = vec3(float(0.0), float(1.0), float(0.0));
+  const tn = select(
+    normalLen.greaterThan(threshold),
+    normalize(normalRaw),
+    defaultNormal
+  );
+  
+  return { th, tn };
+};
 

@@ -12,7 +12,7 @@ import { updateComputeUniforms, updateMaterialUniforms } from './core/uniforms'
 import { GrassLOD } from './GrassLOD'
 import type { GrassProps, LODBufferConfig } from './core/types'
 
-export default function GrassWebGPU({ terrainUniforms, cullCamera }: GrassProps = {} as GrassProps) {
+export default function GrassWebGPU({ heightmapTexture, cullCamera }: GrassProps = {} as GrassProps) {
   const { gl, camera: defaultCamera } = useThree()
   
   // Use cullCamera if provided, otherwise use default render camera
@@ -62,9 +62,6 @@ export default function GrassWebGPU({ terrainUniforms, cullCamera }: GrassProps 
       uClumpSeedRange: uniform(vec2(0.9, 1.1)),
       uAOPower: uniform(0.6),
       uNoiseParams: uniform(vec4(1.0, 3.0, 0.7, 1.0)),
-      uTerrainAmp: uniform(0.3),
-      uTerrainFreq: uniform(0.4),
-      uTerrainSeed: uniform(0.0),
       uBaseWidth: uniform(0.35),
       uTipThin: uniform(0.9),
       uThicknessStrength: uniform(0.10),
@@ -165,8 +162,8 @@ export default function GrassWebGPU({ terrainUniforms, cullCamera }: GrassProps 
 
   // Update material uniforms
   useEffect(() => {
-    updateMaterialUniforms(materialUniforms, grassParams, terrainUniforms)
-  }, [materialUniforms, grassParams, terrainUniforms])
+    updateMaterialUniforms(materialUniforms, grassParams)
+  }, [materialUniforms, grassParams])
 
   useFrame(({ clock }) => {
     const renderer = gl as unknown as WebGPURenderer
@@ -220,7 +217,7 @@ export default function GrassWebGPU({ terrainUniforms, cullCamera }: GrassProps 
         <GrassLOD
           key={`lod-${lodBuffer.segments}-${lodBuffer.minDistance}-${lodBuffer.maxDistance}`}
           grassParams={grassParams}
-          terrainUniforms={terrainUniforms}
+          heightmapTexture={heightmapTexture}
           grassData={grassDataRef.current}
           positions={positionsRef.current}
           lodBuffer={lodBuffer}
