@@ -1,4 +1,3 @@
-import * as THREE from 'three/webgpu';
 import { TerrainUniforms } from '../terrain/types';
 
 export interface CharacterProps {

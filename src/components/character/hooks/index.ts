@@ -1,8 +1,2 @@
-export { useCharacterState } from './useCharacterState';
-export { useCharacterMesh } from './useCharacterMesh';
-export { useCharacterMaterials } from './useCharacterMaterials';
-export { useCharacterAnimations } from './useCharacterAnimations';
-export { useCharacterControls } from './useCharacterControls';
-export { useCharacterMovement } from './useCharacterMovement';
-export { useCharacterTextures } from './useCharacterTextures';
-export { useCharacterTerrain } from './useCharacterTerrain';
+export { useCharacterAssets } from './useCharacterAssets';
+export { useCharacterPhysics } from './useCharacterPhysics';

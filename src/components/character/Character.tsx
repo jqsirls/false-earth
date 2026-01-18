@@ -1,47 +1,21 @@
 import { useRef, useEffect } from 'react';
 import { Group } from 'three';
 import { CharacterProps } from './types';
-import {
-  useCharacterState,
-  useCharacterMesh,
-  useCharacterMaterials,
-  useCharacterAnimations,
-  useCharacterControls,
-  useCharacterMovement,
-} from './hooks';
+import { useCharacterAssets } from './hooks/useCharacterAssets';
+import { useCharacterPhysics } from './hooks/useCharacterPhysics';
 
 export function Character({ position = [0, 0, 0], scale = 1, terrainUniforms }: CharacterProps) {
   const groupRef = useRef<Group>(null);
-  
-  // State management
-  const state = useCharacterState();
 
-  // Load and clone mesh
-  const { clonedMesh } = useCharacterMesh();
+  // 1. Get Assets (Mesh, Materials, TSL Uniforms)
+  const { scene, animations, uCharacterWorldPos } = useCharacterAssets(terrainUniforms);
 
-  // Load and assign materials
-  useCharacterMaterials(clonedMesh, terrainUniforms, groupRef);
-
-  // Setup animations
-  const { actions } = useCharacterAnimations(groupRef);
-
-  // Keyboard controls
-  useCharacterControls(state);
-
-  // Movement and animation blending
-  useCharacterMovement({ groupRef, state, actions });
-
-  // Add cloned mesh to group
-  useEffect(() => {
-    if (!groupRef.current || !clonedMesh) return;
-    
-    groupRef.current.clear();
-    groupRef.current.add(clonedMesh);
-  }, [clonedMesh]);
+  // 2. Bind Physics & Behavior
+  useCharacterPhysics(groupRef, scene, animations, uCharacterWorldPos);
 
   return (
     <group ref={groupRef} position={position} scale={scale} dispose={null}>
-      {clonedMesh && <primitive object={clonedMesh} />}
+      {scene && <primitive object={scene} />}
     </group>
   );
 }
