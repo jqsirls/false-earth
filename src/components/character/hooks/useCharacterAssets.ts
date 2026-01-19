@@ -13,6 +13,7 @@ export function useCharacterAssets(terrainUniforms?: TerrainUniforms, uWorldPos?
   const mesh = useLoader(FBXLoader, '/models/Astronaut.fbx');
   const idleAnim = useLoader(FBXLoader, '/models/Idle.fbx');
   const walkAnim = useLoader(FBXLoader, '/models/Walking.fbx');
+  const runAnim = useLoader(FBXLoader, '/models/Running.fbx');
 
   const bodyTex = useTexture({
     map: 'textures/Body/Astronaut_Suit_Body_Albedo.png',
@@ -115,9 +116,14 @@ export function useCharacterAssets(terrainUniforms?: TerrainUniforms, uWorldPos?
       clip.name = 'Walk';
       anims.push(clip);
     }
+    if (runAnim && runAnim.animations && runAnim.animations.length > 0) {
+      const clip = runAnim.animations[0].clone();
+      clip.name = 'Run';
+      anims.push(clip);
+    }
 
     return { scene: clonedScene, animations: anims };
-  }, [mesh, idleAnim, walkAnim, bodyTex.map, bodyTex.aoMap, bodyTex.normalMap, bodyTex.metalnessMap, detailTex.map, detailTex.aoMap, detailTex.normalMap, detailTex.metalnessMap, terrainUniforms, uWorldPos]);
+  }, [mesh, idleAnim, walkAnim, runAnim, bodyTex.map, bodyTex.aoMap, bodyTex.normalMap, bodyTex.metalnessMap, detailTex.map, detailTex.aoMap, detailTex.normalMap, detailTex.metalnessMap, terrainUniforms, uWorldPos]);
 
   return { scene, animations };
 }

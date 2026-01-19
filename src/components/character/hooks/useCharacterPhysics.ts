@@ -9,32 +9,40 @@ export function useCharacterPhysics(
   scene: Object3D | null,
   animations: AnimationClip[]
 ) {
-  // 1. Animation System - bind to scene (contains skeleton), not parent group
+  // Animation System - bind to scene (contains skeleton), not parent group
   const sceneRef = useRef<Object3D | null>(null);
   sceneRef.current = scene;
   const { actions } = useAnimations(animations, sceneRef);
 
-  // 2. Physics State
+  // Physics State
   const state = useRef({
     speed: 0,
     isMoving: false,
+    isRunning: false,
     rotateLeft: false,
     rotateRight: false,
+    // Animation weights
     idleWeight: 1.0,
     walkWeight: 0.0,
-    maxSpeed: 1.0,
+    runWeight: 0.0,
+    // Parameters
+    walkSpeed: 1.0,
+    runSpeed: 3.5,
     rotateSpeed: 2.5,
     speedLerpFactor: 0.1,
     animBlendLerpFactor: 0.15,
   });
 
-  // 3. Input Listeners
+  // Input Listeners
   useEffect(() => {
     const handleKey = (e: KeyboardEvent, isDown: boolean) => {
       const key = e.key.toLowerCase();
+      const code = e.code;
       if (key === 'w') state.current.isMoving = isDown;
       if (key === 'a') state.current.rotateLeft = isDown;
       if (key === 'd') state.current.rotateRight = isDown;
+      // Detect left Shift for running
+      if (code === 'ShiftLeft') state.current.isRunning = isDown;
     };
     const onDown = (e: KeyboardEvent) => handleKey(e, true);
     const onUp = (e: KeyboardEvent) => handleKey(e, false);
@@ -46,19 +54,18 @@ export function useCharacterPhysics(
     };
   }, []);
 
-  // 4. Initial Animation Start
+  // Initial Animation Start
   useEffect(() => {
-    const idleAction = actions['Idle'];
-    const walkAction = actions['Walk'];
-    if (idleAction && walkAction) {
-      idleAction.reset().play();
-      walkAction.reset().play();
-      idleAction.setEffectiveWeight(1.0);
-      walkAction.setEffectiveWeight(0.0);
-    }
+    ['Idle', 'Walk', 'Run'].forEach(name => {
+      const action = actions[name];
+      if (action) {
+        action.reset().play();
+        action.setEffectiveWeight(name === 'Idle' ? 1.0 : 0.0);
+      }
+    });
   }, [actions]);
 
-  // 5. Game Loop
+  // Game Loop
   useFrame((_, delta) => {
     if (!groupRef.current) return;
     const s = state.current;
@@ -71,38 +78,61 @@ export function useCharacterPhysics(
       groupRef.current.rotation.y -= s.rotateSpeed * delta;
     }
 
-    // --- Movement ---
-    const targetSpeed = s.isMoving ? s.maxSpeed : 0;
+    // --- Movement Calculation ---
+    // Determine target speed based on whether Shift is held
+    const currentMaxSpeed = s.isRunning ? s.runSpeed : s.walkSpeed;
+    const targetSpeed = s.isMoving ? currentMaxSpeed : 0;
+    
     s.speed = THREE.MathUtils.lerp(s.speed, targetSpeed, s.speedLerpFactor);
     
     if (Math.abs(s.speed) > 0.01) {
       groupRef.current.translateZ(s.speed * delta);
     }
 
-    // --- Animation Blending Logic ---
+    // --- Animation Blending Logic (Blend Tree) ---
     
-    // 1. Determine basic states
-    const isWalking = Math.abs(s.speed) > 0.1;
     const isRotating = s.rotateLeft || s.rotateRight;
-    const isTurningInPlace = isRotating && !isWalking;
+    const isStationary = Math.abs(s.speed) < 0.05;
+    const isTurningInPlace = isRotating && isStationary;
 
     let targetIdle = 0;
     let targetWalk = 0;
+    let targetRun = 0;
 
-    if (isWalking) {
-      targetWalk = 1;
-    } else if (isTurningInPlace) {
-      targetWalk = 0.7;
+    if (isTurningInPlace) {
+      // Special handling for turning in place
       targetIdle = 0.3;
+      targetWalk = 0.7;
+      targetRun = 0;
     } else {
-      targetIdle = 1;
+      // Two-stage blending based on actual speed (1D Blend Tree)
+      // Stage 1: 0 -> walkSpeed (Idle blend Walk)
+      if (s.speed <= s.walkSpeed) {
+        const t = s.speed / s.walkSpeed; // 0 ~ 1
+        targetIdle = 1 - t;
+        targetWalk = t;
+        targetRun = 0;
+      } 
+      // Stage 2: walkSpeed -> runSpeed (Walk blend Run)
+      else {
+        // Calculate how much over walkSpeed as a ratio
+        const t = (s.speed - s.walkSpeed) / (s.runSpeed - s.walkSpeed);
+        // Clamp t to 0~1 (prevent animation glitches from sudden overspeed)
+        const clampT = Math.min(Math.max(t, 0), 1);
+        
+        targetIdle = 0;
+        targetWalk = 1 - clampT;
+        targetRun = clampT;
+      }
     }
 
+    // Apply smooth weight transitions
     s.idleWeight = THREE.MathUtils.lerp(s.idleWeight, targetIdle, s.animBlendLerpFactor);
     s.walkWeight = THREE.MathUtils.lerp(s.walkWeight, targetWalk, s.animBlendLerpFactor);
+    s.runWeight = THREE.MathUtils.lerp(s.runWeight, targetRun, s.animBlendLerpFactor);
 
-    // 4. Apply weights
     actions['Idle']?.setEffectiveWeight(s.idleWeight);
     actions['Walk']?.setEffectiveWeight(s.walkWeight);
+    actions['Run']?.setEffectiveWeight(s.runWeight);
   });
 }
