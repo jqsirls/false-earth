@@ -74,7 +74,7 @@ export function useGridSnapping({
         });
       }
     }
-  }, -1);
+  });
 
   return {
     currentCellX: currentGridCellX,

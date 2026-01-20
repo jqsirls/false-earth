@@ -1,4 +1,4 @@
-import { CameraControls, Environment } from "@react-three/drei";
+import { Environment } from "@react-three/drei";
 import { LevaWrapper } from "@packages/r3f-gist/components";
 import { Canvas } from "@react-three/fiber";
 import { useState, useRef } from "react";
@@ -14,6 +14,8 @@ import { Character } from "../components/character";
 import { TerrainUniforms } from "../components/terrain/types";
 import { Background } from "../components/Background";
 import { Stars } from "../components/Stars";
+import { CameraViewControl } from "../components/camera/CameraViewControl";
+import { Group } from "three";
 
 export default function App() {
     const [terrainUniforms, setTerrainUniforms] = useState<TerrainUniforms | undefined>(undefined)
@@ -21,6 +23,7 @@ export default function App() {
     const [debugMode, setDebugMode] = useState(false) // Toggle for culling debug mode
     const [trailTexture, setTrailTexture] = useState<THREE.StorageTexture | null>(null)
     const characterWorldPosRef = useRef<THREE.Vector3>(new THREE.Vector3(0, 0, 0))
+    const characterRef = useRef<Group>(null)
 
     return <>
         <LevaWrapper collapsed={true} />
@@ -47,10 +50,7 @@ export default function App() {
 
             <color attach="background" args={['#000000']} />
 
-            <CameraControls 
-                makeDefault 
-                dollySpeed={0.5}
-            />
+            <CameraViewControl characterRef={characterRef} />
             <Environment preset="city" environmentIntensity={0.5} />
             <DirectionalLight onPositionChange={setLightPosition} />
             <Background />
@@ -68,7 +68,7 @@ export default function App() {
                 <>
                     <Terrain onUniformsChange={setTerrainUniforms} />
                     <GrassWebGPU terrainUniforms={terrainUniforms} trailTexture={trailTexture} characterWorldPosRef={characterWorldPosRef} />
-                    <Character position={[0, 0, 0]} scale={0.01} terrainUniforms={terrainUniforms} onTrailTextureChange={setTrailTexture} characterWorldPosRef={characterWorldPosRef} />
+                    <Character ref={characterRef} position={[0, 0, 0]} scale={0.01} terrainUniforms={terrainUniforms} onTrailTextureChange={setTrailTexture} characterWorldPosRef={characterWorldPosRef} />
                 </>
             )}
             

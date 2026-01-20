@@ -1,4 +1,4 @@
-import { useRef, useEffect, useMemo } from 'react';
+import { useRef, useMemo, forwardRef, useImperativeHandle } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Group } from 'three';
 import * as THREE from 'three/webgpu';
@@ -6,10 +6,12 @@ import { uniform } from 'three/tsl';
 import { CharacterProps } from './types';
 import { useCharacterAssets } from './hooks/useCharacterAssets';
 import { useCharacterPhysics } from './hooks/useCharacterPhysics';
-import { useCharacterTrail } from './hooks/useCharacterTrail';
 
-export function Character({ position = [0, 0, 0], scale = 1, terrainUniforms, onTrailTextureChange, characterWorldPosRef }: CharacterProps) {
+export const Character = forwardRef<Group, CharacterProps>(({ position = [0, 0, 0], scale = 1, terrainUniforms, onTrailTextureChange, characterWorldPosRef }, ref) => {
   const groupRef = useRef<Group>(null);
+  
+  // Expose groupRef to parent component
+  useImperativeHandle(ref, () => groupRef.current!, []);
   const prevPositionRef = useRef<THREE.Vector3 | null>(null);
 
   const uWorldPos = useMemo(() => uniform(new THREE.Vector3(0, 0, 0)), []);
@@ -66,4 +68,6 @@ export function Character({ position = [0, 0, 0], scale = 1, terrainUniforms, on
       {scene && <primitive object={scene} />}
     </group>
   );
-}
+});
+
+Character.displayName = 'Character';
