@@ -8,7 +8,7 @@ import { useCharacterAssets } from './hooks/useCharacterAssets';
 import { useCharacterPhysics } from './hooks/useCharacterPhysics';
 import { useGameStore, CameraMode } from '../../store/gameStore';
 
-export const Character = forwardRef<Group, CharacterProps>(({ position = [0, 0, 0], scale = 1, terrainUniforms, onTrailTextureChange, characterWorldPosRef }, ref) => {
+export const Character = forwardRef<Group, CharacterProps>(({ position = [0, 0, 0], scale = 1, terrainUniforms, onTrailTextureChange }, ref) => {
   const groupRef = useRef<Group>(null);
   
   // Expose groupRef to parent component
@@ -53,11 +53,6 @@ export const Character = forwardRef<Group, CharacterProps>(({ position = [0, 0, 
       
       // Update world position uniform
       uWorldPos.value.set(groupWorldPos.x, groupWorldPos.y, groupWorldPos.z);
-      
-      // Update position ref for grass material
-      if (characterWorldPosRef) {
-        characterWorldPosRef.current.set(groupWorldPos.x, groupWorldPos.y, groupWorldPos.z);
-      }
       
       // Calculate velocity
       if (prevPositionRef.current) {

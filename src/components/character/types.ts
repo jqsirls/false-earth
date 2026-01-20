@@ -6,7 +6,6 @@ export interface CharacterProps {
   scale?: number;
   terrainUniforms?: TerrainUniforms;
   onTrailTextureChange?: (texture: THREE.StorageTexture | null) => void;
-  characterWorldPosRef?: React.MutableRefObject<THREE.Vector3>;
 }
 
 export interface CharacterState {

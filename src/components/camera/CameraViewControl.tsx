@@ -1,4 +1,4 @@
-import { useEffect, useRef, MutableRefObject, useMemo } from 'react';
+import { useEffect, useRef, useMemo } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { CameraControls } from '@react-three/drei';
 import { Group, Vector3, Quaternion, Bone, Euler, Object3D, MathUtils } from 'three';
@@ -7,16 +7,16 @@ import { useControls } from 'leva';
 import { useGameStore, CameraMode } from '../../store/gameStore';
 
 type Props = {
-  characterRef: MutableRefObject<Group | null>;
   boneName?: string;
 };
 
-export function CameraViewControl({ characterRef, boneName = 'head' }: Props) {
+export function CameraViewControl({ boneName = 'head' }: Props) {
   const controlsRef = useRef<CameraControls>(null);
   const { gl, camera } = useThree();
 
-  // Read mode directly from Store
+  // Read mode and character ref directly from Store
   const cameraMode = useGameStore((state) => state.cameraMode);
+  const characterRef = useGameStore((state) => state.characterRef);
 
   const { vec3, quat, quatOffset, quatBone, quatLookForward, modelCorrectionQuat, dummyEuler, mouseQuat } = useMemo(() => ({
     vec3: new Vector3(),
@@ -76,7 +76,7 @@ export function CameraViewControl({ characterRef, boneName = 'head' }: Props) {
 
   // Auto-position camera behind character when switching to TPS mode
   useEffect(() => {
-    if (cameraMode === CameraMode.TPS && characterRef.current && controlsRef.current) {
+    if (cameraMode === CameraMode.TPS && characterRef?.current && controlsRef.current) {
       const charPos = characterRef.current.position;
       controlsRef.current.setLookAt(
         charPos.x, charPos.y + 3, charPos.z - 4,
@@ -84,11 +84,11 @@ export function CameraViewControl({ characterRef, boneName = 'head' }: Props) {
         true
       );
     }
-  }, [cameraMode]);
+  }, [cameraMode, characterRef]);
 
 
   useFrame(() => {
-    if (!characterRef.current) return;
+    if (!characterRef?.current) return;
 
     // === FPV MODE ===
     if (cameraMode === CameraMode.FPV) {
@@ -146,7 +146,7 @@ export function CameraViewControl({ characterRef, boneName = 'head' }: Props) {
     }
 
     // === TPS MODE ===
-    if (cameraMode === CameraMode.TPS && controlsRef.current) {
+    if (cameraMode === CameraMode.TPS && controlsRef.current && characterRef?.current) {
       const { x, y, z } = characterRef.current.position;
       controlsRef.current.moveTo(x, y + 1, z, true);
     }

@@ -4,7 +4,7 @@ import { Canvas } from "@react-three/fiber";
 import { useState, useRef, useEffect } from "react";
 import { Terrain } from "../components/terrain/Terrain";
 import { DirectionalLight } from "../components/DirectionalLight";
-import * as THREE from 'three/webgpu'
+import * as THREE from 'three/webgpu';
 import { WebGPURenderer } from "three/webgpu";
 import GrassWebGPU from "../components/grass/GrassWebGPU";
 import { GrassCullingDebug } from "../components/debug/GrassCullingDebug";
@@ -22,8 +22,15 @@ export default function App() {
     const [terrainUniforms, setTerrainUniforms] = useState<TerrainUniforms | undefined>(undefined)
     const [debugMode, setDebugMode] = useState(false) // Toggle for culling debug mode
     const [trailTexture, setTrailTexture] = useState<THREE.StorageTexture | null>(null)
-    const characterWorldPosRef = useRef<THREE.Vector3>(new THREE.Vector3(0, 0, 0))
     const characterRef = useRef<Group>(null)
+    
+    // Store character ref in global state
+    const setCharacterRef = useGameStore((state) => state.setCharacterRef);
+    
+    useEffect(() => {
+        setCharacterRef(characterRef);
+        return () => setCharacterRef(null);
+    }, [setCharacterRef]);
 
     // Get toggle method from store
     const toggleCameraMode = useGameStore((state) => state.toggleCameraMode);
@@ -64,12 +71,12 @@ export default function App() {
 
             <color attach="background" args={['#000000']} />
 
-            <CameraViewControl characterRef={characterRef} />
+            <CameraViewControl />
             <Environment preset="city" environmentIntensity={0.5} />
             <DirectionalLight />
             <Background />
 
-            <Effects characterRef={characterRef} />
+            <Effects />
 
             <Stars />
             
@@ -81,8 +88,8 @@ export default function App() {
             ) : (
                 <>
                     <Terrain onUniformsChange={setTerrainUniforms} />
-                    <GrassWebGPU terrainUniforms={terrainUniforms} trailTexture={trailTexture} characterWorldPosRef={characterWorldPosRef} />
-                    <Character ref={characterRef} position={[0, 0, 0]} scale={0.01} terrainUniforms={terrainUniforms} onTrailTextureChange={setTrailTexture} characterWorldPosRef={characterWorldPosRef} />
+                    <GrassWebGPU terrainUniforms={terrainUniforms} trailTexture={trailTexture} />
+                    <Character ref={characterRef} position={[0, 0, 0]} scale={0.01} terrainUniforms={terrainUniforms} onTrailTextureChange={setTrailTexture} />
                 </>
             )}
             

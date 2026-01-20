@@ -1,27 +1,34 @@
 import { useRef, useMemo, useEffect } from 'react';
+import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three/webgpu';
 import { uniform, time, instanceIndex, instancedBufferAttribute, Fn, uv, vec2, vec3, float, length, smoothstep, mx_hsvtorgb, mx_rgbtohsv, fract, sin, max } from 'three/tsl';
 import { useControls } from 'leva';
+import { useGameStore } from '../store/gameStore';
 
 interface StarsProps {
   count?: number;
   sizeAttenuation?: boolean;
   scale?: number;
   color?: THREE.Color | string;
-  rotationSpeed?: number;
 }
 
 export function Stars({
-  count = 1000,
+  count = 500,
   color,
-  rotationSpeed = 1,
 }: StarsProps) {
   const materialRef = useRef<THREE.SpriteNodeMaterial>(null);
+  const groupRef = useRef<THREE.Group>(null);
+  
+  // Get character ref from global store
+  const characterRef = useGameStore((state) => state.characterRef);
+  
+  // Temporary vector to get character position
+  const characterPos = useMemo(() => new THREE.Vector3(), []);
 
   // Leva controls for scale, rim, base color, and hue variation
   const { scale, rim, baseColor, hueVariation } = useControls('Stars', {
     scale: {
-      value: 0.15,
+      value: 0.25,
       min: 0,
       max: 1,
       step: 0.01,
@@ -147,14 +154,12 @@ export function Stars({
 
     // Set TSL nodes
     mat.positionNode = instancedBufferAttribute(positionAttribute);
-    mat.rotationNode = time.mul(rotationSpeed).add(instanceIndex).sin();
-    // Ensure minimum scale of 1.0 to prevent blinking/flickering
     const baseScale = uniform(scale).mul(sizeVariation);
     mat.scaleNode = max(baseScale, float(1.0));
     mat.colorNode = variedColor;
 
     return mat;
-  }, [positionAttribute, seedAttribute, scale, colorValue, rotationSpeed, hueVariation]);
+  }, [positionAttribute, seedAttribute, scale, colorValue, hueVariation]);
 
   // Store material ref
   useEffect(() => {
@@ -171,6 +176,14 @@ export function Stars({
     }
   }, [material, scale]);
 
+  // Update group position to follow character each frame
+  useFrame(() => {
+    if (groupRef.current && characterRef?.current) {
+      characterRef.current.getWorldPosition(characterPos);
+      groupRef.current.position.copy(characterPos);
+    }
+  });
+
   // Create sprite object
   const sprite = useMemo(() => {
     const spriteObj = new THREE.Sprite(material);
@@ -185,5 +198,9 @@ export function Stars({
     return spriteObj;
   }, [material, count, seedAttribute]);
 
-  return <primitive object={sprite} />;
+  return (
+    <group ref={groupRef}>
+      <primitive object={sprite} />
+    </group>
+  );
 }

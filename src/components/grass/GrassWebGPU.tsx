@@ -12,12 +12,19 @@ import { createGrassCompute, createResetDrawBufferCompute } from './core/grassCo
 import { updateComputeUniforms, updateMaterialUniforms } from './core/uniforms'
 import { GrassLOD } from './GrassLOD'
 import type { GrassProps, LODBufferConfig } from './core/types'
+import { useGameStore } from '../../store/gameStore'
 
-export default function GrassWebGPU({ terrainUniforms, cullCamera, characterWorldPosRef }: GrassProps = {} as GrassProps) {
+export default function GrassWebGPU({ terrainUniforms, cullCamera }: GrassProps = {} as GrassProps) {
   const { gl, camera: defaultCamera } = useThree()
   
   // Use cullCamera if provided, otherwise use default render camera
   const cameraToUse = cullCamera || defaultCamera
+  
+  // Get character ref from global store
+  const characterRef = useGameStore((state) => state.characterRef)
+  
+  // Temporary vector to get character position
+  const characterPos = useMemo(() => new THREE.Vector3(), [])
 
   const [grassParams] = useControls('Grass', () => createGrassControls(), { collapsed: true })
 
@@ -186,8 +193,9 @@ export default function GrassWebGPU({ terrainUniforms, cullCamera, characterWorl
     materialUniforms.uTime.value = elapsedTime
 
     // Update character world position from ref
-    if (characterWorldPosRef) {
-      materialUniforms.uCharacterWorldPos.value.copy(characterWorldPosRef.current);
+    if (characterRef?.current) {
+      characterRef.current.getWorldPosition(characterPos);
+      materialUniforms.uCharacterWorldPos.value.copy(characterPos);
     }
 
       // Update uniforms with current group position (snapping is handled by useGridSnapping hook)

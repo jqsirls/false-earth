@@ -9,20 +9,17 @@ import { dof } from "three/addons/tsl/display/DepthOfFieldNode.js";
 import { smaa } from "three/addons/tsl/display/SMAANode.js";
 import { useGameStore, CameraMode } from "../store/gameStore";
 
-type EffectsProps = {
-    characterRef?: React.RefObject<THREE.Object3D | THREE.Group | null>;
-};
-
-export default function Effects({ characterRef }: EffectsProps) {
+export default function Effects() {
     const cameraMode = useGameStore((state) => state.cameraMode);
+    const characterRef = useGameStore((state) => state.characterRef);
     const postProcessingRef = useRef<THREE.PostProcessing | null>(null);
     const bloomPassRef = useRef<any>(null);
     const smaaPassRef = useRef<any>(null);
     const { gl, scene, camera } = useThree();
 
     // Temporary vectors for calculation to avoid GC
-    const targetPos = useMemo(() => new THREE.Vector3(), []);
     const camPos = useMemo(() => new THREE.Vector3(), []);
+    const characterPos = useMemo(() => new THREE.Vector3(), []);
 
     const smaaParams = useControls('Effects.SMAA', {
         enabled: { value: false, label: 'Enable SMAA' }
@@ -221,12 +218,14 @@ export default function Effects({ characterRef }: EffectsProps) {
     useFrame(() => {
         // --- AUTOFOCUS LOGIC ---
         if (dofParams.enabled && dofParams.autofocus && characterRef?.current) {
-            // Get accurate world positions
-            characterRef.current.getWorldPosition(targetPos);
+            // Get camera world position
             camera.getWorldPosition(camPos);
             
-            // Calculate distance
-            const dist = camPos.distanceTo(targetPos);
+            // Get character world position from ref
+            characterRef.current.getWorldPosition(characterPos);
+            
+            // Calculate distance from camera to character position
+            const dist = camPos.distanceTo(characterPos);
             
             // Update the uniform directly
             uFocusDistance.current.value = dist;

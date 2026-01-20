@@ -1,15 +1,18 @@
 import { create } from 'zustand';
+import { Group } from 'three';
 
 export enum CameraMode {
   TPS = 0,
-  FPV = 1,
-  FREE = 2,
+  FREE = 1,
+  FPV = 2,
 }
 
 interface GameState {
   cameraMode: CameraMode;
   setCameraMode: (mode: CameraMode) => void;
   toggleCameraMode: () => void;
+  characterRef: React.MutableRefObject<Group | null> | null;
+  setCharacterRef: (ref: React.MutableRefObject<Group | null> | null) => void;
 }
 
 export const useGameStore = create<GameState>((set) => ({
@@ -20,4 +23,7 @@ export const useGameStore = create<GameState>((set) => ({
   toggleCameraMode: () => set((state) => ({ 
     cameraMode: (state.cameraMode + 1) % 3 
   })),
+  
+  characterRef: null,
+  setCharacterRef: (ref) => set({ characterRef: ref }),
 }));
