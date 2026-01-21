@@ -10,6 +10,7 @@ import { useFrame, useThree } from "@react-three/fiber";
 import { WebGPURenderer } from 'three/webgpu'
 import { vatStructure } from "./core/types";
 import { createUpdateCompute, createResetCompute, createSpawnCompute, createVisibleIndicesBuffer } from "./core/vatCompute";
+import { useGameStore } from "../../store/gameStore";
 
 // Define API exposed to parent component
 export type RoseHandle = {
@@ -25,8 +26,8 @@ const Rose = forwardRef<RoseHandle, { count: number }>(({ count }, ref) => {
         Render: folder({
             green: { value: '#325825' },
             green2: { value: '#699555' },
-            scaleMin: { value: 5, min: 0, max: 10, step: 0.1 },
-            scaleMax: { value: 10, min: 0, max: 10, step: 0.1 },
+            scaleMin: { value: 5, min: 0, max: 20, step: 0.1 },
+            scaleMax: { value: 10, min: 0, max: 20, step: 0.1 },
             normalScale: { value: 3, min: 0, max: 10, step: 0.1 },
             hueShift: { value: 0, min: 0, max: 1, step: 0.01 },
             noiseScale: { value: { x: 1, y: 100 }, min: 0, max: 100, step: 0.1 },
@@ -42,6 +43,9 @@ const Rose = forwardRef<RoseHandle, { count: number }>(({ count }, ref) => {
             dieMax: { value: 3, min: 0, max: 10, step: 0.1 },
         }),
     }))
+
+    const terrainUniforms = useGameStore((state) => state.terrainUniforms)
+    const windUniforms = useGameStore((state) => state.windUniforms)
 
     const matUniforms = useMemo(() => ({
         uGreen: uniform(vec3(0.6, 0.9, 0.6)),
@@ -161,6 +165,8 @@ const Rose = forwardRef<RoseHandle, { count: number }>(({ count }, ref) => {
             petalTex,
             outlineTex,
             normalMapTex,
+            terrainUniforms || undefined,
+            windUniforms || undefined,
         )
         const mesh = new THREE.Mesh(geometry, mat)
         mesh.count = count

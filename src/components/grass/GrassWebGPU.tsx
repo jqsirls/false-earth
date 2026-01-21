@@ -14,14 +14,15 @@ import { GrassLOD } from './GrassLOD'
 import type { GrassProps, LODBufferConfig } from './core/types'
 import { useGameStore } from '../../store/gameStore'
 
-export default function GrassWebGPU({ terrainUniforms, cullCamera }: GrassProps = {} as GrassProps) {
+export default function GrassWebGPU({ cullCamera }: GrassProps = {} as GrassProps) {
   const { gl, camera: defaultCamera } = useThree()
   
   // Use cullCamera if provided, otherwise use default render camera
   const cameraToUse = cullCamera || defaultCamera
   
-  // Get character ref from global store
+  // Get character ref and wind uniforms from global store
   const characterRef = useGameStore((state) => state.characterRef)
+  const windUniforms = useGameStore((state) => state.windUniforms)
   
   // Temporary vector to get character position
   const characterPos = useMemo(() => new THREE.Vector3(), [])
@@ -104,7 +105,7 @@ export default function GrassWebGPU({ terrainUniforms, cullCamera }: GrassProps 
       uBladeYaw: uniform(1.2),
       uClumpYaw: uniform(0.5),
       uTypeTrendScale: uniform(0.1),
-      // Wind Parameters
+      // Wind Parameters (fallback defaults, will be overridden by global wind uniforms if available)
       uTime: uniform(0.0),
       uWindScale: uniform(0.25),
       uWindSpeed: uniform(0.6),
@@ -158,12 +159,23 @@ export default function GrassWebGPU({ terrainUniforms, cullCamera }: GrassProps 
 
     setLodBuffers(lodConfigs)
 
-    // Create compute shader with uniforms
+    // Merge wind uniforms into compute uniforms if available
+    const mergedComputeUniforms = windUniforms ? {
+      ...computeUniforms,
+      uTime: windUniforms.uTime,
+      uWindDir: windUniforms.uWindDir,
+      uWindScale: windUniforms.uWindScale,
+      uWindSpeed: windUniforms.uWindSpeed,
+      uWindStrength: windUniforms.uWindStrength,
+      uWindFacing: windUniforms.uWindFacing,
+    } : computeUniforms;
+
+    // Create compute shader with merged uniforms
     const { computeFn } = createGrassCompute(
       grassData,
       positions,
       lodConfigs,
-      computeUniforms
+      mergedComputeUniforms
     )
     const grassCompute = computeFn().compute(grassBlades)
     grassComputeRef.current = grassCompute
@@ -171,26 +183,40 @@ export default function GrassWebGPU({ terrainUniforms, cullCamera }: GrassProps 
     // Create reset compute shader
     const resetCompute = createResetDrawBufferCompute(lodConfigs)
     resetComputeRef.current = resetCompute
-  }, [bladesPerAxis, grassAreaSize])
+  }, [bladesPerAxis, grassAreaSize, windUniforms])
 
-  // Update compute uniforms
+  // Update compute uniforms (wind uniforms are managed globally, so we skip wind params)
   useEffect(() => {
     updateComputeUniforms(computeUniforms, grassParams)
   }, [computeUniforms, grassParams])
 
-  // Update material uniforms
+  // Update material uniforms (wind uniforms are managed globally)
   useEffect(() => {
     updateMaterialUniforms(materialUniforms, grassParams)
   }, [materialUniforms, grassParams])
 
-  useFrame(({ clock }) => {
+  // Update wind uniforms from global store (separate effect to avoid recreating compute shader)
+  useEffect(() => {
+    if (windUniforms && grassComputeRef.current) {
+      // Wind uniforms are merged at compute shader creation time
+      // This effect just ensures we recreate the compute shader when wind uniforms change
+      // The actual merge happens in the useEffect that creates the compute shader
+    }
+  }, [windUniforms])
+
+  // Update material wind uniforms from global store
+  useEffect(() => {
+    if (windUniforms) {
+      materialUniforms.uTime = windUniforms.uTime as any;
+      materialUniforms.uWindDir = windUniforms.uWindDir as any;
+    }
+  }, [materialUniforms, windUniforms])
+
+  useFrame(() => {
     const renderer = gl as unknown as WebGPURenderer
     if (!grassComputeRef.current || !resetComputeRef.current || !cameraToUse) return
 
-    const elapsedTime = clock.getElapsedTime()
-
-    computeUniforms.uTime.value = elapsedTime
-    materialUniforms.uTime.value = elapsedTime
+    // Time is now managed by Wind component, no need to update here
 
     // Update character world position from ref
     if (characterRef?.current) {
@@ -226,7 +252,6 @@ export default function GrassWebGPU({ terrainUniforms, cullCamera }: GrassProps 
         <GrassLOD
           key={`lod-${lodBuffer.segments}-${lodBuffer.minDistance}-${lodBuffer.maxDistance}`}
           grassParams={grassParams}
-          terrainUniforms={terrainUniforms}
           grassData={grassDataRef.current}
           positions={positionsRef.current}
           lodBuffer={lodBuffer}

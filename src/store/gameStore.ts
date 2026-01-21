@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import { Group } from 'three';
+import { TerrainUniforms } from '../components/types';
+import { WindUniforms } from '../components/wind/Wind';
 
 export enum CameraMode {
   TPS = 0,
@@ -13,6 +15,10 @@ interface GameState {
   toggleCameraMode: () => void;
   characterRef: React.MutableRefObject<Group | null> | null;
   setCharacterRef: (ref: React.MutableRefObject<Group | null> | null) => void;
+  terrainUniforms: TerrainUniforms | null;
+  setTerrainUniforms: (uniforms: TerrainUniforms | null) => void;
+  windUniforms: WindUniforms | null;
+  setWindUniforms: (uniforms: WindUniforms | null) => void;
 }
 
 export const useGameStore = create<GameState>((set) => ({
@@ -26,4 +32,10 @@ export const useGameStore = create<GameState>((set) => ({
   
   characterRef: null,
   setCharacterRef: (ref) => set({ characterRef: ref }),
+  
+  terrainUniforms: null,
+  setTerrainUniforms: (uniforms) => set({ terrainUniforms: uniforms }),
+  
+  windUniforms: null,
+  setWindUniforms: (uniforms) => set({ windUniforms: uniforms }),
 }));

@@ -10,7 +10,6 @@ export interface TerrainParams {
 }
 
 export interface GrassProps {
-  terrainUniforms?: TerrainUniforms;
   cullCamera?: THREE.PerspectiveCamera; // Camera used for culling calculation (separate from render camera)
   trailTexture?: THREE.StorageTexture | null; // Character trail texture for flattening grass
 }

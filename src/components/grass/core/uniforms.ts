@@ -25,12 +25,8 @@ export function updateComputeUniforms(uniforms: Record<string, any>, params: any
   uniforms.uBladeYaw.value = params.bladeYaw
   uniforms.uClumpYaw.value = params.clumpYaw
 
-  // Wind parameters
-  uniforms.uWindScale.value = params.windScale ?? 0.25
-  uniforms.uWindSpeed.value = params.windSpeed
-  uniforms.uWindStrength.value = params.windStrength
-  uniforms.uWindDir.value.set(params.windDirX, params.windDirZ)
-  uniforms.uWindFacing.value = params.windFacing
+  // Wind parameters are now managed globally via Wind component
+  // Skip updating: uWindScale, uWindSpeed, uWindStrength, uWindDir, uWindFacing, uTime
 
   // Culling parameters
   uniforms.uCullOffset.value = params.bladeHeightMax ?? 0.8
@@ -50,8 +46,8 @@ export function updateMaterialUniforms(
 ) {
   const params = grassParams as any;
 
-  // Wind parameters
-  uniforms.uWindDir.value.set(params.windDirX, params.windDirZ);
+  // Wind parameters are now managed globally via Wind component
+  // Skip updating: uWindDir, uTime
   uniforms.uWindSwayFreqMin.value = params.swayFreqMin;
   uniforms.uWindSwayFreqMax.value = params.swayFreqMax;
   uniforms.uWindSwayStrength.value = params.swayStrength;

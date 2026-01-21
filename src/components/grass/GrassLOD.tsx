@@ -5,11 +5,10 @@ import { createBladeGeometry, createGrassData, createPositions } from "./core/gr
 import { createGrassMaterial } from "./core/grassMaterial";
 import { DEFAULT_BLADES_PER_AXIS } from "./core/constants";
 import type { LODBufferConfig } from "./core/types";
-import { TerrainUniforms } from "../types";
+import { useGameStore } from "../../store/gameStore";
 
 interface GrassLODProps {
   grassParams: any;
-  terrainUniforms?: TerrainUniforms;
   grassData: ReturnType<typeof createGrassData> | null;
   positions: ReturnType<typeof createPositions> | null;
   lodBuffer: LODBufferConfig;
@@ -19,7 +18,6 @@ interface GrassLODProps {
 
 export function GrassLOD({
   grassParams,
-  terrainUniforms,
   grassData,
   positions,
   lodBuffer,
@@ -28,6 +26,7 @@ export function GrassLOD({
 
   const bladesPerAxis = DEFAULT_BLADES_PER_AXIS;
   const { scene } = useThree();
+  const terrainUniforms = useGameStore((state) => state.terrainUniforms);
 
   const mesh = useMemo(() => {
     if (!grassData || !positions || !lodBuffer) {
@@ -49,7 +48,7 @@ export function GrassLOD({
       positions,
       lodBuffer.indices,
       uniforms,
-      terrainUniforms,
+      terrainUniforms || undefined,
       lodDebugColor,
     );
 

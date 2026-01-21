@@ -35,6 +35,7 @@ import {
   abs,
 } from "three/tsl";
 import type { LODBufferConfig } from "./types";
+import { safeNormalize, normalizeAngle, calculateWindStrength, applyWindFacingAndNormalize } from "./windHelpers";
 
 export function createGrassCompute(
   grassData: ReturnType<typeof instancedArray>,
@@ -130,16 +131,6 @@ export function createGrassCompute(
     return fract(sin(vec2(x, y)).mul(43758.5453));
   };
 
-  const safeNormalize = (v: any) => {
-    const m2 = dot(v, v);
-    const normalized = v.mul(float(1.0).div(sqrt(m2)));
-    const fallback = vec2(1.0, 0.0);
-    return select(m2.greaterThan(float(1e-6)), normalized, fallback);
-  };
-
-  const normalizeAngle = (angle: any) => {
-    return atan(sin(angle), cos(angle));
-  };
 
   // Perform frustum and distance culling with offset support
   const performCulling = Fn(([worldPos]: [any]) => {
@@ -327,39 +318,6 @@ export function createGrassCompute(
       return clumpAngle.add(randomOffset).add(clumpYaw);
     };
 
-    // Apply wind facing and normalize angle to [0, 1] range
-    const applyWindFacingAndNormalize = (
-      baseAngle: any,
-      windStrength01: any
-    ) => {
-      const windDir = safeNormalize(uniforms.uWindDir);
-      const windAngle = atan(windDir.y, windDir.x);
-      const angleDiff = atan(
-        sin(windAngle.sub(baseAngle)),
-        cos(windAngle.sub(baseAngle))
-      );
-      const facingAngle = baseAngle.add(
-        angleDiff.mul(uniforms.uWindFacing.mul(windStrength01))
-      );
-      return normalizeAngle(facingAngle).add(PI).div(TWO_PI);
-    };
-
-    const calculateWindStrength = (worldXZ: any) => {
-      const windDirNorm = safeNormalize(uniforms.uWindDir);
-      const windUv = worldXZ
-        .mul(uniforms.uWindScale)
-        .add(windDirNorm.mul(uniforms.uTime).mul(uniforms.uWindSpeed));
-
-      const windStrength01 = mx_fractal_noise_float(windUv);
-      // Remap noise value from [-1, 1] to [0, uWindStrength] and clamp to [0, 1]
-      return remapClamp(
-        windStrength01,
-        float(-1.0),
-        float(1.0),
-        float(0.0),
-        uniforms.uWindStrength
-      );
-    };
 
     // Calculate jittered instance position from instanceIndex
     const calculateJitteredPosition = Fn(([idx]: [any]) => {
@@ -476,8 +434,17 @@ export function createGrassCompute(
     );
 
     // Apply wind effects
-    const windStrength = calculateWindStrength(worldXZ);
-    const facingAngle01 = applyWindFacingAndNormalize(baseAngle, windStrength);
+    const windStrength = calculateWindStrength(worldXZ, {
+      uWindDir: uniforms.uWindDir,
+      uWindScale: uniforms.uWindScale,
+      uTime: uniforms.uTime,
+      uWindSpeed: uniforms.uWindSpeed,
+      uWindStrength: uniforms.uWindStrength,
+    });
+    const facingAngle01 = applyWindFacingAndNormalize(baseAngle, windStrength, {
+      uWindDir: uniforms.uWindDir,
+      uWindFacing: uniforms.uWindFacing,
+    });
 
     // Write all parameters back to data structure
     data.get("bladeHeight").assign(bladeParams.height);

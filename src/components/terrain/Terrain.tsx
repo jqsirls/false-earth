@@ -16,15 +16,13 @@ import {
     getTerrainHeight,
 } from './terrainHelpers'
 import { useGridSnapping } from '../useGridSnapping'
-import { TerrainUniforms } from '../types'
+import { useGameStore } from '../../store/gameStore'
 
 
 export function Terrain({
-    onUniformsChange,
     grassAreaSize = DEFAULT_GRASS_AREA_SIZE,
     cullCamera
 }: {
-    onUniformsChange?: (uniforms: TerrainUniforms) => void
     grassAreaSize?: number
     cullCamera?: THREE.PerspectiveCamera
 }) {
@@ -53,6 +51,8 @@ export function Terrain({
     }, { collapsed: true })
 
 
+    const setTerrainUniforms = useGameStore((state) => state.setTerrainUniforms)
+
     const uniforms = useMemo(() => {
         const colorValue = new THREE.Color(terrainParams.color);
         return {
@@ -63,12 +63,11 @@ export function Terrain({
         }
     }, [])
 
-    // Expose uniforms to parent
+    // Publish uniforms to global store
     useEffect(() => {
-        if (onUniformsChange) {
-            onUniformsChange(uniforms)
-        }
-    }, [uniforms, onUniformsChange])
+        setTerrainUniforms(uniforms)
+        return () => setTerrainUniforms(null)
+    }, [setTerrainUniforms, uniforms])
 
     // Create material with terrain functions
     const material = useMemo(() => {

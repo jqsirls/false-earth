@@ -20,10 +20,6 @@ import {
   instanceIndex,
   instancedArray,
   mx_rotate2d,
-  normalMap,
-  context,
-  tangentLocal,
-  modelViewMatrix,
   fract,
   smoothstep,
   mx_hsvtorgb,
@@ -32,6 +28,10 @@ import {
   remapClamp
 } from "three/tsl";
 import { VATMeta } from "./types";
+import { TerrainUniforms } from "../../types";
+import { getTerrainHeight } from "../../terrain/terrainHelpers";
+import { calculateWindStrength, safeNormalize } from "../../grass/core/windHelpers";
+import { WindUniforms } from "../../wind/Wind";
 
 /**
  * Simple VAT node material based on GLSL shader
@@ -48,6 +48,8 @@ export function createVATMaterial(
   colorTex: THREE.Texture,
   outlineTex: THREE.Texture,
   normalMapTex: THREE.Texture,
+  terrainUniforms?: TerrainUniforms,
+  windUniforms?: WindUniforms,
 ): THREE.MeshStandardNodeMaterial {
   const material = new THREE.MeshStandardNodeMaterial();
   material.side = THREE.DoubleSide;
@@ -86,6 +88,12 @@ export function createVATMaterial(
     return mx_hsvtorgb(clamped);
   });
 
+  // Optional terrain height function
+  const terrainHeightFn = terrainUniforms
+    ? getTerrainHeight(terrainUniforms.uTerrainAmp, terrainUniforms.uTerrainFreq, terrainUniforms.uTerrainSeed)
+    : null;
+  const hasWind = !!windUniforms;
+
   // Position calculation (Refactor: read position and scale from buffer)
   material.positionNode = Fn(() => {
     // Read VAT vertex offset
@@ -97,11 +105,44 @@ export function createVATMaterial(
     // Apply instance scale
     const scale = mix(uniforms.uScaleMin, uniforms.uScaleMax, seed);
     const scaledOffset = rotatedOffset.mul(scale);
+    const heightFactor = smoothstep(float(0.0), float(0.5), vatPos.y.abs());
 
-    // Apply world position
-    // Move vertex from local space to world coordinates specified in buffer
-    return positionLocal.add(scaledOffset).add(data.get("position"));
+    let instancePos = data.get("position");
+
+    // Apply wind sway (same wind logic as grass)
+    if (hasWind && windUniforms) {
+      const windDirNorm = safeNormalize(windUniforms.uWindDir);
+      const windStrength = calculateWindStrength(instancePos.xz, {
+        uWindDir: windUniforms.uWindDir,
+        uWindScale: windUniforms.uWindScale,
+        uTime: windUniforms.uTime,
+        uWindSpeed: windUniforms.uWindSpeed,
+        uWindStrength: windUniforms.uWindStrength,
+      });
+      const swayX = windDirNorm.x.mul(windStrength.mul(0.2).mul(heightFactor)); // small sway factor scaled by height
+      const swayZ = windDirNorm.y.mul(windStrength.mul(0.2).mul(heightFactor));
+      const swayVec = vec3(swayX, float(0.0), swayZ);
+      instancePos = instancePos.add(swayVec);
+    }
+
+    // Apply world position (instance offset + VAT shape)
+    let worldPos = positionLocal.add(scaledOffset).add(instancePos);
+
+    // Apply terrain height offset if available
+    if (terrainHeightFn) {
+      const h = terrainHeightFn(worldPos.xz);
+      return vec3(worldPos.x, worldPos.y.add(h), worldPos.z);
+    }
+
+    return worldPos;
   })();
+
+  // material.fragmentNode = Fn(() => {
+  //   const vatPos = texture(posTex, sampleUV).rgb;
+  //   const heightFactor = smoothstep(float(0), float(0.5), vatPos.y.abs());
+  //   return vec4(heightFactor, 0.0, 0.0, 1.0);
+  // })();
+
 
   // Color processing with HSV shift
   material.colorNode = Fn(() => {
