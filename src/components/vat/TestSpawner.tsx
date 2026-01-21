@@ -18,7 +18,6 @@ export default function TestSpawner() {
     const radius = 3;
     moverRef.current.position.x = Math.sin(time) * radius;
     moverRef.current.position.z = Math.cos(time) * radius;
-    moverRef.current.position.y = Math.sin(time * 3) * 0.5 + 0.5;
 
     const currentPos = moverRef.current.position;
     const dist = currentPos.distanceTo(lastSpawnPos.current);

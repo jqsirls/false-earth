@@ -1,4 +1,4 @@
-import { atomicAdd, atomicStore, storage, uint, instanceIndex, instancedArray, If, time, Fn, float, fract, mix } from "three/tsl";
+import { atomicAdd, atomicStore, storage, uint, instanceIndex, instancedArray, If, time, Fn, float, fract, mix, step } from "three/tsl";
 
 /**
  * Create update compute shader
@@ -10,9 +10,22 @@ export function createUpdateCompute(
     indices: ReturnType<typeof instancedArray>,
     vatData: ReturnType<typeof instancedArray>,
     count: number,
-    computeUniforms:  Record<string, any>,
+    uniforms: Record<string, any>,
 ) {
     const updateFn = Fn(() => {
+        /**
+         * Easing function: easeInOutCubic
+         * Provides smooth acceleration and deceleration
+         */
+        const easeInOutCubic = (t: any) => {
+            const clampedT = t.clamp(0.0, 1.0);
+            const val1 = clampedT.mul(clampedT).mul(clampedT).mul(4.0);
+            const p = clampedT.sub(1.0);
+            const val2 = p.mul(p).mul(p).mul(4.0).add(1.0);
+            const isSecondHalf = step(0.5, clampedT);
+            return mix(val1, val2, isSecondHalf);
+        };
+
         const data = vatData.element(instanceIndex)
 
         // Simple animation logic: if active, update frame
@@ -21,10 +34,10 @@ export function createUpdateCompute(
             const age = time.sub(data.get("startTime"))
 
             // Use seed to interpolate between min/max for each phase duration
-            const delayDuration = mix(computeUniforms.uDelayMin, computeUniforms.uDelayMax, seed)
-            const growDuration = mix(computeUniforms.uGrowMin, computeUniforms.uGrowMax, seed)
-            const keepDuration = mix(computeUniforms.uKeepMin, computeUniforms.uKeepMax, seed)
-            const dieDuration = mix(computeUniforms.uDieMin, computeUniforms.uDieMax, seed)
+            const delayDuration = mix(uniforms.uDelayMin, uniforms.uDelayMax,  seed)
+            const growDuration = mix(uniforms.uGrowMin, uniforms.uGrowMax, seed)
+            const keepDuration = mix(uniforms.uKeepMin, uniforms.uKeepMax, seed)
+            const dieDuration = mix(uniforms.uDieMin, uniforms.uDieMax, seed)
 
             // Calculate total lifetime and phase boundaries
             const lifetime = delayDuration.add(growDuration).add(keepDuration).add(dieDuration)
@@ -37,6 +50,8 @@ export function createUpdateCompute(
 
             If(progress.greaterThan(1.0), () => {
                 data.get("isActive").assign(0.0)
+                data.get("progress").assign(0.0)
+                data.get("frame").assign(0.0)
             }).Else(() => {
                 const currentFrame = float(0.0).toVar();
 
@@ -44,21 +59,24 @@ export function createUpdateCompute(
                 If(progress.lessThan(p1), () => {
                     currentFrame.assign(0.0)
                 })
-                // Phase 1: Grow (p1 ~ p2) - frame grows from 0 to 1
-                .ElseIf(progress.lessThan(p2), () => {
-                    const stateProgress = progress.sub(p1).div(p2.sub(p1))
-                    currentFrame.assign(stateProgress)
-                })
-                // Phase 2: Keep (p2 ~ p3) - frame stays at 1
-                .ElseIf(progress.lessThan(p3), () => {
-                    currentFrame.assign(1.0)
-                })
-                // Phase 3: Die (p3 ~ 1.0) - frame decays from 1 to 0
-                .Else(() => {
-                    const stateProgress = float(1.0).sub(progress.sub(p3).div(float(1.0).sub(p3)))
-                    currentFrame.assign(stateProgress)
-                })
+                    // Phase 1: Grow (p1 ~ p2) - frame grows from 0 to 1 with easing
+                    .ElseIf(progress.lessThan(p2), () => {
+                        const stateProgress = progress.sub(p1).div(p2.sub(p1))
+                        const easedProgress = easeInOutCubic(stateProgress)
+                        currentFrame.assign(easedProgress)
+                    })
+                    // Phase 2: Keep (p2 ~ p3) - frame stays at 1
+                    .ElseIf(progress.lessThan(p3), () => {
+                        currentFrame.assign(1.0)
+                    })
+                    // Phase 3: Die (p3 ~ 1.0) - frame decays from 1 to 0 with easing
+                    .Else(() => {
+                        const stateProgress = progress.sub(p3).div(float(1.0).sub(p3))
+                        const easedProgress = easeInOutCubic(stateProgress)
+                        currentFrame.assign(float(1.0).sub(easedProgress))
+                    })
 
+                data.get("progress").assign(progress.clamp(0.0, 1.0))
                 data.get("frame").assign(currentFrame) // Animate
                 // Add to draw queue
                 const idx = atomicAdd(drawStorage.get("instanceCount"), uint(1))
@@ -106,6 +124,7 @@ export function createSpawnCompute(
                 instance.get('frame').assign(0.0)                   // reset the animation frame
                 instance.get('startTime').assign(time)              // record the birth time
                 instance.get('seed').assign(seed)                   // set the seed
+                instance.get('progress').assign(0.0)                // reset lifecycle progress
             })
         })
     })

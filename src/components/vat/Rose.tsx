@@ -2,15 +2,15 @@ import { useEffect, useMemo, useRef, useImperativeHandle, forwardRef } from "rea
 import * as THREE from "three/webgpu";
 import { useTexture } from "@react-three/drei";
 import { folder, useControls } from "leva";
-import { storage, uniform, vec3, instancedArray, struct } from "three/tsl";
+import { storage, uniform, vec2, vec3, instancedArray, struct } from "three/tsl";
 import { useVATPreloader } from "./VATPreloader";
 import { extractGeometryFromScene, setupVATGeometry } from "./utils";
-import { createVATMaterial } from "./materials/vatNodeMaterial";
+import { createVATMaterial } from "./materials/vatMaterial";
 import { drawIndirectStructure } from "../grass/core/constants";
 import { useFrame, useThree } from "@react-three/fiber";
 import { WebGPURenderer } from 'three/webgpu'
 import { vatStructure } from "./constant";
-import { createUpdateCompute, createResetCompute, createSpawnCompute, createVisibleIndicesBuffer } from "./roseCompute";
+import { createUpdateCompute, createResetCompute, createSpawnCompute, createVisibleIndicesBuffer } from "./vatCompute";
 
 // Define API exposed to parent component
 export type RoseHandle = {
@@ -24,22 +24,34 @@ const Rose = forwardRef<RoseHandle, { count: number }>(({ count }, ref) => {
 
     const [config] = useControls('Rose', () => ({
         Render: folder({
-            Green: { value: '#325825' },
+            green: { value: '#325825' },
+            green2: { value: '#699555' },
+            scaleMin: { value: 5, min: 0, max: 10, step: 0.1 },
+            scaleMax: { value: 10, min: 0, max: 10, step: 0.1 },
+            normalScale: { value: 3, min: 0, max: 10, step: 0.1 },
+            hueShift: { value: 0, min: 0, max: 1, step: 0.01 },
+            noiseScale: { value: { x: 1, y: 100 }, min: 0, max: 100, step: 0.1 },
         }),
         Lifecycle: folder({
-            DelayMin: { value: 0, min: 0, max: 10, step: 0.1 },
-            DelayMax: { value: 0, min: 0, max: 10, step: 0.1 },
-            GrowMin: { value: 2, min: 0, max: 10, step: 0.1 },
-            GrowMax: { value: 3, min: 0, max: 10, step: 0.1 },
-            KeepMin: { value: 2, min: 0, max: 10, step: 0.1 },
-            KeepMax: { value: 2, min: 0, max: 10, step: 0.1 },
-            DieMin: { value: 2, min: 0, max: 10, step: 0.1 },
-            DieMax: { value: 3, min: 0, max: 10, step: 0.1 },
+            delayMin: { value: 0, min: 0, max: 10, step: 0.1 },
+            delayMax: { value: 0, min: 0, max: 10, step: 0.1 },
+            growMin: { value: 2, min: 0, max: 10, step: 0.1 },
+            growMax: { value: 3, min: 0, max: 10, step: 0.1 },
+            keepMin: { value: 2, min: 0, max: 10, step: 0.1 },
+            keepMax: { value: 2, min: 0, max: 10, step: 0.1 },
+            dieMin: { value: 2, min: 0, max: 10, step: 0.1 },
+            dieMax: { value: 3, min: 0, max: 10, step: 0.1 },
         }),
     }))
 
-    const uniforms = useMemo(() => ({
+    const matUniforms = useMemo(() => ({
         uGreen: uniform(vec3(0.6, 0.9, 0.6)),
+        uGreen2: uniform(vec3(0.6, 0.9, 0.6)),
+        uScaleMin: uniform(0.5),
+        uScaleMax: uniform(2.0),
+        uNormalScale: uniform(1.0),
+        uHueShift: uniform(0.0),
+        uNoiseScale: uniform(vec2(1, 1)),
     }), [])
 
     // Compute uniforms (can have more settings in the future)
@@ -57,7 +69,10 @@ const Rose = forwardRef<RoseHandle, { count: number }>(({ count }, ref) => {
     const petalTex = useTexture('/textures/Rose/Rose_Petal_Diff.png')
     petalTex.colorSpace = THREE.SRGBColorSpace
     const outlineTex = useTexture('/textures/Rose/Rose_Outline.png')
-   
+    const normalMapTex = useTexture('/textures/Rose/Rose_Petal_Normal.png')
+    normalMapTex.repeat.set(0.8, 1)
+    normalMapTex.offset.set(0.1, 0)
+
     const spawnUniforms = useMemo(() => ({
         uSpawnPos: uniform(vec3(0)),
         uDoSpawn: uniform(0), // 0=no spawn, 1=spawn
@@ -83,23 +98,26 @@ const Rose = forwardRef<RoseHandle, { count: number }>(({ count }, ref) => {
 
     // Initialize data buffer
     const vatData = useMemo(() => {
-        // Calculate total size: position(vec3=3) + isActive(1) + frame(1) + startTime(1) + seed(1) = 7 floats per instance
-        const data = new Float32Array(count * 7)
+        // position(vec3=3) + isActive + frame + startTime + seed + progress = 8 floats per instance
+        const stride = 8
+        const data = new Float32Array(count * stride)
 
         for (let i = 0; i < count; i++) {
-            const stride = 7
+            const base = i * stride
             // Position (x, y, z)
-            data[i * stride + 0] = 0  
-            data[i * stride + 1] = 0
-            data[i * stride + 2] = 0
+            data[base + 0] = 0
+            data[base + 1] = 0
+            data[base + 2] = 0
             // isActive
-            data[i * stride + 3] = 0
+            data[base + 3] = 0
             // Frame
-            data[i * stride + 4] = 0
+            data[base + 4] = 0
             // Start Time
-            data[i * stride + 5] = 0.0
+            data[base + 5] = 0.0
             // Seed
-            data[i * stride + 6] = 0.0
+            data[base + 6] = 0.0
+            // Progress
+            data[base + 7] = 0.0
         }
         return instancedArray(data, vatStructure)
     }, [count])
@@ -138,13 +156,15 @@ const Rose = forwardRef<RoseHandle, { count: number }>(({ count }, ref) => {
             vatData,
             visibleIndicesBuffer,
             meta as any,
-            uniforms,
+            matUniforms,
             petalTex,
             outlineTex,
+            normalMapTex,
         )
         const mesh = new THREE.Mesh(geometry, mat)
         mesh.count = count
         mesh.frustumCulled = false
+        mesh.castShadow = true
         groupRef.current.add(mesh)
 
         return () => {
@@ -155,23 +175,29 @@ const Rose = forwardRef<RoseHandle, { count: number }>(({ count }, ref) => {
     }, [scene, meta, isLoaded, posTex, nrmTex, vatData])
 
     useEffect(() => {
-        const baseColor = new THREE.Color(config.Green)
-        uniforms.uGreen.value.set(baseColor.r, baseColor.g, baseColor.b)
-    }, [config, uniforms])
+        const baseColor = new THREE.Color(config.green)
+        matUniforms.uGreen.value.set(baseColor.r, baseColor.g, baseColor.b)
+
+        const baseColor2 = new THREE.Color(config.green2)
+        matUniforms.uGreen2.value.set(baseColor2.r, baseColor2.g, baseColor2.b)
+
+        matUniforms.uScaleMin.value = config.scaleMin
+        matUniforms.uScaleMax.value = config.scaleMax
+        matUniforms.uNormalScale.value = config.normalScale
+        matUniforms.uHueShift.value = config.hueShift
+        matUniforms.uNoiseScale.value.set(config.noiseScale.x, config.noiseScale.y)
+    }, [config, matUniforms])
 
     // Update compute uniforms when config changes
     useEffect(() => {
-        const life = (config as any).Lifecycle
-        if (life) {
-            computeUniforms.uDelayMin.value = life.DelayMin
-            computeUniforms.uDelayMax.value = life.DelayMax
-            computeUniforms.uGrowMin.value = life.GrowMin
-            computeUniforms.uGrowMax.value = life.GrowMax
-            computeUniforms.uKeepMin.value = life.KeepMin
-            computeUniforms.uKeepMax.value = life.KeepMax
-            computeUniforms.uDieMin.value = life.DieMin
-            computeUniforms.uDieMax.value = life.DieMax
-        }
+        computeUniforms.uDelayMin.value = config.delayMin
+        computeUniforms.uDelayMax.value = config.delayMax
+        computeUniforms.uGrowMin.value = config.growMin
+        computeUniforms.uGrowMax.value = config.growMax
+        computeUniforms.uKeepMin.value = config.keepMin
+        computeUniforms.uKeepMax.value = config.keepMax
+        computeUniforms.uDieMin.value = config.dieMin
+        computeUniforms.uDieMax.value = config.dieMax
     }, [config, computeUniforms])
 
     useFrame(() => {
@@ -187,9 +213,9 @@ const Rose = forwardRef<RoseHandle, { count: number }>(({ count }, ref) => {
     })
 
     return <group ref={groupRef}>
-        <mesh rotation={[-Math.PI / 2, 0, 0]} scale={10}>
+        <mesh rotation={[-Math.PI / 2, 0, 0]} scale={10} receiveShadow>
             <planeGeometry />
-            <meshBasicMaterial color="white" />
+            <meshStandardMaterial color="white" />
         </mesh>
     </group>
 })

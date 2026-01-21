@@ -6,4 +6,5 @@ export const vatStructure = struct({
     frame: 'float',    // Current animation frame (0-1)
     startTime: 'float',  // Time when the instance was spawned
     seed: 'float',  // Seed for random values
+    progress: 'float', // Lifecycle progress [0,1]
 })
