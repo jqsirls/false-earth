@@ -18,7 +18,8 @@ import { CameraViewControl } from "../components/camera/CameraViewControl";
 import { useGameStore } from "../store/gameStore";
 import { Group } from "three";
 import { CameraControls } from "@react-three/drei";
-import Rose from "../components/Rose";
+import Rose from "../components/vat/Rose";
+import TestSpawner from "../components/vat/TestSpawner";
 
 export default function App() {
     const [terrainUniforms, setTerrainUniforms] = useState<TerrainUniforms | undefined>(undefined)
@@ -85,7 +86,8 @@ export default function App() {
 
             {/* <Effects /> */}
 
-            <Rose />
+            {/* <Rose /> */}
+            <TestSpawner />
             {/* <Stars /> */}
 
 

@@ -1,18 +1,22 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useImperativeHandle, forwardRef } from "react";
 import * as THREE from "three/webgpu";
 import { useTexture } from "@react-three/drei";
 import { folder, useControls } from "leva";
-import { atomicAdd, atomicStore, storage, uint, uniform, vec3, instanceIndex, instancedArray, If, time, fract, Fn } from "three/tsl";
-import { useVATPreloader } from "./vat/VATPreloader";
-import { extractGeometryFromScene, setupVATGeometry } from "./vat/utils";
-import { createVATMaterial } from "./vat/materials/vatNodeMaterial";
-import { drawIndirectStructure } from "./grass/core/constants";
+import { atomicAdd, atomicStore, storage, uint, uniform, vec3, instanceIndex, instancedArray, If, time, Fn, float, struct } from "three/tsl";
+import { useVATPreloader } from "./VATPreloader";
+import { extractGeometryFromScene, setupVATGeometry } from "./utils";
+import { createVATMaterial } from "./materials/vatNodeMaterial";
+import { drawIndirectStructure } from "../grass/core/constants";
 import { useFrame, useThree } from "@react-three/fiber";
 import { WebGPURenderer } from 'three/webgpu'
-import { vatStructure } from "./vat/constant";
+import { vatStructure } from "./constant";
 
+// Define API exposed to parent component
+export type RoseHandle = {
+    spawn: (pos: THREE.Vector3) => void
+}
 
-export default function Rose({ count = 1000 }: { count: number }) {
+const Rose = forwardRef<RoseHandle, { count: number }>(({ count }, ref) => {
     const gl = useThree((state) => state.gl)
     const { scene, posTex, nrmTex, meta, isLoaded } = useVATPreloader('/vat/Rose_meta.json')
     const groupRef = useRef<THREE.Group>(null)
@@ -30,6 +34,29 @@ export default function Rose({ count = 1000 }: { count: number }) {
             Green: { value: '#325825' },
         }),
     }))
+
+    const spawnUniforms = useMemo(() => ({
+        uSpawnPos: uniform(vec3(0)),
+        uDoSpawn: uniform(0), // 0=no spawn, 1=spawn
+    }), [])
+
+    const spawnStorage = useMemo(() => {
+        const spawnStateStruct = struct({
+            index: { type: 'uint', atomic: true }
+        })
+        const buffer = new THREE.StorageBufferAttribute(new Uint32Array([0]), 1)
+        return storage(buffer, spawnStateStruct, 1)
+    }, [])
+
+    // Expose spawn method to parent component
+    useImperativeHandle(ref, () => ({
+        spawn: (pos: THREE.Vector3) => {
+            // Directly write to uniform, bypassing React State
+            spawnUniforms.uSpawnPos.value.copy(pos)
+            spawnUniforms.uDoSpawn.value = 1
+        }
+    }), [spawnUniforms])
+
 
     // Initialize data buffer (using struct: vec3 + float + float + float = 6 floats per instance)
     const vatData = useMemo(() => {
@@ -53,10 +80,10 @@ export default function Rose({ count = 1000 }: { count: number }) {
         return instancedArray(data, vatStructure)
     }, [count])
 
-    const computeRefs = useRef<{ reset: THREE.ComputeNode, update: THREE.ComputeNode } | null>(null)
+    const computeRefs = useRef<{ reset: THREE.ComputeNode, spawn: THREE.ComputeNode, update: THREE.ComputeNode } | null>(null)
 
     useEffect(() => {
-        if (!groupRef.current || !scene || !meta || !isLoaded || !vatData) return
+        if (!groupRef.current || !scene || !meta || !isLoaded || !vatData || !spawnStorage) return
 
         const geometry = extractGeometryFromScene(scene)
         if (!geometry) {
@@ -74,9 +101,10 @@ export default function Rose({ count = 1000 }: { count: number }) {
 
         // Compute Shaders
         const resetCompute = createResetCompute(drawStorage, indexCount)
+        const spawnCompute = createSpawnCompute(vatData, spawnStorage, spawnUniforms, count)
         const updateCompute = createUpdateCompute(drawStorage, visibleIndicesBuffer, vatData, count)
 
-        computeRefs.current = { reset: resetCompute, update: updateCompute }
+        computeRefs.current = { reset: resetCompute, spawn: spawnCompute, update: updateCompute }
 
         setupVATGeometry(geometry as any, meta as any)
 
@@ -112,7 +140,11 @@ export default function Rose({ count = 1000 }: { count: number }) {
         if (!computeRefs.current) return
 
         renderer.compute(computeRefs.current.reset)
+        renderer.compute(computeRefs.current.spawn)
         renderer.compute(computeRefs.current.update)
+
+        // Reset spawn flag each frame (important, keep this)
+        spawnUniforms.uDoSpawn.value = 0
     })
 
     return <group ref={groupRef}>
@@ -121,25 +153,37 @@ export default function Rose({ count = 1000 }: { count: number }) {
             <meshBasicMaterial color="white" />
         </mesh>
     </group>
-}
+})
+
+Rose.displayName = 'Rose'
+
+export default Rose
 
 
 export function createUpdateCompute(
     drawStorage: ReturnType<typeof storage>,
     indices: ReturnType<typeof instancedArray>,
     vatData: ReturnType<typeof instancedArray>,
-    count: number
+    count: number,
 ) {
     const updateFn = Fn(() => {
         const data = vatData.element(instanceIndex)
 
         // Simple animation logic: if active, update frame
         If(data.get("isActive").greaterThan(0), () => {
-            data.get("frame").assign(fract(time.mul(0.5))) // Animate
 
-            // Add to draw queue
-            const idx = atomicAdd(drawStorage.get("instanceCount"), uint(1))
-            indices.element(idx).assign(uint(instanceIndex))
+            const age = time.sub(data.get("startTime"))
+            const progress = age.div(float(2.0))
+
+            If(progress.greaterThan(1.0), () => {
+                data.get("isActive").assign(0.0)
+                data.get("scale").assign(0.0)
+            }).Else(() => {
+                data.get("frame").assign(progress) // Animate
+                // Add to draw queue
+                const idx = atomicAdd(drawStorage.get("instanceCount"), uint(1))
+                indices.element(idx).assign(uint(instanceIndex))
+            })
         })
     })
     return updateFn().compute(count)
@@ -151,6 +195,35 @@ export function createResetCompute(drawStorage: ReturnType<typeof storage>, inde
         drawStorage.get("vertexCount").assign(uint(indexCount))
         atomicStore(drawStorage.get("instanceCount"), uint(0))
     })().compute(1)
+}
+
+export function createSpawnCompute(
+    vatData: ReturnType<typeof instancedArray>,
+    spawnStorage: ReturnType<typeof storage>, // use to record the current index of the rose
+    uniforms: { uSpawnPos: any, uDoSpawn: any },
+    maxCount: number
+) {
+    const spawnFn = Fn(() => {
+        // only execute when the CPU notifies to Spawn
+        If(uniforms.uDoSpawn.greaterThan(0), () => {
+
+            // atomic operation only allow one thread to execute at a time
+            // this can prevent the other 63 threads in the same Workgroup from executing
+            If(instanceIndex.equal(0), () => {
+                const headIndex = atomicAdd(spawnStorage.get("index"), uint(1)).mod(uint(maxCount))
+
+                const instance = vatData.element(headIndex)
+
+                instance.get('position').assign(uniforms.uSpawnPos) // set to the current position of the character
+                instance.get('startTime').assign(time)              // record the birth time
+                instance.get('isActive').assign(1.0)                // mark as alive
+                instance.get('frame').assign(0.0)                   // reset the animation frame
+                instance.get('scale').assign(2.0)                   // (optional) add random scale
+            })
+        })
+    })
+    // this shader only needs to run 1 time (single thread processing pointer movement)
+    return spawnFn().compute(1)
 }
 
 export function createVisibleIndicesBuffer(count: number) {

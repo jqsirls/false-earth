@@ -5,4 +5,5 @@ export const vatStructure = struct({
     scale: 'float',    // Scale size
     frame: 'float',    // Current animation frame (0-1)
     isActive: 'float',   // Status: 0=dead, 1=alive (prepared for Spawn system)
+    startTime: 'float',  // Time when the instance was spawned
 })
