@@ -31,7 +31,7 @@ import {
   mx_noise_float,
   remapClamp
 } from "three/tsl";
-import { VATMeta } from "../types";
+import { VATMeta } from "./types";
 
 /**
  * Simple VAT node material based on GLSL shader

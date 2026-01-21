@@ -3,17 +3,17 @@ import * as THREE from "three/webgpu";
 import { useTexture } from "@react-three/drei";
 import { folder, useControls } from "leva";
 import { storage, uniform, vec2, vec3, instancedArray, struct } from "three/tsl";
-import { useVATPreloader, extractGeometryFromScene, setupVATGeometry } from "./utils";
-import { createVATMaterial } from "./materials/vatMaterial";
+import { useVATPreloader, extractGeometryFromScene, setupVATGeometry } from "./core";
+import { createVATMaterial } from "./core/vatMaterial";
 import { drawIndirectStructure } from "../grass/core/constants";
 import { useFrame, useThree } from "@react-three/fiber";
 import { WebGPURenderer } from 'three/webgpu'
-import { vatStructure } from "./types";
-import { createUpdateCompute, createResetCompute, createSpawnCompute, createVisibleIndicesBuffer } from "./vatCompute";
+import { vatStructure } from "./core/types";
+import { createUpdateCompute, createResetCompute, createSpawnCompute, createVisibleIndicesBuffer } from "./core/vatCompute";
 
 // Define API exposed to parent component
 export type RoseHandle = {
-    spawn: (pos: THREE.Vector3) => void
+    spawn: (pos: THREE.Vector3, count?: number, radius?: number) => void
 }
 
 const Rose = forwardRef<RoseHandle, { count: number }>(({ count }, ref) => {
@@ -74,7 +74,8 @@ const Rose = forwardRef<RoseHandle, { count: number }>(({ count }, ref) => {
 
     const spawnUniforms = useMemo(() => ({
         uSpawnPos: uniform(vec3(0)),
-        uDoSpawn: uniform(0), // 0=no spawn, 1=spawn
+        uSpawnCount: uniform(0),    // Number of instances to spawn (0-64)
+        uSpawnRadius: uniform(0.5), // Scatter radius around spawn position
     }), [])
 
     const spawnStorage = useMemo(() => {
@@ -87,10 +88,11 @@ const Rose = forwardRef<RoseHandle, { count: number }>(({ count }, ref) => {
 
     // Expose spawn method to parent component
     useImperativeHandle(ref, () => ({
-        spawn: (pos: THREE.Vector3) => {
+        spawn: (pos: THREE.Vector3, amount: number = 1, radius: number = 0.5) => {
             // Directly write to uniform, bypassing React State
-            spawnUniforms.uSpawnPos.value.copy(pos)
-            spawnUniforms.uDoSpawn.value = 1
+            spawnUniforms.uSpawnPos.value.copy(pos);
+            spawnUniforms.uSpawnCount.value = Math.min(amount, 64); // Clamp to max batch size
+            spawnUniforms.uSpawnRadius.value = radius;
         }
     }), [spawnUniforms])
 
@@ -207,8 +209,8 @@ const Rose = forwardRef<RoseHandle, { count: number }>(({ count }, ref) => {
         renderer.compute(computeRefs.current.spawn)
         renderer.compute(computeRefs.current.update)
 
-        // Reset spawn flag each frame (important, keep this)
-        spawnUniforms.uDoSpawn.value = 0
+        // Reset spawn count each frame (important, keep this)
+        spawnUniforms.uSpawnCount.value = 0
     })
 
     return <group ref={groupRef}>

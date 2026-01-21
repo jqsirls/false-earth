@@ -1,4 +1,4 @@
-import { atomicAdd, atomicStore, storage, uint, instanceIndex, instancedArray, If, time, Fn, float, fract, mix, step } from "three/tsl";
+import { atomicAdd, atomicStore, storage, uint, instanceIndex, instancedArray, If, time, Fn, float, fract, mix, step, vec3, sin, cos, PI } from "three/tsl";
 
 /**
  * Create update compute shader
@@ -99,37 +99,57 @@ export function createResetCompute(drawStorage: ReturnType<typeof storage>, inde
 }
 
 /**
- * Create spawn compute shader
- * Spawns a new rose instance at the specified position when triggered
+ * Create spawn compute shader (Batch Version)
+ * Capable of spawning multiple instances per frame
+ * Parallelizes spawn operations using GPU threads
  */
 export function createSpawnCompute(
     vatData: ReturnType<typeof instancedArray>,
     spawnStorage: ReturnType<typeof storage>, // use to record the current index of the rose
-    uniforms: { uSpawnPos: any, uDoSpawn: any },
+    uniforms: { uSpawnPos: any, uSpawnCount: any, uSpawnRadius: any },
     maxCount: number
 ) {
+    // Define a max batch size (e.g., spawn up to 64 flowers per frame)
+    const BATCH_SIZE = 64;
+
     const spawnFn = Fn(() => {
-        // only execute when the CPU notifies to Spawn
-        If(uniforms.uDoSpawn.greaterThan(0), () => {
+        // Only threads within the requested spawn count will execute
+        If(instanceIndex.lessThan(uniforms.uSpawnCount), () => {
+            
+            // 1. Get a unique slot index atomically
+            const headIndex = atomicAdd(spawnStorage.get("index"), uint(1)).mod(uint(maxCount));
+            
+            // 2. Generate a unique seed for this specific instance
+            // We mix time + instanceIndex to ensure uniqueness within the same frame
+            const uniqueSeed = fract(float(time).add(float(instanceIndex).mul(0.123)).mul(123.45));
+            
+            const instance = vatData.element(headIndex);
 
-            // atomic operation only allow one thread to execute at a time
-            // this can prevent the other 63 threads in the same Workgroup from executing
-            If(instanceIndex.equal(0), () => {
-                const headIndex = atomicAdd(spawnStorage.get("index"), uint(1)).mod(uint(maxCount))
-                const seed = fract(float(time).mul(123.45))
-                const instance = vatData.element(headIndex)
+            // 3. Add random offset to position
+            // Uses the unique seed to scatter flowers around uSpawnPos
+            const angle = uniqueSeed.mul(PI.mul(2.0));
+            const radius = fract(uniqueSeed.mul(43.75)).mul(uniforms.uSpawnRadius);
+            const offsetX = cos(angle).mul(radius);
+            const offsetZ = sin(angle).mul(radius);
+            const randomPos = vec3(
+                uniforms.uSpawnPos.x.add(offsetX), 
+                uniforms.uSpawnPos.y, 
+                uniforms.uSpawnPos.z.add(offsetZ)
+            );
 
-                instance.get('position').assign(uniforms.uSpawnPos) // set to the current position of the character
-                instance.get('isActive').assign(1.0)                // mark as alive
-                instance.get('frame').assign(0.0)                   // reset the animation frame
-                instance.get('startTime').assign(time)              // record the birth time
-                instance.get('seed').assign(seed)                   // set the seed
-                instance.get('progress').assign(0.0)                // reset lifecycle progress
-            })
+            instance.get('position').assign(randomPos); 
+            instance.get('isActive').assign(1.0);
+            instance.get('frame').assign(0.0);
+            instance.get('startTime').assign(time);
+            instance.get('seed').assign(uniqueSeed);
+            instance.get('progress').assign(0.0);
         })
-    })
-    // this shader only needs to run 1 time (single thread processing pointer movement)
-    return spawnFn().compute(1)
+    });
+
+    // Run 64 threads every frame. 
+    // If uSpawnCount is 0, they all exit immediately (cheap).
+    // If uSpawnCount is 10, the first 10 threads spawn flowers.
+    return spawnFn().compute(BATCH_SIZE);
 }
 
 /**

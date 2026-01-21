@@ -12,7 +12,7 @@ import { DebugModeToggle } from "../components/debug/DebugModeToggle";
 import Effects from "../components/Effects";
 import { Character } from "../components/character";
 import { TerrainUniforms } from "../components/types";
-import { Background } from "../components/Background";
+import { Background } from "../components/vat/core/Background";
 import { Stars } from "../components/Stars";
 import { useGameStore } from "../store/gameStore";
 import { Group } from "three";
@@ -100,7 +100,7 @@ export default function App() {
                     <Terrain onUniformsChange={setTerrainUniforms} />
                     <GrassWebGPU terrainUniforms={terrainUniforms} trailTexture={trailTexture} />
                     <Character ref={characterRef} position={[0, 0, 0]} scale={0.01} terrainUniforms={terrainUniforms} onTrailTextureChange={setTrailTexture} />
-                    <RoseCharacterSpawner roseRef={roseRef} />
+                    <RoseCharacterSpawner roseRef={roseRef} spawnCount={10} scatterRadius={2} />
                 </>
             )}
 
