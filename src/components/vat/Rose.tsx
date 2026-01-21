@@ -3,13 +3,12 @@ import * as THREE from "three/webgpu";
 import { useTexture } from "@react-three/drei";
 import { folder, useControls } from "leva";
 import { storage, uniform, vec2, vec3, instancedArray, struct } from "three/tsl";
-import { useVATPreloader } from "./VATPreloader";
-import { extractGeometryFromScene, setupVATGeometry } from "./utils";
+import { useVATPreloader, extractGeometryFromScene, setupVATGeometry } from "./utils";
 import { createVATMaterial } from "./materials/vatMaterial";
 import { drawIndirectStructure } from "../grass/core/constants";
 import { useFrame, useThree } from "@react-three/fiber";
 import { WebGPURenderer } from 'three/webgpu'
-import { vatStructure } from "./constant";
+import { vatStructure } from "./types";
 import { createUpdateCompute, createResetCompute, createSpawnCompute, createVisibleIndicesBuffer } from "./vatCompute";
 
 // Define API exposed to parent component
@@ -213,10 +212,10 @@ const Rose = forwardRef<RoseHandle, { count: number }>(({ count }, ref) => {
     })
 
     return <group ref={groupRef}>
-        <mesh rotation={[-Math.PI / 2, 0, 0]} scale={10} receiveShadow>
+        {/* <mesh rotation={[-Math.PI / 2, 0, 0]} scale={10} receiveShadow>
             <planeGeometry />
             <meshStandardMaterial color="white" />
-        </mesh>
+        </mesh> */}
     </group>
 })
 
