@@ -42,58 +42,53 @@ export function createVATMaterial(
 
 
 
+  // Get correct instance data
   const trueIndex = visibleIndicesBuffer.element(instanceIndex);
   const data = vatData.element(trueIndex);
 
+  // Handle VAT animation frame
   const frame = data.get("frame");
-
-
-  // Calculate uniforms
   const texWidth = meta.textureWidth;
-  const texelSizeX = 1.0 / texWidth;
   const uFrames = uniform(meta.frameCount);
-
-  // Get uv1 coordinates (second UV set)
   const uv1 = uv(1);
-
   const frameIndex = uFrames.sub(float(1.0)).mul(frame);
-  const frameOffset = frameIndex.mul(texelSizeX);
-
+  const frameOffset = frameIndex.mul(1.0 / texWidth);
   const sampleUV = vec2(uv1.x.add(frameOffset), uv1.y);
 
-
-
+  // Position calculation (Refactor: read position and scale from buffer)
   material.positionNode = Fn(() => {
-    // const trueIndex = visibleIndicesBuffer.element(instanceIndex);
-
-    const offset = vec3(instanceIndex, 0, 0).mul(0.1);
-    // Sample position texture
-    const vatPos = texture(posTex, sampleUV).rgb;
-    return positionLocal.add(vatPos).add(offset);
+    // Read VAT vertex offset
+    const vatOffset = texture(posTex, sampleUV).rgb;
+    
+    // Apply instance scale
+    const scaledOffset = vatOffset.mul(data.get("scale"));
+    
+    // Apply world position
+    // Move vertex from local space to world coordinates specified in buffer
+    return positionLocal.add(scaledOffset).add(data.get("position"));
   })();
 
 
 
-  // Simple color node: petal color, optionally mixed with outline
+  // Color processing (simplified)
   material.colorNode = Fn(() => {
-
     const uvCord = vec2(uv().x.sub(0.5).mul(0.8).add(0.5), uv().y);
-
-    const epsilon = 0.05;
-    const data = vertexColor(0).r;
-    const mask = vec3(
-      step(abs(data.sub(0.7)), epsilon), // petalMask
-      step(abs(data.sub(0.0)), epsilon), // leafMask
-      step(abs(data.sub(1.0)), epsilon) // stemMask
-    );
+    const vColor = vertexColor(0).r;
+    
+    // Simple mask logic
+    const isPetal = step(abs(vColor.sub(0.7)), 0.05);
+    const isStem = step(abs(vColor.sub(0.0)), 0.05);
+    const isLeaf = step(abs(vColor.sub(1.0)), 0.05);
 
     const petalColor = texture(colorTex, uvCord).rgb;
     const stemColor = uniforms.uGreen;
 
-    const color = petalColor.mul(mask.x).add(stemColor.mul(mask.y)).add(stemColor.mul(mask.z));
+    // Mix colors
+    const finalColor = petalColor.mul(isPetal)
+        .add(stemColor.mul(isStem))
+        .add(stemColor.mul(isLeaf));
 
-
-    return vec4(color, 1.0)
+    return vec4(finalColor, 1.0);
   })();
 
   const calculateVatNormal = Fn(() => {

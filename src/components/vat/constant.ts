@@ -1,7 +1,8 @@
 import { struct } from "three/tsl";
 
 export const vatStructure = struct({
-    frame: 'float',
-    animated: 'float',
-    cycleProgress: 'float',
+    position: 'vec3',  // World coordinates
+    scale: 'float',    // Scale size
+    frame: 'float',    // Current animation frame (0-1)
+    isActive: 'float',   // Status: 0=dead, 1=alive (prepared for Spawn system)
 })

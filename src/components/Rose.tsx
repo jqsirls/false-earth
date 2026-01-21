@@ -2,13 +2,11 @@ import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three/webgpu";
 import { useTexture } from "@react-three/drei";
 import { folder, useControls } from "leva";
-import { atomicAdd, atomicStore, storage, uint, uniform, vec3, instanceIndex, instancedArray, If, time, fract, float } from "three/tsl";
+import { atomicAdd, atomicStore, storage, uint, uniform, vec3, instanceIndex, instancedArray, If, time, fract, Fn } from "three/tsl";
 import { useVATPreloader } from "./vat/VATPreloader";
-import { extractGeometryFromScene } from "./vat/utils";
-import { setupVATGeometry } from "./vat/utils";
+import { extractGeometryFromScene, setupVATGeometry } from "./vat/utils";
 import { createVATMaterial } from "./vat/materials/vatNodeMaterial";
 import { drawIndirectStructure } from "./grass/core/constants";
-import { Fn } from "three/src/nodes/TSL.js";
 import { useFrame, useThree } from "@react-three/fiber";
 import { WebGPURenderer } from 'three/webgpu'
 import { vatStructure } from "./vat/constant";
@@ -17,64 +15,71 @@ import { vatStructure } from "./vat/constant";
 export default function Rose({ count = 1000 }: { count: number }) {
     const gl = useThree((state) => state.gl)
     const { scene, posTex, nrmTex, meta, isLoaded } = useVATPreloader('/vat/Rose_meta.json')
-
-
     const groupRef = useRef<THREE.Group>(null)
-    const meshRef = useRef<THREE.Mesh>(null)
+
     const uniforms = useMemo(() => ({
-        uFrame: uniform(0.5),
         uGreen: uniform(vec3(0.6, 0.9, 0.6)),
     }), [])
 
     const petalTex = useTexture('/textures/Rose/Rose_Petal_Diff.png')
     petalTex.colorSpace = THREE.SRGBColorSpace
-
     const outlineTex = useTexture('/textures/Rose/Rose_Outline.png')
 
     const [config] = useControls('Rose', () => ({
-        Frame: folder({
-            Frame: { value: 0.5, min: 0, max: 1, step: 0.01 },
-        }),
         Render: folder({
-            Green: { value: '#325825', min: 0, max: 1, step: 0.01 },
+            Green: { value: '#325825' },
         }),
     }))
 
-    const resetComputeRef = useRef<THREE.ComputeNode>(null)
-    const computeRef = useRef<any>(null)
-
+    // Initialize data buffer (using struct: vec3 + float + float + float = 6 floats per instance)
     const vatData = useMemo(() => {
-        const vatData = new Float32Array(count * 3)
-        vatData.fill(0)
-        return instancedArray(vatData, vatStructure)
+        // Calculate total size (vec3=3 + float=1 + float=1 + float=1 = 6 floats per instance)
+        const data = new Float32Array(count * 6)
+
+        // Pre-fill initial positions in CPU (Refactor: positions in buffer, not calculated in shader)
+        for (let i = 0; i < count; i++) {
+            const stride = 6
+            // Position (x, y, z) - currently linear arrangement for visual confirmation
+            data[i * stride + 0] = i * 0.1
+            data[i * stride + 1] = 0
+            data[i * stride + 2] = 0
+            // Scale
+            data[i * stride + 3] = 1.0
+            // Frame
+            data[i * stride + 4] = 0
+            // isActive
+            data[i * stride + 5] = 1.0
+        }
+        return instancedArray(data, vatStructure)
     }, [count])
 
+    const computeRefs = useRef<{ reset: THREE.ComputeNode, update: THREE.ComputeNode } | null>(null)
 
     useEffect(() => {
         if (!groupRef.current || !scene || !meta || !isLoaded || !vatData) return
 
-        const geometry = extractGeometryFromScene(scene as any)
+        const geometry = extractGeometryFromScene(scene)
         if (!geometry) {
             console.warn('VAT geometry not found in scene')
             return
         }
 
+        // Indirect Draw Setup
         const indexCount = geometry.index ? geometry.index.count : geometry.attributes.position.count
         const drawBuffer = new THREE.IndirectStorageBufferAttribute(new Uint32Array(indexCount), indexCount)
         const drawStorage = storage(drawBuffer, drawIndirectStructure, 1)
         geometry.setIndirect(drawBuffer)
 
-        const resetCompute = createResetCompute(drawStorage, indexCount)
-        resetComputeRef.current = resetCompute
-
         const visibleIndicesBuffer = createVisibleIndicesBuffer(count)
 
-        const computeFn = createCompute(drawStorage, visibleIndicesBuffer, count, vatData)
-        computeRef.current = computeFn
+        // Compute Shaders
+        const resetCompute = createResetCompute(drawStorage, indexCount)
+        const updateCompute = createUpdateCompute(drawStorage, visibleIndicesBuffer, vatData, count)
+
+        computeRefs.current = { reset: resetCompute, update: updateCompute }
 
         setupVATGeometry(geometry as any, meta as any)
 
-        // Create simple VAT node material
         const mat = createVATMaterial(
             posTex as THREE.Texture,
             nrmTex as THREE.Texture,
@@ -88,8 +93,7 @@ export default function Rose({ count = 1000 }: { count: number }) {
         const mesh = new THREE.Mesh(geometry, mat)
         mesh.count = count
         mesh.frustumCulled = false
-        meshRef.current = mesh
-        groupRef.current!.add(mesh)
+        groupRef.current.add(mesh)
 
         return () => {
             groupRef.current?.remove(mesh)
@@ -98,71 +102,57 @@ export default function Rose({ count = 1000 }: { count: number }) {
         }
     }, [scene, meta, isLoaded, posTex, nrmTex, vatData])
 
-    // Update frame uniform when control changes
     useEffect(() => {
-        const baseColor = new THREE.Color(config.Green);
-        uniforms.uFrame.value = config.Frame
-        uniforms.uGreen.value = new THREE.Vector3(baseColor.r, baseColor.g, baseColor.b)
+        const baseColor = new THREE.Color(config.Green)
+        uniforms.uGreen.value.set(baseColor.r, baseColor.g, baseColor.b)
     }, [config, uniforms])
 
     useFrame(() => {
         const renderer = gl as unknown as WebGPURenderer
-        if (!resetComputeRef.current) return
+        if (!computeRefs.current) return
 
-        renderer.compute(resetComputeRef.current)
-        renderer.compute(computeRef.current)
+        renderer.compute(computeRefs.current.reset)
+        renderer.compute(computeRefs.current.update)
     })
 
-
-    return (
-        <group ref={groupRef}>
-            <mesh rotation={[-Math.PI / 2, 0, 0]} scale={10}>
-                <planeGeometry />
-                <meshBasicMaterial color="white" />
-            </mesh>
-        </group>
-    );
+    return <group ref={groupRef}>
+        <mesh rotation={[-Math.PI / 2, 0, 0]} scale={10}>
+            <planeGeometry />
+            <meshBasicMaterial color="white" />
+        </mesh>
+    </group>
 }
 
 
-export function createCompute(
+export function createUpdateCompute(
     drawStorage: ReturnType<typeof storage>,
     indices: ReturnType<typeof instancedArray>,
-    count: number,
     vatData: ReturnType<typeof instancedArray>,
+    count: number
 ) {
-    const computeFn = Fn(() => {
-        const data = vatData.element(instanceIndex);
-        data.get("frame").assign(fract(time));
+    const updateFn = Fn(() => {
+        const data = vatData.element(instanceIndex)
 
-        If(instanceIndex.lessThan(10), () => {
-            const idx = atomicAdd(
-                drawStorage.get("instanceCount"),
-                uint(1)
-            );
-            indices.element(idx).assign(uint(instanceIndex));
+        // Simple animation logic: if active, update frame
+        If(data.get("isActive").greaterThan(0), () => {
+            data.get("frame").assign(fract(time.mul(0.5))) // Animate
+
+            // Add to draw queue
+            const idx = atomicAdd(drawStorage.get("instanceCount"), uint(1))
+            indices.element(idx).assign(uint(instanceIndex))
         })
-    });
-    return computeFn().compute(count)
+    })
+    return updateFn().compute(count)
 }
 
 
 export function createResetCompute(drawStorage: ReturnType<typeof storage>, indexCount: number) {
-    const resetFn = Fn(() => {
-        // Reset all LOD buffers
-        drawStorage.get("vertexCount").assign(uint(indexCount));
-        atomicStore(drawStorage.get("instanceCount"), uint(0));
-        drawStorage.get("firstVertex").assign(uint(0));
-        drawStorage.get("firstInstance").assign(uint(0));
-        drawStorage.get("offset").assign(uint(0));
-    });
-
-    return resetFn().compute(1);
+    return Fn(() => {
+        drawStorage.get("vertexCount").assign(uint(indexCount))
+        atomicStore(drawStorage.get("instanceCount"), uint(0))
+    })().compute(1)
 }
 
 export function createVisibleIndicesBuffer(count: number) {
-    // Use Uint32Array for indices (max 4 billion blades)
-    const visibleIndicesArray = new Uint32Array(count)
-    visibleIndicesArray.fill(0)
-    return instancedArray(visibleIndicesArray, 'uint')
+    return instancedArray(new Uint32Array(count), 'uint')
 }

@@ -1,6 +1,5 @@
 import * as THREE from 'three'
-import CustomShaderMaterial from 'three-custom-shader-material/vanilla'
-import { VATMeta, VATShaderOverrides, VATMeshConfig } from '../types'
+import { VATMeta } from '../types'
 
 /**
  * Setup VAT geometry: generate UV1 coordinates and convert coordinate system
@@ -41,41 +40,6 @@ export function setupVATGeometry(geometry: THREE.BufferGeometry, meta: VATMeta):
   geometry.setAttribute('position', new THREE.BufferAttribute(positionArray, 3))
 }
 
-// ========== VAT Material Setup Utils ==========
-
-/**
- * Common material creation parameters
- */
-interface VATMaterialParams {
-  posTex: THREE.Texture
-  nrmTex: THREE.Texture | null
-  envMap: THREE.Texture | null
-  metaData: VATMeta
-  materialControls: any
-  shaderOverrides?: VATShaderOverrides
-  customUniforms?: Record<string, any>
-}
-
-/**
- * Configure mesh shadow and culling properties
- */
-function configureMeshProperties(
-  mesh: THREE.Mesh | THREE.InstancedMesh,
-  meshConfig?: VATMeshConfig
-): void {
-  const defaultConfig: VATMeshConfig = {
-    frustumCulled: false,
-    castShadow: true,
-    receiveShadow: true
-  }
-  Object.assign(mesh, { ...defaultConfig, ...meshConfig })
-}
-
-
-/**
- * Calculate VAT frame based on animation mode
- * Returns time position (0-1) representing animation progress
- */
 export function calculateVATFrame(
   frameRatio: number | undefined,
   currentTime: number,
