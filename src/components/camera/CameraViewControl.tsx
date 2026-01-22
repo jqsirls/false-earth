@@ -161,7 +161,7 @@ export function CameraViewControl({ boneName = 'head' }: Props) {
       maxDistance={20}
       // minPolarAngle={Math.PI / 6}
       maxPolarAngle={Math.PI / 2}
-      dampingFactor={0.05}
+      smoothTime={0.1}
     />
   );
 }

@@ -1,7 +1,5 @@
 import { useMemo, useRef } from 'react';
-import { useLoader } from '@react-three/fiber';
-import { useTexture } from '@react-three/drei';
-import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
+import { useTexture, useGLTF } from '@react-three/drei';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import * as THREE from 'three/webgpu';
 import { Fn, vec3, vec4, float, positionLocal, modelWorldMatrix, cameraViewMatrix, cameraProjectionMatrix, oneMinus, texture, uv } from 'three/tsl';
@@ -10,11 +8,12 @@ import { TerrainUniforms } from '../../types';
 import { BODY_MESH_NAMES } from '../constants';
 
 export function useCharacterAssets(terrainUniforms?: TerrainUniforms, uWorldPos?: any) {
-  const mesh = useLoader(FBXLoader, '/models/Astronaut.fbx');
-  const idleAnim = useLoader(FBXLoader, '/models/Idle.fbx');
-  const walkAnim = useLoader(FBXLoader, '/models/Walking.fbx');
-  const runAnim = useLoader(FBXLoader, '/models/Running.fbx');
-  
+  const { scene: mesh } = useGLTF('/models/Astronaut.glb');
+  const idleAnim = useGLTF('/models/Idle.glb');
+  // const idleAnim = useLoader(FBXLoader, '/models/Idle.fbx');
+  const walkAnim = useGLTF('/models/Walking.glb');
+  const runAnim = useGLTF('/models/Running.glb');
+
   // Store all helmet mesh references (array to handle multiple helmet meshes)
   const helmetRefs = useRef<THREE.Mesh[]>([]);
 
@@ -25,6 +24,10 @@ export function useCharacterAssets(terrainUniforms?: TerrainUniforms, uWorldPos?
     normalMap: 'textures/Body/Astronaut_Suit_Body_Normals.png',
   });
   bodyTex.map.colorSpace = THREE.SRGBColorSpace;
+  bodyTex.map.flipY = false;
+  bodyTex.metalnessMap.flipY = false;
+  bodyTex.aoMap.flipY = false;
+  bodyTex.normalMap.flipY = false;
 
   const detailTex = useTexture({
     map: 'textures/Details/Astronaut_Suit_Details_Albedo.png',
@@ -33,11 +36,15 @@ export function useCharacterAssets(terrainUniforms?: TerrainUniforms, uWorldPos?
     normalMap: 'textures/Details/Astronaut_Suit_Details_Normals.png',
   });
   detailTex.map.colorSpace = THREE.SRGBColorSpace;
+  detailTex.map.flipY = false;
+  detailTex.metalnessMap.flipY = false;
+  detailTex.aoMap.flipY = false;
+  detailTex.normalMap.flipY = false;
 
   const { scene, animations } = useMemo(() => {
     if (!mesh || !bodyTex.map || !detailTex.map) return { scene: null, animations: [] };
 
-    const clonedScene = SkeletonUtils.clone(mesh);
+    const clonedScene = SkeletonUtils.clone(mesh as any);
 
     // --- TSL Terrain Logic (baked into materials from the start) ---
     let vertexNode: any = null;
@@ -83,7 +90,7 @@ export function useCharacterAssets(terrainUniforms?: TerrainUniforms, uWorldPos?
       normalMap: detailTex.normalMap,
       metalnessMap: detailTex.metalnessMap,
       metalness: 1,
-    });
+    })
 
     detailMat.roughnessNode = Fn(() => {
       return oneMinus(texture(detailTex.metalnessMap, uv()));

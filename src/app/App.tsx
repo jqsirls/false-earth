@@ -74,7 +74,7 @@ export default function App() {
             <Rose ref={roseRef} count={2000} />
             <RoseSpawner roseRef={roseRef} spawnCount={32} />
             <GrassWebGPU />
-            <Character position={[0, 0, 0]} scale={0.01} />
+            <Character position={[0, 0, 0]} scale={1} />
 
             <Effects />
         </Canvas>
