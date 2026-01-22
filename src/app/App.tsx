@@ -1,7 +1,7 @@
-import { Environment } from "@react-three/drei";
+import { Environment, Html, useProgress, Loader } from "@react-three/drei";
 import { LevaWrapper } from "@packages/r3f-gist/components";
 import { Canvas } from "@react-three/fiber";
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, Suspense } from "react";
 import { Terrain } from "../components/terrain/Terrain";
 import { Wind } from "../components/wind/Wind";
 import { DirectionalLight } from "../components/DirectionalLight";
@@ -15,9 +15,21 @@ import { useGameStore } from "../store/gameStore";
 import { CameraViewControl } from "../components/camera/CameraViewControl";
 import Rose, { RoseHandle } from "../components/Rose/Rose";
 import { RoseSpawner } from "../components/Rose/RoseSpawner";
-
+import { Waves } from "../components/wave/Waves";
 export default function App() {
     const roseRef = useRef<RoseHandle>(null)
+    // const { active, progress, errors, item, loaded, total } = useProgress()
+
+
+    // useEffect(() => {
+    //     console.log('active', active);
+    //     console.log('progress', progress);
+    //     console.log('errors', errors);
+    //     console.log('item', item);
+    //     console.log('loaded', loaded);
+    //     console.log('total', total);
+    // }, [active, progress, errors, item, loaded, total]);
+
 
     // Get toggle method from store
     const toggleCameraMode = useGameStore((state) => state.toggleCameraMode);
@@ -55,28 +67,32 @@ export default function App() {
             dpr={[1, 2]}
             performance={{ min: 0.5, max: 1 }}
         >
+            <Suspense fallback={null}>
 
-            <color attach="background" args={['#000000']} />
+                <color attach="background" args={['#000000']} />
 
-            <CameraViewControl />
+                <CameraViewControl />
 
-            <Environment 
-                files="/textures/potsdamer_platz_1k_nb.hdr" 
-                environmentIntensity={0.5} 
-            />
-            <DirectionalLight />
-            <Background />
-            <Stars />
+                <Environment
+                    files="/textures/potsdamer_platz_1k_nb.hdr"
+                    environmentIntensity={0.5}
+                />
+                <DirectionalLight />
+                <Background />
+                <Stars />
+                <Waves />
 
 
-            <Terrain />
-            <Wind />
-            <Rose ref={roseRef} count={2000} />
-            <RoseSpawner roseRef={roseRef} spawnCount={32} />
-            <GrassWebGPU />
-            <Character position={[0, 0, 0]} scale={1} />
+                <Terrain />
+                <Wind />
+                <Rose ref={roseRef} count={2000} />
+                <RoseSpawner roseRef={roseRef} spawnCount={32} />
+                <GrassWebGPU />
+                <Character position={[0, 0, 0]} scale={1} />
 
-            <Effects />
+                <Effects />
+            </Suspense>
         </Canvas>
+        <Loader />
     </>
 }

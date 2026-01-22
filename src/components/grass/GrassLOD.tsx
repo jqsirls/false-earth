@@ -27,6 +27,7 @@ export function GrassLOD({
   const bladesPerAxis = DEFAULT_BLADES_PER_AXIS;
   const { scene } = useThree();
   const terrainUniforms = useGameStore((state) => state.terrainUniforms);
+  const waveStorageBuffer = useGameStore((state) => state.waveStorageBuffer);
 
   const mesh = useMemo(() => {
     if (!grassData || !positions || !lodBuffer) {
@@ -50,6 +51,7 @@ export function GrassLOD({
       uniforms,
       terrainUniforms || undefined,
       lodDebugColor,
+      waveStorageBuffer || undefined,
     );
 
     // Get environment map from scene if available
@@ -69,6 +71,7 @@ export function GrassLOD({
     lodBuffer,
     uniforms,
     terrainUniforms,
+    waveStorageBuffer,
     scene.environment,
   ]);
 

@@ -39,6 +39,8 @@ import {
   distance,
   step,
   atan,
+  storage,
+  Loop,
 } from "three/tsl";
 import {
   getTerrainHeight,
@@ -56,7 +58,7 @@ import {
   applyViewDependentTilt,
   applyCharacterPush,
 } from "./shaderHelpers";
-import { DEFAULT_GRASS_AREA_SIZE } from "./constants";
+import { waveStructure } from "../../wave/constants";
 
 /**
  * Creates a grass material with vertex shader that scales blade geometry
@@ -69,7 +71,9 @@ export function createGrassMaterial(
   uniforms: Record<string, any>,
   terrainUniforms?: TerrainUniforms,
   lodDebugColor?: THREE.Color, // LOD debug color for visualization
+  waveStorageBuffer?: THREE.StorageBufferAttribute, // Wave data buffer for shockwave effects
 ) {
+
   // Define varyings for passing data from vertex to fragment
   const vGeoNormal = varying(vec3(0.0));
   const vHeight = varying(float(0.0));
@@ -92,13 +96,19 @@ export function createGrassMaterial(
 
   // LOD debug color uniform (for coloring different LODs)
   const uLodDebugColor = uniform(
-    lodDebugColor 
+    lodDebugColor
       ? vec3(lodDebugColor.r, lodDebugColor.g, lodDebugColor.b)
       : vec3(1.0, 1.0, 1.0) // Default white if not provided
   );
 
   const uGroupOffset = uniforms.uGroupOffset ?? uniform(new THREE.Vector3(0, 0, 0));
   const uCharacterWorldPos = uniforms.uCharacterWorldPos ?? uniform(new THREE.Vector3(0, 0, 0));
+
+  // Wave storage buffer (if available)
+  // Structure: waveStructure per wave, max 16 waves
+  const waveBuffer = waveStorageBuffer
+    ? storage(waveStorageBuffer, waveStructure, 16)
+    : null;
 
   material.positionNode = Fn(() => {
     const trueIndex = visibleIndicesBuffer.element(instanceIndex);
@@ -139,7 +149,7 @@ export function createGrassMaterial(
 
     // instancePos is already in world space (stored from compute shader)
     const worldBasePos = instancePos;
-    
+
     // Get world XZ position for wind calculations (already in world space)
     const worldXZ = vec2(worldBasePos.x, worldBasePos.z);
 
@@ -370,7 +380,7 @@ export function createGrassMaterial(
     // Base roughness from material property, modulated by AO
     const baseRoughness = materialRoughness;
     const roughnessMin = baseRoughness.mul(float(0.5));
-    const roughnessMax = baseRoughness.mul(float(1)); 
+    const roughnessMax = baseRoughness.mul(float(1));
     const roughness = mix(roughnessMax, roughnessMin, remapClamp(ao, float(0.35), float(1.0), float(0.0), float(1.0)));
     return clamp(roughness, float(0.0), float(1.0));
   })();
@@ -385,7 +395,41 @@ export function createGrassMaterial(
     return vec3(0.0, 0.0, 0.0);
   })();
 
-  
+  material.emissiveNode = Fn(() => {
+    if (waveBuffer) {
+      const totalEmissive = float(0.0).toVar();
+      const worldPosXZ = vec2(vWorldPos.x, vWorldPos.z);
+
+      Loop({ start: 0, end: 16 }, ({ i }) => {
+        const waveData = waveBuffer.element(i);
+        const waveCenter = vec2(waveData.get('x'), waveData.get('z'));
+        const startTime = waveData.get('startTime');
+        const maxRadius = waveData.get('maxRadius');
+        const lifetime = waveData.get('lifetime');
+
+        const age = uniforms.uTime.sub(startTime)
+        const progress = age.div(lifetime);
+
+        If(progress.lessThan(float(1.0)), () => {
+
+          const currentRadius = maxRadius.mul(progress);
+
+          const ring = maxRadius.mul(0.2)
+          const w = smoothstep(ring, 0, abs(distance(worldPosXZ, waveCenter).sub(currentRadius)))
+          const fade = smoothstep(float(1.0), float(0.5), progress).mul(smoothstep(float(0.0), float(0.1), progress));
+
+          totalEmissive.addAssign(w.mul(fade));
+        })
+
+      });
+
+      const emissiveColor = vec3(0.5, 0.8, 1.0);
+      return emissiveColor.mul(totalEmissive);
+    }
+
+  })();
+
+
   // material.fragmentNode = Fn(() => {
   //   return uLodDebugColor;
 
@@ -408,7 +452,7 @@ export function createGrassMaterial(
   //   const isType0 = bladeType.equal(float(0.0));
   //   const isType1 = bladeType.equal(float(1.0));
   //   const isType2 = bladeType.equal(float(2.0));
-    
+
   //   If(isType0, () => {
   //     typeColor.assign(vec3(1.0, 0.0, 0.0));
   //   }).ElseIf(isType1, () => {

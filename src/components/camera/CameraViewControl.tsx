@@ -44,10 +44,42 @@ export function CameraViewControl({ boneName = 'head' }: Props) {
     mouseRotationSmoothing: { value: 0.5, min: 0.01, max: 1, step: 0.01 },
   }, { collapsed: true });
 
-  // Input Handling: Only handle view side effects (Pointer Lock)
+  // Input Handling: Pointer Lock Logic
   useEffect(() => {
-    if (cameraMode === CameraMode.TPS) gl.domElement.requestPointerLock();
-    else document.exitPointerLock();
+    const canvas = gl.domElement;
+
+    // Define lock function
+    const requestLock = async () => {
+      if (cameraMode === CameraMode.TPS && document.pointerLockElement !== canvas) {
+        try {
+          await canvas.requestPointerLock();
+        } catch (e) {
+          // Ignore errors here, this is normal (if user just switched modes but hasn't clicked canvas yet)
+          console.log('Click canvas to lock pointer');
+        }
+      }
+    };
+
+    // 1. If switching to non-TPS mode, immediately unlock
+    if (cameraMode !== CameraMode.TPS) {
+      document.exitPointerLock();
+    } else {
+      // 2. If switching to TPS, try to lock (this will usually fail unless another event triggers it, but keep it anyway)
+      requestLock();
+    }
+
+    // 3. Key fix: Listen to Canvas click events to trigger locking
+    // This is the only way to guarantee a "User Gesture" exists
+    const handleClick = () => requestLock();
+    canvas.addEventListener('click', handleClick);
+
+    return () => {
+      canvas.removeEventListener('click', handleClick);
+      // Unlock when component unmounts
+      if (document.pointerLockElement === canvas) {
+        document.exitPointerLock();
+      }
+    };
   }, [cameraMode, gl.domElement]);
 
   // Handle Mouse Look for TPS

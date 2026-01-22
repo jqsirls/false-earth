@@ -162,7 +162,6 @@ export default function GrassWebGPU({ cullCamera }: GrassProps = {} as GrassProp
     // Merge wind uniforms into compute uniforms if available
     const mergedComputeUniforms = windUniforms ? {
       ...computeUniforms,
-      uTime: windUniforms.uTime,
       uWindDir: windUniforms.uWindDir,
       uWindScale: windUniforms.uWindScale,
       uWindSpeed: windUniforms.uWindSpeed,
@@ -195,24 +194,14 @@ export default function GrassWebGPU({ cullCamera }: GrassProps = {} as GrassProp
     updateMaterialUniforms(materialUniforms, grassParams)
   }, [materialUniforms, grassParams])
 
-  // Update wind uniforms from global store (separate effect to avoid recreating compute shader)
-  useEffect(() => {
-    if (windUniforms && grassComputeRef.current) {
-      // Wind uniforms are merged at compute shader creation time
-      // This effect just ensures we recreate the compute shader when wind uniforms change
-      // The actual merge happens in the useEffect that creates the compute shader
-    }
-  }, [windUniforms])
-
   // Update material wind uniforms from global store
   useEffect(() => {
     if (windUniforms) {
-      materialUniforms.uTime = windUniforms.uTime as any;
       materialUniforms.uWindDir = windUniforms.uWindDir as any;
     }
   }, [materialUniforms, windUniforms])
 
-  useFrame(() => {
+  useFrame(({ clock }) => {
     const renderer = gl as unknown as WebGPURenderer
     if (!grassComputeRef.current || !resetComputeRef.current || !cameraToUse) return
 
@@ -231,6 +220,9 @@ export default function GrassWebGPU({ cullCamera }: GrassProps = {} as GrassProp
       
       materialUniforms.uGroupOffset.value.copy(computeUniforms.uGroupOffset.value)
     }
+
+    materialUniforms.uTime.value = clock.getElapsedTime()
+    computeUniforms.uTime.value = clock.getElapsedTime()
 
     // Update camera matrices (for Culling)
     // Use cullCamera if provided, otherwise use default render camera

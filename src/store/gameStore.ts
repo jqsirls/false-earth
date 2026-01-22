@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { Group } from 'three';
+import * as THREE from 'three/webgpu';
 import { TerrainUniforms } from '../components/types';
 import { WindUniforms } from '../components/wind/Wind';
 
@@ -19,6 +20,8 @@ interface GameState {
   setTerrainUniforms: (uniforms: TerrainUniforms | null) => void;
   windUniforms: WindUniforms | null;
   setWindUniforms: (uniforms: WindUniforms | null) => void;
+  waveStorageBuffer: THREE.StorageBufferAttribute | null;
+  setWaveStorageBuffer: (buffer: THREE.StorageBufferAttribute | null) => void;
 }
 
 export const useGameStore = create<GameState>((set) => ({
@@ -38,4 +41,7 @@ export const useGameStore = create<GameState>((set) => ({
   
   windUniforms: null,
   setWindUniforms: (uniforms) => set({ windUniforms: uniforms }),
+  
+  waveStorageBuffer: null,
+  setWaveStorageBuffer: (buffer) => set({ waveStorageBuffer: buffer }),
 }));
