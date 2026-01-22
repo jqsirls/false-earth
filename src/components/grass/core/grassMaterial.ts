@@ -1,6 +1,5 @@
 import * as THREE from "three/webgpu";
 import {
-  If,
   Fn,
   vec3,
   vec2,
@@ -24,6 +23,7 @@ import {
   length,
   oneMinus,
   smoothstep,
+  step,
   varying,
   abs,
   clamp,
@@ -35,12 +35,8 @@ import {
   mx_noise_float,
   remapClamp,
   materialRoughness,
-  texture,
-  distance,
-  step,
-  atan,
+  materialEmissive,
   storage,
-  Loop,
 } from "three/tsl";
 import {
   getTerrainHeight,
@@ -57,6 +53,7 @@ import {
   applySlopeAlignment,
   applyViewDependentTilt,
   applyCharacterPush,
+  createWaveLogic,
 } from "./shaderHelpers";
 import { waveStructure } from "../../wave/constants";
 
@@ -112,6 +109,9 @@ export function createGrassMaterial(
   
   // Active wave count uniform (for optimizing shader loop)
   const uActiveWaveCount = uniforms.uActiveWaveCount ?? uniform(float(0.0));
+
+  // Create reusable wave calculation function
+  const calculateWaves = createWaveLogic(waveBuffer, uActiveWaveCount, uniforms.uTime);
 
   material.positionNode = Fn(() => {
     const trueIndex = visibleIndicesBuffer.element(instanceIndex);
@@ -189,6 +189,15 @@ export function createGrassMaterial(
     p1 = windPushed.p1;
     p2 = windPushed.p2;
     p3 = windPushed.p3;
+
+    // Apply Wave Push (affects control points for shockwave effects)
+    // calculateWaves handles null waveBuffer internally, so we can always call it
+    const waveEffects = calculateWaves(worldXZ);
+    const waveForce = waveEffects.get('force');
+    // Apply wave force to bezier control points (more effect at tip)
+    p1.addAssign(waveForce.mul(float(0.3)));
+    p2.addAssign(waveForce.mul(float(0.7)));
+    p3.addAssign(waveForce.mul(float(1.2)));
 
     // Calculate spine (position along Bezier curve) and tangent
     const spine = bezier3(p0, p1, p2, p3, t);
@@ -399,40 +408,35 @@ export function createGrassMaterial(
   })();
 
   material.emissiveNode = Fn(() => {
-    if (waveBuffer) {
-      const totalEmissive = float(0.0).toVar();
-      const worldPosXZ = vec2(vWorldPos.x, vWorldPos.z);
+    const worldPosXZ = vec2(vWorldPos.x, vWorldPos.z);
+    
+    const waveEffects = calculateWaves(worldPosXZ);
+    const baseStrength = waveEffects.get('strength');
 
-      // Loop only through active waves (array is compacted, active waves start at index 0)
-      Loop({ start: 0, end: uActiveWaveCount }, ({ i }) => {
-        const waveData = waveBuffer.element(i);
-        const waveCenter = vec2(waveData.get('x'), waveData.get('z'));
-        const startTime = waveData.get('startTime');
-        const maxRadius = waveData.get('maxRadius');
-        const lifetime = waveData.get('lifetime');
+    const isActive = step(float(0.001), baseStrength);
+    
+    // Height Gradient
+    const heightFactor = smoothstep(float(0.0), float(1.0), vHeight); 
+    const tipGlow = pow(heightFactor, float(1.5)); 
 
-        // Skip if wave data is invalid (maxRadius > 0 is a simple validity check)
-        If(maxRadius.greaterThan(float(0.0)), () => {
-          const age = uniforms.uTime.sub(startTime)
-          const progress = age.div(lifetime);
+    // Noise
+    const noiseScale = float(2);
+    const noisePos = vWorldPos.mul(noiseScale);
+    const noise = mx_noise_float(noisePos); 
+    const electricCrackle = noise.mul(0.5).add(1.0);
 
-          If(progress.lessThan(float(1.0)), () => {
-            const currentRadius = maxRadius.mul(progress);
+    // Heat Color Ramp
+    const coolColor = materialEmissive; 
+    const hotColor = mix(coolColor, vec3(1.0), float(0.8)); 
+    const finalColor = mix(coolColor, hotColor, pow(baseStrength, float(2.0)));
 
-            const ring = maxRadius.mul(0.2)
-            const w = smoothstep(ring, 0, abs(distance(worldPosXZ, waveCenter).sub(currentRadius)))
-            const fade = smoothstep(float(1.0), float(0.5), progress).mul(smoothstep(float(0.0), float(0.1), progress));
+    const glow = baseStrength
+        .mul(finalColor)
+        .mul(tipGlow)
+        .mul(electricCrackle)
+        .mul(float(5.0)); // Boost intensity for Bloom 
 
-            totalEmissive.addAssign(w.mul(fade));
-          })
-        })
-
-      });
-
-      const emissiveColor = vec3(0.5, 0.8, 1.0);
-      return emissiveColor.mul(totalEmissive);
-    }
-
+    return glow.mul(isActive);
   })();
 
 

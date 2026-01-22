@@ -78,7 +78,7 @@ export function createGrassControls() {
     Material: folder({
       roughness: { value: 0.35, min: 0.0, max: 1.0, step: 0.01 },
       metalness: { value: 0.5, min: 0.0, max: 1.0, step: 0.01 },
-      emissive: { value: '#000000' },
+      emissive: { value: '#61ffef' },
       envMapIntensity: { value: 0.5, min: 0.0, max: 3.0, step: 0.1 },
     }, { collapsed: true }),
   }
