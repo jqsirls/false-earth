@@ -10,7 +10,6 @@ export const Background = memo(function Background() {
 
   const starmapControls = useControls('Background', {
     backgroundIntensity: { value: 0.1, min: 0, max: 1, step: 0.01 },
-    useTexture: { value: true }
   }, { collapsed: true })
 
   const starmapTexture = useTexture('/textures/starmap_2020_4k.png')
@@ -19,11 +18,11 @@ export const Background = memo(function Background() {
 
   // Update background when controls or texture changes
   useEffect(() => {
-    if (starmapControls.useTexture && starmapTexture) {
+    if (starmapTexture) {
       // Use the starmap texture with equirectangular mapping
       scene.backgroundNode = texture(starmapTexture, equirectUV()).mul(starmapControls.backgroundIntensity)
     }
-  }, [starmapControls.backgroundIntensity, starmapControls.useTexture, scene, starmapTexture])
+  }, [starmapControls.backgroundIntensity, scene, starmapTexture])
 
   return null
 })

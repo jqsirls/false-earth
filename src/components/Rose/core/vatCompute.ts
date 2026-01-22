@@ -62,7 +62,7 @@ export function createUpdateCompute(
                     // Phase 1: Grow (p1 ~ p2) - frame grows from 0 to 1 with easing
                     .ElseIf(progress.lessThan(p2), () => {
                         const stateProgress = progress.sub(p1).div(p2.sub(p1))
-                        const easedProgress = easeInOutCubic(stateProgress)
+                        const easedProgress = (stateProgress)
                         currentFrame.assign(easedProgress)
                     })
                     // Phase 2: Keep (p2 ~ p3) - frame stays at 1
@@ -72,7 +72,7 @@ export function createUpdateCompute(
                     // Phase 3: Die (p3 ~ 1.0) - frame decays from 1 to 0 with easing
                     .Else(() => {
                         const stateProgress = progress.sub(p3).div(float(1.0).sub(p3))
-                        const easedProgress = easeInOutCubic(stateProgress)
+                        const easedProgress = (stateProgress)
                         currentFrame.assign(float(1.0).sub(easedProgress))
                     })
 

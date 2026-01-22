@@ -32,6 +32,11 @@ export default function Effects() {
         radius: { value: 0.5, min: 0, max: 1, step: 0.01 }
     }, { collapsed: true });
 
+    const toneMappingParams = useControls('Effects.Tone Mapping', {
+        enabled: { value: true, label: 'Enable Tone Mapping' },
+        exposure: { value: 1.1, min: 0.1, max: 2, step: 0.01 }
+    }, { collapsed: true });
+
     // DoF settings for TPS mode
     const dofParamsTPS = useControls('Effects.DoF.TPS', {
         enabled: { value: true, label: 'Enable Depth of Field' },
@@ -41,7 +46,6 @@ export default function Effects() {
         bokehScale: { value: 5, min: 0.0, max: 10.0, step: 0.1 }
     }, { collapsed: true });
 
-    // DoF settings for FREE mode
     const dofParamsFREE = useControls('Effects.DoF.FREE', {
         enabled: { value: true, label: 'Enable Depth of Field' },
         autofocus: { value: false, label: 'Auto Focus Character' },
@@ -49,7 +53,8 @@ export default function Effects() {
         focalLength: { value: 10.0, min: 0.01, max: 100, step: 0.1 },
         bokehScale: { value: 5, min: 0.0, max: 10.0, step: 0.1 }
     }, { collapsed: true });
-
+ // DoF settings for FREE mode
+   
     // DoF settings for FPV mode
     const dofParamsFPV = useControls('Effects.DoF.FPV', {
         enabled: { value: true, label: 'Enable Depth of Field' },
@@ -72,11 +77,7 @@ export default function Effects() {
                 return dofParamsTPS;
         }
     }, [cameraMode, dofParamsTPS, dofParamsFREE, dofParamsFPV]);
-
-    const toneMappingParams = useControls('Effects.Tone Mapping', {
-        enabled: { value: true, label: 'Enable Tone Mapping' },
-        exposure: { value: 1.1, min: 0.1, max: 2, step: 0.01 }
-    }, { collapsed: true });
+    
 
     // Use uniforms for DoF parameters to avoid rebuilding PostProcessing
     // Initialize with current mode's values

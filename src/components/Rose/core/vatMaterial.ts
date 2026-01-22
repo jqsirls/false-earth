@@ -25,11 +25,17 @@ import {
   mx_hsvtorgb,
   mx_rgbtohsv,
   mx_noise_float,
-  remapClamp
+  remapClamp,
+  cross,
+  dot,
+  clamp,
+  acos,
+  length,
+  If
 } from "three/tsl";
 import { VATMeta } from "./types";
 import { TerrainUniforms } from "../../types";
-import { getTerrainHeight } from "../../terrain/terrainHelpers";
+import { getTerrainHeight, getTerrainNormal, rotateAxis } from "../../terrain/terrainHelpers";
 import { calculateWindStrength, safeNormalize } from "../../grass/core/windHelpers";
 import { WindUniforms } from "../../wind/Wind";
 
@@ -88,10 +94,11 @@ export function createVATMaterial(
     return mx_hsvtorgb(clamped);
   });
 
-  // Optional terrain height function
+  // Optional terrain height/normal functions
   const terrainHeightFn = terrainUniforms
     ? getTerrainHeight(terrainUniforms.uTerrainAmp, terrainUniforms.uTerrainFreq, terrainUniforms.uTerrainSeed)
     : null;
+  const terrainNormalFn = terrainHeightFn ? getTerrainNormal(terrainHeightFn) : null;
   const hasWind = !!windUniforms;
 
   // Position calculation (Refactor: read position and scale from buffer)
@@ -119,18 +126,38 @@ export function createVATMaterial(
         uWindSpeed: windUniforms.uWindSpeed,
         uWindStrength: windUniforms.uWindStrength,
       });
-      const swayX = windDirNorm.x.mul(windStrength.mul(0.2).mul(heightFactor)); // small sway factor scaled by height
-      const swayZ = windDirNorm.y.mul(windStrength.mul(0.2).mul(heightFactor));
+      const swayX = windDirNorm.x.mul(windStrength.mul(heightFactor)); // small sway factor scaled by height
+      const swayZ = windDirNorm.y.mul(windStrength.mul(heightFactor));
       const swayVec = vec3(swayX, float(0.0), swayZ);
       instancePos = instancePos.add(swayVec);
     }
+
+    // // Optional slope alignment using terrain normal (reuse helper)
+    // if (terrainNormalFn) {
+    //   const tn = terrainNormalFn(instancePos.xz);
+    //   const up = vec3(float(0.0), float(1.0), float(0.0));
+    //   const axis = cross(up, tn);
+    //   const dotProd = clamp(dot(up, tn), float(-1.0), float(1.0));
+    //   const angle = acos(dotProd);
+      
+    //   // Only rotate if slope is significant
+    //   const axisLen = length(axis);
+    //   const minAxisLen = float(0.001);
+    //   const shouldRotate = axisLen.greaterThan(minAxisLen);
+      
+    //   If(shouldRotate, () => {
+    //     const axisNorm = normalize(axis);
+    //     const rotated = rotateAxis(scaledOffset, axisNorm, angle);
+    //     scaledOffset.assign(rotated);
+    //   });
+    // }
 
     // Apply world position (instance offset + VAT shape)
     let worldPos = positionLocal.add(scaledOffset).add(instancePos);
 
     // Apply terrain height offset if available
     if (terrainHeightFn) {
-      const h = terrainHeightFn(worldPos.xz);
+      const h = terrainHeightFn(instancePos.xz);
       return vec3(worldPos.x, worldPos.y.add(h), worldPos.z);
     }
 
@@ -156,7 +183,7 @@ export function createVATMaterial(
 
     let petalCol = texture(colorTex, uvCord).rgb;
 
-    const hueShift = seed.mul(float(0.02).add(smoothstep(float(0.6), float(1.0), progress).mul(0.03))).add(uniforms.uHueShift);//          .add(smoothstep(float(0.6), float(1.0), progress).mul(0.03))).add(uniforms.uHueShift);
+    const hueShift = seed.mul(float(0.1).add(smoothstep(float(0.6), float(1.0), progress).mul(0.03))).add(uniforms.uHueShift);//          .add(smoothstep(float(0.6), float(1.0), progress).mul(0.03))).add(uniforms.uHueShift);
     const valueShift = fract(seed.mul(25.0)).mul(-0.1);
     petalCol = hsvShift(petalCol, vec3(hueShift, 0.0, valueShift));
     const darker = hsvShift(petalCol, vec3(0.0, 0.0, -0.1));

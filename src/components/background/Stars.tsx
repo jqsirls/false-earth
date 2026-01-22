@@ -3,7 +3,7 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three/webgpu';
 import { uniform, time, instanceIndex, instancedBufferAttribute, Fn, uv, vec2, vec3, float, length, smoothstep, mx_hsvtorgb, mx_rgbtohsv, fract, sin, max } from 'three/tsl';
 import { useControls } from 'leva';
-import { useGameStore } from '../store/gameStore';
+import { useGameStore } from '../../store/gameStore';
 
 interface StarsProps {
   count?: number;
@@ -48,7 +48,7 @@ export function Stars({
       max: 1.0,
       step: 0.01,
     },
-  });
+  }, { collapsed: true });
 
   const radius = 190;
   // Generate random positions and seeds for stars on sphere rim, directly as InstancedBufferAttribute

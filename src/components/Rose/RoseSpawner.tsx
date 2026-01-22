@@ -11,7 +11,7 @@ interface RoseCharacterSpawnerProps {
   spawnCount?: number; // Number of roses to spawn per trigger (1-64)
 }
 
-export function RoseCharacterSpawner({ 
+export function RoseSpawner({ 
   roseRef, 
   distanceThreshold = 0.5,
   spawnCount = 1,
@@ -20,10 +20,10 @@ export function RoseCharacterSpawner({
   const totalDistance = useRef(0);
   const characterRef = useGameStore((state) => state.characterRef);
 
-  const [config] = useControls('Rose Spawner', () => ({
+  const [config] = useControls('Rose.Spawner', () => ({
     Wave: folder({
-      waveLow: { value: 1.5, min: 0, max: 5, step: 0.1 },
-      waveHigh: { value: 5, min: 0, max: 5, step: 0.1 },
+      waveLow: { value: 10, min: 0, max: 20, step: 0.1 },
+      waveHigh: { value: 20, min: 0, max: 20, step: 0.1 },
       waveFrequency: { value: 0.2, min: 0.1, max: 10, step: 0.1 }, // Base frequency (cycles per unit distance)
       waveHarmonics: { value: 3, min: 1, max: 8, step: 1 }, // Number of harmonic waves to add
       waveHarmonicStrength: { value: 0.7, min: 0, max: 1, step: 0.05 }, // Strength of harmonics relative to base

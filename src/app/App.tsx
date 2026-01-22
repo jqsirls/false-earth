@@ -7,21 +7,18 @@ import { Wind } from "../components/wind/Wind";
 import { DirectionalLight } from "../components/DirectionalLight";
 import { WebGPURenderer } from "three/webgpu";
 import GrassWebGPU from "../components/grass/GrassWebGPU";
-import { GrassCullingDebug } from "../components/debug/GrassCullingDebug";
-import { DebugModeToggle } from "../components/debug/DebugModeToggle";
 import Effects from "../components/Effects";
 import { Character } from "../components/character";
-import { Background } from "../components/vat/core/Background";
-import { Stars } from "../components/Stars";
+import { Background } from "../components/background/Background";
+import { Stars } from "../components/background/Stars";
 import { useGameStore } from "../store/gameStore";
 import { CameraViewControl } from "../components/camera/CameraViewControl";
-import Rose, { RoseHandle } from "../components/vat/Rose";
-import { RoseCharacterSpawner } from "../components/vat/RoseCharacterSpawner";
+import Rose, { RoseHandle } from "../components/Rose/Rose";
+import { RoseSpawner } from "../components/Rose/RoseSpawner";
 
 export default function App() {
-    const [debugMode, setDebugMode] = useState(false) // Toggle for culling debug mode
     const roseRef = useRef<RoseHandle>(null)
-    
+
     // Get toggle method from store
     const toggleCameraMode = useGameStore((state) => state.toggleCameraMode);
 
@@ -61,36 +58,22 @@ export default function App() {
 
             <color attach="background" args={['#000000']} />
 
-
-
-            {/* <CameraControls
-                makeDefault
-            /> */}
             <CameraViewControl />
+
             <Environment preset="city" environmentIntensity={0.5} />
             <DirectionalLight />
             <Background />
-
-            <Effects />
-            <Rose ref={roseRef} count={2000} />
-
             <Stars />
 
 
-            {/* Toggle between normal mode and culling debug mode */}
-            <DebugModeToggle onToggle={() => setDebugMode(prev => !prev)} />
-            {debugMode ? (
-                <GrassCullingDebug />
-            ) : (
-                <>
-                    <Terrain />
-                    <Wind />
-                    <GrassWebGPU />
-                    <Character position={[0, 0, 0]} scale={0.01} />
-                    <RoseCharacterSpawner roseRef={roseRef} spawnCount={10} />
-                </>
-            )}
+            <Terrain />
+            <Wind />
+            <Rose ref={roseRef} count={2000} />
+            <RoseSpawner roseRef={roseRef} spawnCount={32} />
+            <GrassWebGPU />
+            <Character position={[0, 0, 0]} scale={0.01} />
 
+            <Effects />
         </Canvas>
     </>
 }

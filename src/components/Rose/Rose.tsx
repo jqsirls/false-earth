@@ -31,18 +31,18 @@ const Rose = forwardRef<RoseHandle, { count: number }>(({ count }, ref) => {
             normalScale: { value: 3, min: 0, max: 10, step: 0.1 },
             hueShift: { value: 0, min: 0, max: 1, step: 0.01 },
             noiseScale: { value: { x: 1, y: 100 }, min: 0, max: 100, step: 0.1 },
-        }),
+        }, { collapsed: true }),
         Lifecycle: folder({
             delayMin: { value: 0, min: 0, max: 10, step: 0.1 },
             delayMax: { value: 0, min: 0, max: 10, step: 0.1 },
             growMin: { value: 2, min: 0, max: 10, step: 0.1 },
-            growMax: { value: 3, min: 0, max: 10, step: 0.1 },
+            growMax: { value: 5, min: 0, max: 10, step: 0.1 },
             keepMin: { value: 2, min: 0, max: 10, step: 0.1 },
-            keepMax: { value: 2, min: 0, max: 10, step: 0.1 },
+            keepMax: { value: 5, min: 0, max: 10, step: 0.1 },
             dieMin: { value: 2, min: 0, max: 10, step: 0.1 },
-            dieMax: { value: 3, min: 0, max: 10, step: 0.1 },
-        }),
-    }))
+            dieMax: { value: 5, min: 0, max: 10, step: 0.1 },
+        }, { collapsed: true }),
+    }), { collapsed: true })
 
     const terrainUniforms = useGameStore((state) => state.terrainUniforms)
     const windUniforms = useGameStore((state) => state.windUniforms)
@@ -130,7 +130,7 @@ const Rose = forwardRef<RoseHandle, { count: number }>(({ count }, ref) => {
     const computeRefs = useRef<{ reset: THREE.ComputeNode, spawn: THREE.ComputeNode, update: THREE.ComputeNode } | null>(null)
 
     useEffect(() => {
-        if (!groupRef.current || !scene || !meta || !isLoaded || !vatData || !spawnStorage) return
+        if (!groupRef.current || !scene || !meta || !isLoaded || !vatData || !spawnStorage || !terrainUniforms || !windUniforms) return
 
         const geometry = extractGeometryFromScene(scene)
         if (!geometry) {
@@ -179,7 +179,7 @@ const Rose = forwardRef<RoseHandle, { count: number }>(({ count }, ref) => {
             geometry.dispose()
             mat.dispose()
         }
-    }, [scene, meta, isLoaded, posTex, nrmTex, vatData])
+    }, [scene, meta, isLoaded, posTex, nrmTex, vatData, terrainUniforms, windUniforms])
 
     useEffect(() => {
         const baseColor = new THREE.Color(config.green)

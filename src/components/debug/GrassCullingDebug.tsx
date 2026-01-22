@@ -79,15 +79,9 @@ export function GrassCullingDebug() {
       {/* Visualize player camera frustum (yellow wireframe) */}
       {helperRef.current && <primitive object={helperRef.current} />}
 
-      {/* Terrain uses player camera for snapping (same as grass system) */}
-      {/* <Terrain 
-        onUniformsChange={setTerrainUniforms}
-        cullCamera={playerCameraRef.current}
-      /> */}
 
       {/* Grass system uses player camera for culling */}
       <GrassWebGPU 
-        terrainUniforms={terrainUniforms} 
         cullCamera={playerCameraRef.current}
       />
 
