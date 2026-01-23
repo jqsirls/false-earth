@@ -3,6 +3,7 @@ import { Group } from 'three';
 import * as THREE from 'three/webgpu';
 import { TerrainUniforms } from '../components/types';
 import { WindUniforms } from '../components/wind/Wind';
+import { RoseHandle } from '../components/Rose/Rose';
 
 export enum CameraMode {
   TPS = 0,
@@ -24,6 +25,8 @@ interface GameState {
   setWaveStorageBuffer: (buffer: THREE.StorageBufferAttribute | null) => void;
   activeWaveCount: number;
   setActiveWaveCount: (count: number) => void;
+  roseRef: React.MutableRefObject<RoseHandle | null> | null;
+  setRoseRef: (ref: React.MutableRefObject<RoseHandle | null> | null) => void;
 }
 
 export const useGameStore = create<GameState>((set) => ({
@@ -48,4 +51,6 @@ export const useGameStore = create<GameState>((set) => ({
   setWaveStorageBuffer: (buffer) => set({ waveStorageBuffer: buffer }),
   activeWaveCount: 0,
   setActiveWaveCount: (count) => set({ activeWaveCount: count }),
+  roseRef: null,
+  setRoseRef: (ref) => set({ roseRef: ref }),
 }));

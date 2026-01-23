@@ -31,6 +31,7 @@ export const DEFAULT_LOD_SEGMENTS_CONFIG = [
 
 // Color presets for tipColor
 export const TIP_COLOR_PRESETS = [
+  '#2e698c',
   '#3e8d2f', // Default green
   '#4b4b4b', // Default gray
   '#8c502e', // Brown

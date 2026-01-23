@@ -186,18 +186,23 @@ export function createVATMaterial(
 
   // Color processing with HSV shift
   material.colorNode = Fn(() => {
-
-
-    const n = remapClamp(mx_noise_float(uv().mul(uniforms.uNoiseScale)), 0.0, 1.0, 0.0, 1.0);
+    const ns = mix(uniforms.uNoiseScale, vec2(5, 5), isPetal);
+    const nr = mix(vec2(0, 1), vec2(0.5, 1), isPetal);
+    const n = remapClamp(mx_noise_float(uv().mul(ns)), -1.0, 1.0, nr.x, nr.y);
     const stemColor = mix(uniforms.uGreen, uniforms.uGreen2, n);
 
     let petalCol = texture(colorTex, uvCord).rgb;
 
-    const hueShift = seed.mul(float(0.0).add(smoothstep(float(0.6), float(1.0), progress).mul(0.03))).add(uniforms.uHueShift);//          .add(smoothstep(float(0.6), float(1.0), progress).mul(0.03))).add(uniforms.uHueShift);
-    const valueShift = fract(seed.mul(25.0)).mul(1);
+    const seed2 = fract(seed.mul(87.65));
+
+    const hueShift = seed2.mul(float(uniforms.uHueRandomness).add(smoothstep(float(0.6), float(1.0), progress).mul(0.03))).add(uniforms.uHueShift);
+    const valueShift = fract(seed2.mul(25.0)).mul(1);
     petalCol = hsvShift(petalCol, vec3(hueShift, 0.0, valueShift));
     const darker = hsvShift(petalCol, vec3(0.0, 0.0, -0.1));
     petalCol = mix(darker, petalCol, outline.rgb);
+
+    petalCol.mulAssign(n);
+    
 
     const finalColor = petalCol.mul(isPetal)
       .add(stemColor.mul(isStem))

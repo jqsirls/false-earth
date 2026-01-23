@@ -1,4 +1,4 @@
-import { atomicAdd, atomicStore, storage, uint, instanceIndex, instancedArray, If, time, Fn, float, fract, mix, step, vec3, sin, cos, PI } from "three/tsl";
+import { atomicAdd, atomicStore, storage, uint, instanceIndex, instancedArray, hash, If, time, Fn, float, fract, mix, step, vec3, sin, cos, sqrt, floor } from "three/tsl";
 
 /**
  * Create update compute shader
@@ -34,7 +34,7 @@ export function createUpdateCompute(
             const age = time.sub(data.get("startTime"))
 
             // Use seed to interpolate between min/max for each phase duration
-            const delayDuration = mix(uniforms.uDelayMin, uniforms.uDelayMax,  seed)
+            const delayDuration = mix(uniforms.uDelayMin, uniforms.uDelayMax, seed)
             const growDuration = mix(uniforms.uGrowMin, uniforms.uGrowMax, seed)
             const keepDuration = mix(uniforms.uKeepMin, uniforms.uKeepMax, seed)
             const dieDuration = mix(uniforms.uDieMin, uniforms.uDieMax, seed)
@@ -106,54 +106,50 @@ export function createResetCompute(drawStorage: ReturnType<typeof storage>, inde
 export function createSpawnCompute(
     vatData: ReturnType<typeof instancedArray>,
     spawnStorage: ReturnType<typeof storage>, // use to record the current index of the rose
-    uniforms: { uSpawnPos: any, uSpawnCount: any, uSpawnRadius: any, uFacingAngle: any, uFanSpread: any },
+    uniforms: { uSpawnPos: any, uSpawnCount: any, uSpawnRadius: any },
+    batchSize: number,
     maxCount: number
 ) {
-    // Define a max batch size (e.g., spawn up to 64 flowers per frame)
-    const BATCH_SIZE = 64;
-
     const spawnFn = Fn(() => {
         // Only threads within the requested spawn count will execute
         If(instanceIndex.lessThan(uniforms.uSpawnCount), () => {
-            
-            // 1. Get a unique slot index atomically
+
             const headIndex = atomicAdd(spawnStorage.get("index"), uint(1)).mod(uint(maxCount));
-            
-            // 2. Generate a unique seed for this specific instance
-            // We mix time + instanceIndex to ensure uniqueness within the same frame
-            const seed = fract(fract(float(time).add(float(instanceIndex).mul(123.45))));
-            const seed2 = fract(seed.mul(87.65));
-            
+
             const instance = vatData.element(headIndex);
 
-            // 3. Add random offset to position within fan range
-            // Uses the unique seed to scatter flowers around uSpawnPos in a fan shape
-            // Map seed2 from [0, 1] to [uFacingAngle - uFanSpread, uFacingAngle + uFanSpread]
-            const fanRange = uniforms.uFanSpread.mul(2.0); // Total spread angle
-            const angleOffset = seed2.mul(fanRange).sub(uniforms.uFanSpread); // [-uFanSpread, +uFanSpread]
-            const angle = uniforms.uFacingAngle.add(angleOffset);
-            const radius = fract(seed2.mul(43.75)).mul(uniforms.uSpawnRadius);
-            const offsetX = cos(angle).mul(radius);
-            const offsetZ = sin(angle).mul(radius);
+            // Generate seeds using hash function (more efficient than fract + multiplication)
+            // hash function provides better distribution and performance
+            const seed = hash(uint(instanceIndex)); // seed: for angle (Angle)
+            const seed2 = hash(uint(instanceIndex).add(uint(1))); // seed2: for radius (Radius)
+            const seed3 = hash(uint(instanceIndex).add(uint(2))); // seed3: for time offset
+
+            const angle = seed.mul(6.28318); // PI * 2
+            const r = sqrt(seed2).mul(uniforms.uSpawnRadius);
+
+            const offsetX = cos(angle).mul(r);
+            const offsetZ = sin(angle).mul(r);
+
             const randomPos = vec3(
-                uniforms.uSpawnPos.x.add(offsetX), 
-                uniforms.uSpawnPos.y, 
+                uniforms.uSpawnPos.x.add(offsetX),
+                uniforms.uSpawnPos.y,
                 uniforms.uSpawnPos.z.add(offsetZ)
             );
 
-            instance.get('position').assign(randomPos); 
+            const timeOffset = seed3.mul(1.0); // Use seed3 for time offset variation
+
+            instance.get('position').assign(randomPos);
             instance.get('isActive').assign(1.0);
             instance.get('frame').assign(0.0);
-            instance.get('startTime').assign(time);
-            instance.get('seed').assign(seed);
+            instance.get('startTime').assign(time.add(timeOffset));
+            instance.get('seed').assign(fract(seed.add(seed2).add(seed3)));
             instance.get('progress').assign(0.0);
         })
     });
 
-    // Run 64 threads every frame. 
     // If uSpawnCount is 0, they all exit immediately (cheap).
     // If uSpawnCount is 10, the first 10 threads spawn flowers.
-    return spawnFn().compute(BATCH_SIZE);
+    return spawnFn().compute(batchSize);
 }
 
 /**

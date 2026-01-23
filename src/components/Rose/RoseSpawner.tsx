@@ -59,25 +59,16 @@ export function RoseSpawner({
         waveValue += Math.sin(harmonicPhase) * harmonicAmplitude;
       }
       
-      // Normalize to [0, 1] and map to waveLow-waveHigh range
-      const normalized = (waveValue + 1) / 2; // Normalize from [-1, 1] to [0, 1]
+      const normalized = (waveValue + 1) / 2;
       const scatterRadius = config.waveLow + (config.waveHigh - config.waveLow) * normalized;
 
-      // Extract character's facing direction from rotation matrix
-      // Forward direction in Three.js local space is (0, 0, -1)
       rotationMatrix.current.setFromMatrix4(character.matrixWorld);
       forwardWorld.current.set(0, 0, -1);
       forwardWorld.current.applyMatrix3(rotationMatrix.current);
       forwardWorld.current.normalize();
       
-      // Calculate facing angle in radians (angle in XZ plane)
-      // atan2(z, x) gives angle from positive X axis (0 = right, PI/2 = forward, PI = left, -PI/2 = back)
-      const facingAngle = Math.atan2(forwardWorld.current.z, forwardWorld.current.x);
-
-      // Use batch spawning for efficient parallel GPU processing
-      // Clamp spawn count to valid range (1-64)
       const count = Math.max(1, Math.min(spawnCount, 64));
-      rose.spawn(currentPos, count, scatterRadius, facingAngle, config.fanSpread);
+      rose.spawn(currentPos, count, scatterRadius);
       lastSpawnPos.current.copy(currentPos);
     }
   });

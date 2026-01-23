@@ -18,6 +18,13 @@ import { CosmicSystem } from "../components/cosmic/CosmicSystem";
 
 export default function App() {
     const roseRef = useRef<RoseHandle>(null)
+    const setRoseRef = useGameStore((state) => state.setRoseRef);
+    
+    // Register roseRef to global store
+    useEffect(() => {
+        setRoseRef(roseRef);
+        return () => setRoseRef(null);
+    }, [setRoseRef]);
     // const { active, progress, errors, item, loaded, total } = useProgress()
 
 
@@ -90,8 +97,7 @@ export default function App() {
 
                 <Terrain />
                 <Wind />
-                {/* <Rose ref={roseRef} count={2000} /> */}
-                {/* <RoseSpawner roseRef={roseRef} spawnCount={32} /> */}
+                <Rose ref={roseRef} count={2000} />
                 <GrassWebGPU />
                 <Character position={[0, 0, 0]} scale={1} />
 

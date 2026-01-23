@@ -12,6 +12,7 @@ const DROP_HEIGHT = 50; // Height from which beam drops
 
 export interface CosmicBeamsRef {
   triggerBeam: (position: THREE.Vector3, onHit?: (position: THREE.Vector3) => void) => void;
+  getBeamPositions: () => THREE.Vector3[]; // Get positions of all active beams
 }
 
 export const CosmicBeams = forwardRef<CosmicBeamsRef, {}>((_props, ref) => {
@@ -104,6 +105,10 @@ export const CosmicBeams = forwardRef<CosmicBeamsRef, {}>((_props, ref) => {
   useImperativeHandle(ref, () => ({
     triggerBeam: (position: THREE.Vector3, onHit?: (position: THREE.Vector3) => void) => {
       startBeamAnimation(position, onHit);
+    },
+    getBeamPositions: () => {
+      // Return positions of all currently animating beams
+      return beams.map(beam => beam.position.clone());
     }
   }));
 

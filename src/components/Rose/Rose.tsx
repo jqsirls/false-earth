@@ -14,7 +14,7 @@ import { useGameStore } from "../../store/gameStore";
 
 // Define API exposed to parent component
 export type RoseHandle = {
-    spawn: (pos: THREE.Vector3, count?: number, radius?: number, facingAngle?: number, fanSpread?: number) => void
+    spawn: (pos: THREE.Vector3, count?: number, radius?: number) => void
 }
 
 const Rose = forwardRef<RoseHandle, { count: number }>(({ count }, ref) => {
@@ -23,19 +23,23 @@ const Rose = forwardRef<RoseHandle, { count: number }>(({ count }, ref) => {
     const groupRef = useRef<THREE.Group>(null)
     const matRef = useRef<THREE.MeshStandardNodeMaterial>(null)
 
+    const BATCH_SIZE = 1024;
+
+
     const [config] = useControls('Rose', () => ({
         Render: folder({
             green: { value: '#325825' },
             green2: { value: '#699555' },
-            scaleMin: { value: 5, min: 0, max: 20, step: 0.1 },
-            scaleMax: { value: 10, min: 0, max: 20, step: 0.1 },
+            scaleMin: { value: 8, min: 0, max: 20, step: 0.1 },
+            scaleMax: { value: 20, min: 0, max: 20, step: 0.1 },
             normalScale: { value: 0, min: 0, max: 10, step: 0.1 },
-            hueShift: { value: 0, min: 0, max: 1, step: 0.01 },
+            hueShift: { value: 0.5, min: 0, max: 1, step: 0.01 },
+            hueRandomness: { value: 0.1, min: 0, max: 0.1, step: 0.01 },
             noiseScale: { value: { x: 1, y: 100 }, min: 0, max: 100, step: 0.1 },
             metalness: { value: 1, min: 0, max: 1, step: 0.01 },
             roughness: { value: 0.7, min: 0, max: 1, step: 0.01 },
             emissiveColor: { value: '#ffcc99' },
-            emissiveIntensity: { value: 1, min: 0, max: 2, step: 0.1 },
+            emissiveIntensity: { value: 0, min: 0, max: 2, step: 0.1 },
             fresnelPower: { value: 2.0, min: 0.5, max: 5, step: 0.1 },
         }, { collapsed: true }),
         Lifecycle: folder({
@@ -60,6 +64,7 @@ const Rose = forwardRef<RoseHandle, { count: number }>(({ count }, ref) => {
         uScaleMax: uniform(2.0),
         uNormalScale: uniform(1.0),
         uHueShift: uniform(0.0),
+        uHueRandomness: uniform(0.0),
         uNoiseScale: uniform(vec2(1, 1)),
         uEmissiveColor: uniform(vec3(1.0, 0.8, 0.6)),
         uEmissiveIntensity: uniform(0.5),
@@ -90,8 +95,6 @@ const Rose = forwardRef<RoseHandle, { count: number }>(({ count }, ref) => {
         uSpawnPos: uniform(vec3(0)),
         uSpawnCount: uniform(0),    // Number of instances to spawn (0-64)
         uSpawnRadius: uniform(0.5), // Scatter radius around spawn position
-        uFacingAngle: uniform(0.0),  // Center angle of the fan (in radians)
-        uFanSpread: uniform(Math.PI), // Half-angle spread of the fan (in radians, default PI = full circle)
     }), [])
 
     const spawnStorage = useMemo(() => {
@@ -104,13 +107,11 @@ const Rose = forwardRef<RoseHandle, { count: number }>(({ count }, ref) => {
 
     // Expose spawn method to parent component
     useImperativeHandle(ref, () => ({
-        spawn: (pos: THREE.Vector3, amount: number = 1, radius: number = 0.5, facingAngle: number = 0, fanSpread: number = Math.PI) => {
+        spawn: (pos: THREE.Vector3, amount: number = 1, radius: number = 0.5) => {
             // Directly write to uniform, bypassing React State
             spawnUniforms.uSpawnPos.value.copy(pos);
-            spawnUniforms.uSpawnCount.value = Math.min(amount, 64); // Clamp to max batch size
+            spawnUniforms.uSpawnCount.value = Math.min(amount, BATCH_SIZE); // Clamp to max batch size
             spawnUniforms.uSpawnRadius.value = radius;
-            spawnUniforms.uFacingAngle.value = facingAngle;
-            spawnUniforms.uFanSpread.value = fanSpread;
         }
     }), [spawnUniforms])
 
@@ -162,7 +163,7 @@ const Rose = forwardRef<RoseHandle, { count: number }>(({ count }, ref) => {
 
         // Compute Shaders
         const resetCompute = createResetCompute(drawStorage, indexCount)
-        const spawnCompute = createSpawnCompute(vatData, spawnStorage, spawnUniforms, count)
+        const spawnCompute = createSpawnCompute(vatData, spawnStorage, spawnUniforms, BATCH_SIZE, count)
         const updateCompute = createUpdateCompute(drawStorage, visibleIndicesBuffer, vatData, count, computeUniforms)
 
         computeRefs.current = { reset: resetCompute, spawn: spawnCompute, update: updateCompute }
@@ -208,6 +209,7 @@ const Rose = forwardRef<RoseHandle, { count: number }>(({ count }, ref) => {
         matUniforms.uScaleMax.value = config.scaleMax
         matUniforms.uNormalScale.value = config.normalScale
         matUniforms.uHueShift.value = config.hueShift
+        matUniforms.uHueRandomness.value = config.hueRandomness
         matUniforms.uNoiseScale.value.set(config.noiseScale.x, config.noiseScale.y)
         
         const emissiveColor = new THREE.Color(config.emissiveColor)
