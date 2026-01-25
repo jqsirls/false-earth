@@ -54,20 +54,22 @@ export function Terrain({
     const setTerrainUniforms = useGameStore((state) => state.setTerrainUniforms)
 
     const uniforms = useMemo(() => {
-        const colorValue = new THREE.Color(terrainParams.color);
         return {
-            uTerrainAmp: uniform(terrainParams.amplitude),
-            uTerrainFreq: uniform(terrainParams.frequency),
-            uTerrainSeed: uniform(terrainParams.seed),
-            uColor: uniform(vec3(colorValue.r, colorValue.g, colorValue.b))
+            uTerrainAmp: uniform(1.5),
+            uTerrainFreq: uniform(0.05),
+            uTerrainSeed: uniform(0.0),
+            uColor: uniform(vec3(0, 0, 0))
         }
     }, [])
 
-    // Publish uniforms to global store
     useEffect(() => {
+        uniforms.uTerrainAmp.value = terrainParams.amplitude
+        uniforms.uTerrainFreq.value = terrainParams.frequency
+        uniforms.uTerrainSeed.value = terrainParams.seed
+        const colorObj = new THREE.Color(terrainParams.color)
+        uniforms.uColor.value.set(colorObj.r, colorObj.g, colorObj.b)
         setTerrainUniforms(uniforms)
-        return () => setTerrainUniforms(null)
-    }, [setTerrainUniforms, uniforms])
+    }, [setTerrainUniforms, uniforms, terrainParams])
 
     // Create material with terrain functions
     const material = useMemo(() => {
@@ -88,15 +90,6 @@ export function Terrain({
 
         return mat
     }, [])
-
-    // Update uniforms when terrainParams change
-    useEffect(() => {
-        uniforms.uTerrainAmp.value = terrainParams.amplitude
-        uniforms.uTerrainFreq.value = terrainParams.frequency
-        uniforms.uTerrainSeed.value = terrainParams.seed
-        const colorObj = new THREE.Color(terrainParams.color)
-        uniforms.uColor.value.set(colorObj.r, colorObj.g, colorObj.b)
-    }, [terrainParams, uniforms])
 
     return (
         // High segment count is needed for smooth FBM terrain to match grass density

@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { Group } from 'three';
 import * as THREE from 'three/webgpu';
 import { TerrainUniforms, WindUniforms } from '../types';
-import { RoseHandle } from '../components/Rose/Rose';
+import { RoseHandle } from '../../components/Rose/Rose';
 
 export enum CameraMode {
   TPS = 0,

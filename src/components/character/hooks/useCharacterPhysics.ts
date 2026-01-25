@@ -71,7 +71,6 @@ export function useCharacterPhysics(
     if (!groupRef.current) return;
     const s = state.current;
 
-
     // --- Rotation ---
     let targetRotationVelocity = 0;
     if (s.rotateLeft) {

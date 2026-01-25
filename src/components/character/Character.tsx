@@ -10,7 +10,10 @@ import { useGameStore, CameraMode } from '../../core/store/gameStore';
 
 export const Character = ({ position = [0, 0, 0], scale = 1 }: CharacterProps) => {
   const groupRef = useRef<Group>(null);
-  const prevPositionRef = useRef<THREE.Vector3 | null>(null);
+  const hasPrevFrameRef = useRef(false);
+  const worldPosRef = useRef(new THREE.Vector3());
+  const prevWorldPosRef = useRef(new THREE.Vector3());
+  const velocityRef = useRef(new THREE.Vector3());
 
   const uWorldPos = useMemo(() => uniform(new THREE.Vector3(0, 0, 0)), []);
   const uVelocity = useMemo(() => uniform(new THREE.Vector3(0, 0, 0)), []);
@@ -41,41 +44,25 @@ export const Character = ({ position = [0, 0, 0], scale = 1 }: CharacterProps) =
     }
   }, [cameraMode, helmetRefs]);
 
-  // const { trailTexture } = useCharacterTrail(uWorldPos, uVelocity);
-
-  // // Notify parent when trail texture changes
-  // useEffect(() => {
-  //   if (onTrailTextureChange && trailTexture) {
-  //     onTrailTextureChange(trailTexture);
-  //   }
-  // }, [trailTexture, onTrailTextureChange]);
-
   useFrame((_, delta) => {
-    if (groupRef.current) {
-      groupRef.current.updateMatrixWorld(true);
-      const groupWorldPos = new THREE.Vector3();
-      groupWorldPos.setFromMatrixPosition(groupRef.current.matrixWorld);
-      
-      // Update world position uniform
-      uWorldPos.value.set(groupWorldPos.x, groupWorldPos.y, groupWorldPos.z);
-      
-      // Calculate velocity
-      if (prevPositionRef.current) {
-        const velocity = new THREE.Vector3();
-        velocity.subVectors(groupWorldPos, prevPositionRef.current);
-        // Divide by delta time to get velocity per second
-        if (delta > 0) {
-          velocity.divideScalar(delta);
-        }
-        uVelocity.value.set(velocity.x, velocity.y, velocity.z);
-      } else {
-        // First frame: velocity is zero
-        uVelocity.value.set(0, 0, 0);
-      }
-      
-      // Store current position for next frame
-      prevPositionRef.current = groupWorldPos.clone();
+    if (!groupRef.current) return;
+    groupRef.current.updateMatrixWorld(true);
+    const worldPos = worldPosRef.current;
+    worldPos.setFromMatrixPosition(groupRef.current.matrixWorld);
+
+    uWorldPos.value.set(worldPos.x, worldPos.y, worldPos.z);
+
+    if (hasPrevFrameRef.current) {
+      const velocity = velocityRef.current;
+      velocity.subVectors(worldPos, prevWorldPosRef.current);
+      if (delta > 0) velocity.divideScalar(delta);
+      uVelocity.value.set(velocity.x, velocity.y, velocity.z);
+    } else {
+      uVelocity.value.set(0, 0, 0);
+      hasPrevFrameRef.current = true;
     }
+
+    prevWorldPosRef.current.copy(worldPos);
   });
 
   return (
