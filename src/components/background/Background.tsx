@@ -1,28 +1,33 @@
-import { memo, useEffect } from 'react'
+import { memo, useEffect, useMemo } from 'react'
 import { useThree } from '@react-three/fiber'
 import { useControls } from 'leva'
 import { useTexture } from '@react-three/drei'
-import { texture, equirectUV } from 'three/tsl'
+import { texture, equirectUV, uniform } from 'three/tsl'
 import * as THREE from 'three'
 
 export const Background = memo(function Background() {
   const { scene } = useThree()
 
-  const starmapControls = useControls('Background', {
-    backgroundIntensity: { value: 0.1, min: 0, max: 1, step: 0.01 },
+  const intensity = useMemo(() => uniform(0.1), [])
+
+  useControls('Background', {
+    backgroundIntensity: { value: 0.1, min: 0, max: 1, step: 0.01, onChange: (value) => intensity.value = value },
   }, { collapsed: true })
 
-  const starmapTexture = useTexture('/textures/starmap_2020_4k.png')
-  starmapTexture.mapping = THREE.EquirectangularReflectionMapping
-  starmapTexture.colorSpace = THREE.SRGBColorSpace
+  const map = useTexture('/textures/starmap_2020_4k.png', (tex) => {
+    tex.mapping = THREE.EquirectangularReflectionMapping
+    tex.colorSpace = THREE.SRGBColorSpace
+  })
 
-  // Update background when controls or texture changes
   useEffect(() => {
-    if (starmapTexture) {
-      // Use the starmap texture with equirectangular mapping
-      scene.backgroundNode = texture(starmapTexture, equirectUV()).mul(starmapControls.backgroundIntensity)
+    if (map) {
+      const bgNode = texture(map, equirectUV()).mul(intensity)
+      scene.backgroundNode = bgNode
     }
-  }, [starmapControls.backgroundIntensity, scene, starmapTexture])
+    return () => {
+      scene.backgroundNode = null
+    }
+  }, [scene, map, intensity])
 
   return null
 })

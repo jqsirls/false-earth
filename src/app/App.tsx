@@ -1,4 +1,4 @@
-import { Environment, Html, useProgress, Loader } from "@react-three/drei";
+import { Environment, Html, useProgress, Loader, StatsGl } from "@react-three/drei";
 import { LevaWrapper } from "@packages/r3f-gist/components";
 import { Canvas } from "@react-three/fiber";
 import { useRef, useEffect, Suspense } from "react";
@@ -25,17 +25,16 @@ export default function App() {
         setRoseRef(roseRef);
         return () => setRoseRef(null);
     }, [setRoseRef]);
-    // const { active, progress, errors, item, loaded, total } = useProgress()
+    const { progress, errors, item, loaded, total } = useProgress()
 
 
     // useEffect(() => {
-    //     console.log('active', active);
     //     console.log('progress', progress);
     //     console.log('errors', errors);
     //     console.log('item', item);
     //     console.log('loaded', loaded);
     //     console.log('total', total);
-    // }, [active, progress, errors, item, loaded, total]);
+    // }, [progress, errors, item, loaded, total]);
 
 
     // Get toggle method from store
@@ -81,6 +80,8 @@ export default function App() {
         >
             <Suspense fallback={null}>
 
+                <StatsGl trackGPU={true}/>
+
                 {/* <color attach="background" args={['#000000']} /> */}
 
                 <CameraViewControl />
@@ -94,14 +95,12 @@ export default function App() {
                 <Stars />
                 <CosmicSystem />
 
-
                 <Terrain />
                 <Wind />
-                <Rose ref={roseRef} count={2000} />
-                <GrassWebGPU />
+                {/* <Rose ref={roseRef} count={2000} /> */}
+                {/* <GrassWebGPU /> */}
                 <Character position={[0, 0, 0]} scale={1} />
-
-                <Effects />
+                {/* <Effects /> */}
             </Suspense>
         </Canvas>
         <Loader />
