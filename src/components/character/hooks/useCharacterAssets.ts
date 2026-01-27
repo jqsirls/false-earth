@@ -1,4 +1,4 @@
-import { useMemo, useRef, useEffect } from 'react';
+import { useMemo, useRef } from 'react';
 import { useTexture, useGLTF } from '@react-three/drei';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import * as THREE from 'three/webgpu';
@@ -35,8 +35,8 @@ export function useCharacterAssets(terrainUniforms?: TerrainUniforms, uWorldPos?
   const bodyTex = configureTextures(useTexture(BODY_TEXTURE_PATHS))
   const detailTex = configureTextures(useTexture(DETAIL_TEXTURE_PATHS));
 
-  const { scene, animations } = useMemo(() => {
-    if (!mesh || !bodyTex.map || !detailTex.map || !terrainUniforms || !uWorldPos) return { scene: null, animations: [] };
+  const { scene, animations } = useMemo((): { scene: THREE.Object3D | null; animations: THREE.AnimationClip[]; helmetRefs: React.RefObject<THREE.Mesh[]> } => {
+    if (!mesh || !bodyTex.map || !detailTex.map || !terrainUniforms || !uWorldPos) return { scene: null, animations: [], helmetRefs };
 
     const clonedScene = SkeletonUtils.clone(mesh as any);
 
@@ -101,9 +101,11 @@ export function useCharacterAssets(terrainUniforms?: TerrainUniforms, uWorldPos?
       { src: idleAnim, name: 'Idle' },
       { src: walkAnim, name: 'Walk' },
       { src: runAnim,  name: 'Run'  },
-  ];
+    ];
 
-  const anims = animConfig.map(({ src, name }) => extractClip(src, name));
+    const anims = animConfig
+      .map(({ src, name }) => extractClip(src, name))
+      .filter((clip): clip is THREE.AnimationClip => clip !== null);
 
     return { scene: clonedScene, animations: anims, helmetRefs };
   }, [
