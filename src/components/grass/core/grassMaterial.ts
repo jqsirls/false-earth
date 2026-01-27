@@ -444,35 +444,6 @@ export function createGrassMaterial(
 
   // material.fragmentNode = Fn(() => {
   //   return uLodDebugColor;
-
-  //   const uCharacterWorldPos = uniforms.uCharacterWorldPos ?? uniform(new THREE.Vector3(0, 0, 0));
-
-  //   const diff = vec2(vWorldPos.x, vWorldPos.z).sub(vec2(uCharacterWorldPos.x, uCharacterWorldPos.z))
-  //   const diffLength = length(diff)
-  //   const diffLengthFade = smoothstep(float(1.0), float(0), diffLength);
-  //   const trailColor = diffLengthFade;
-
-  //   return vec4(trailColor, 0, 0, 1.0);
-  //   const trueIndex = visibleIndicesBuffer.element(instanceIndex);
-
-  //   const data = grassData.element(trueIndex);
-  //   const bladeType = floor(data.get("bladeType").toConst().mul(3.0));
-  //   const presence = data.get("presence").toConst();
-  //   return vec4(presence, 0,0, 1.0);
-
-  //   const typeColor = vec3(0.0, 0.0, 0.0).toVar();
-  //   const isType0 = bladeType.equal(float(0.0));
-  //   const isType1 = bladeType.equal(float(1.0));
-  //   const isType2 = bladeType.equal(float(2.0));
-
-  //   If(isType0, () => {
-  //     typeColor.assign(vec3(1.0, 0.0, 0.0));
-  //   }).ElseIf(isType1, () => {
-  //     typeColor.assign(vec3(0.0, 1.0, 0.0));
-  //   }).ElseIf(isType2, () => {
-  //     typeColor.assign(vec3(0.0, 0.0, 1.0));
-  //   });
-  //   return vec4(typeColor, 1.0);
   // })();
 
   return {

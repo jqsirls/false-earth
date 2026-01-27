@@ -1,4 +1,4 @@
-import { Environment, Html, useProgress, Loader, StatsGl } from "@react-three/drei";
+import { Environment, Loader, StatsGl } from "@react-three/drei";
 import { LevaWrapper } from "@packages/r3f-gist/components";
 import { Canvas } from "@react-three/fiber";
 import { useRef, useEffect, Suspense } from "react";
@@ -25,16 +25,6 @@ export default function App() {
         setRoseRef(roseRef);
         return () => setRoseRef(null);
     }, [setRoseRef]);
-    const { progress, errors, item, loaded, total } = useProgress()
-
-
-    // useEffect(() => {
-    //     console.log('progress', progress);
-    //     console.log('errors', errors);
-    //     console.log('item', item);
-    //     console.log('loaded', loaded);
-    //     console.log('total', total);
-    // }, [progress, errors, item, loaded, total]);
 
 
     // Get toggle method from store
@@ -97,10 +87,10 @@ export default function App() {
 
                 <Terrain />
                 <Wind />
-                {/* <Rose ref={roseRef} count={2000} /> */}
-                {/* <GrassWebGPU /> */}
+                <Rose ref={roseRef} count={2000} />
+                <GrassWebGPU />
                 <Character position={[0, 0, 0]} scale={1} />
-                {/* <Effects /> */}
+                <Effects />
             </Suspense>
         </Canvas>
         <Loader />

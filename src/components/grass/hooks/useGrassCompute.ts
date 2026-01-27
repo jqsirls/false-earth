@@ -26,9 +26,8 @@ export function useGrassCompute(
         if(!windUniforms) return
 
         const grassBlades = DEFAULT_BLADES_PER_AXIS * DEFAULT_BLADES_PER_AXIS
-
         // Create positions and grass data
-        const positions = createPositions(DEFAULT_BLADES_PER_AXIS, DEFAULT_GRASS_AREA_SIZE)
+        const positions = createPositions(grassBlades)
         const grassData = createGrassData(grassBlades)
         positionsRef.current = positions
         grassDataRef.current = grassData
@@ -78,7 +77,7 @@ export function useGrassCompute(
 
     useFrame(({ clock }) => {
         if (!computeRefs.current) return
-        
+
         const renderer = gl as unknown as WebGPURenderer
 
         uniforms.material.uTime.value = clock.getElapsedTime()
@@ -86,7 +85,10 @@ export function useGrassCompute(
 
         if (cameraToUse) {
             cameraToUse.updateMatrixWorld()
-            uniforms.compute.uViewProjectionMatrix.value.copy(cameraToUse.projectionMatrix.clone().multiply(cameraToUse.matrixWorldInverse))
+            uniforms.compute.uViewProjectionMatrix.value.multiplyMatrices(
+                cameraToUse.projectionMatrix,
+                cameraToUse.matrixWorldInverse
+            )
             uniforms.compute.uCameraPosition.value.copy(cameraToUse.position)
         }
 

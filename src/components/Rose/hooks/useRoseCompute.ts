@@ -67,8 +67,11 @@ export function useRoseCompute(
         const renderer = gl as unknown as WebGPURenderer
         if (!computeRefs.current) return
 
-        uniforms.uViewProjectionMatrix.value = camera.projectionMatrix.clone().multiply(camera.matrixWorldInverse)
-
+        uniforms.uViewProjectionMatrix.value.multiplyMatrices(
+            camera.projectionMatrix,
+            camera.matrixWorldInverse
+        )
+        
         renderer.compute(computeRefs.current.reset)
         renderer.compute(computeRefs.current.spawn)
         renderer.compute(computeRefs.current.update)

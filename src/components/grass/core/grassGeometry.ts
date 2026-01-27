@@ -11,26 +11,8 @@ export function createBladeGeometry(segments: number = 14): THREE.PlaneGeometry 
   return bladeGeometry
 }
 
-export function createPositions(bladesPerAxis: number, grassAreaSize: number) {
-  const grassBlades = bladesPerAxis * bladesPerAxis
+export function createPositions(grassBlades: number) {
   const positionArray = new Float32Array(grassBlades * 3)
-
-  for (let x = 0; x < bladesPerAxis; x++) {
-    for (let z = 0; z < bladesPerAxis; z++) {
-      const id = x * bladesPerAxis + z
-      if (id >= grassBlades) break
-      const fx = x / bladesPerAxis - 0.5
-      const fz = z / bladesPerAxis - 0.5
-
-      const px = fx * grassAreaSize
-      const pz = fz * grassAreaSize
-
-      positionArray[id * 3 + 0] = px
-      positionArray[id * 3 + 1] = 0
-      positionArray[id * 3 + 2] = pz
-    }
-  }
-
   return instancedArray(positionArray, 'vec3')
 }
 

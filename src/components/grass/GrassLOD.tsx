@@ -63,6 +63,8 @@ export function GrassLOD({
     const mesh = new THREE.Mesh(bladeGeometry, material);
     mesh.count = grassBlades;
     mesh.frustumCulled = false;
+    mesh.receiveShadow = false;
+    mesh.castShadow = false;
 
     return mesh;
   }, [
