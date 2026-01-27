@@ -148,9 +148,7 @@ export function createGrassCompute(
     );
 
     // Get camera matrices from uniforms (manually updated each frame)
-    const viewMatrix = uniforms.uViewMatrix;
-    const projMatrix = uniforms.uProjectionMatrix;
-    const viewProjMatrix = projMatrix.mul(viewMatrix);
+    const viewProjMatrix = uniforms.uViewProjectionMatrix;
 
     // Transform bottom position to clip space
     const clipPosBottom = viewProjMatrix.mul(
