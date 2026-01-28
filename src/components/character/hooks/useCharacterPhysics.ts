@@ -3,11 +3,13 @@ import { useFrame } from '@react-three/fiber';
 import { useAnimations } from '@react-three/drei';
 import * as THREE from 'three/webgpu';
 import { Group, Object3D, AnimationClip } from 'three';
+import { CharacterInputState } from './useCharacterInput';
 
 export function useCharacterPhysics(
   groupRef: MutableRefObject<Group | null>,
   scene: Object3D | null,
-  animations: AnimationClip[]
+  animations: AnimationClip[],
+  input: CharacterInputState
 ) {
   const sceneRef = useRef<Object3D | null>(null);
   sceneRef.current = scene;
@@ -17,10 +19,6 @@ export function useCharacterPhysics(
   const state = useRef({
     speed: 0,
     rotationVelocity: 0, // Current smoothed rotation velocity
-    isMoving: false,
-    isRunning: false,
-    rotateLeft: false,
-    rotateRight: false,
     // Animation weights
     idleWeight: 1.0,
     walkWeight: 0.0,
@@ -34,26 +32,6 @@ export function useCharacterPhysics(
     animBlendLerpFactor: 0.15,
   });
 
-  // Input Listeners
-  useEffect(() => {
-    const handleKey = (e: KeyboardEvent, isDown: boolean) => {
-      const key = e.key.toLowerCase();
-      const code = e.code;
-      if (key === 'w') state.current.isMoving = isDown;
-      if (key === 'a') state.current.rotateLeft = isDown;
-      if (key === 'd') state.current.rotateRight = isDown;
-      // Detect left Shift for running
-      if (code === 'ShiftLeft') state.current.isRunning = isDown;
-    };
-    const onDown = (e: KeyboardEvent) => handleKey(e, true);
-    const onUp = (e: KeyboardEvent) => handleKey(e, false);
-    window.addEventListener('keydown', onDown);
-    window.addEventListener('keyup', onUp);
-    return () => {
-      window.removeEventListener('keydown', onDown);
-      window.removeEventListener('keyup', onUp);
-    };
-  }, []);
 
   // Initial Animation Start
   useEffect(() => {
@@ -73,9 +51,9 @@ export function useCharacterPhysics(
 
     // --- Rotation ---
     let targetRotationVelocity = 0;
-    if (s.rotateLeft) {
+    if (input.rotateLeft) {
       targetRotationVelocity = s.rotateSpeed;
-    } else if (s.rotateRight) {
+    } else if (input.rotateRight) {
       targetRotationVelocity = -s.rotateSpeed;
     }
     
@@ -86,8 +64,8 @@ export function useCharacterPhysics(
     }
 
     // --- Movement Calculation ---
-    const currentMaxSpeed = s.isRunning ? s.runSpeed : s.walkSpeed;
-    const targetSpeed = s.isMoving ? currentMaxSpeed : 0;
+    const currentMaxSpeed = input.run ? s.runSpeed : s.walkSpeed;
+    const targetSpeed = input.moveForward ? currentMaxSpeed : 0;
     
     s.speed = THREE.MathUtils.lerp(s.speed, targetSpeed, s.speedLerpFactor);
     
@@ -96,7 +74,7 @@ export function useCharacterPhysics(
     }
 
     // --- Animation Blending Logic (Blend Tree) ---
-    const isRotating = s.rotateLeft || s.rotateRight;
+    const isRotating = input.rotateLeft || input.rotateRight;
     const isStationary = Math.abs(s.speed) < 0.05;
     const isTurningInPlace = isRotating && isStationary;
 

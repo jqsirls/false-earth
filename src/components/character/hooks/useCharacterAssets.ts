@@ -1,14 +1,19 @@
-import { useMemo, useRef } from 'react';
-import { useTexture, useGLTF } from '@react-three/drei';
+import { useMemo } from 'react';
+import { useGLTF } from '@react-three/drei';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import * as THREE from 'three/webgpu';
 import { Fn, vec3, vec4, float, positionLocal, modelWorldMatrix, cameraViewMatrix, cameraProjectionMatrix, oneMinus, texture, uv } from 'three/tsl';
 import { getTerrainHeight } from '../../../core/shaders/terrainHelpers';
 import { TerrainUniforms } from '../../../core/types';
 import { BODY_MESH_NAMES, BODY_TEXTURE_PATHS, DETAIL_TEXTURE_PATHS } from '../config';
+import { useKTX2Texture } from '../../../core/utils/useKTX2Texture';
 
 const configureTextures = (textures: any) => {
-  textures.map.colorSpace = THREE.SRGBColorSpace;
+  if (textures.map) textures.map.colorSpace = THREE.SRGBColorSpace;
+  if (textures.normalMap) textures.normalMap.colorSpace = THREE.NoColorSpace; 
+  if (textures.aoMap) textures.aoMap.colorSpace = THREE.NoColorSpace;
+  if (textures.metalnessMap) textures.metalnessMap.colorSpace = THREE.NoColorSpace;
+  
   ['map', 'metalnessMap', 'aoMap', 'normalMap'].forEach(key => {
     if (textures[key]) textures[key].flipY = false;
   });
@@ -30,13 +35,11 @@ export function useCharacterAssets(terrainUniforms?: TerrainUniforms, uWorldPos?
   const walkAnim = useGLTF('/models/Walking.glb');
   const runAnim = useGLTF('/models/Running.glb');
 
-  const helmetRefs = useRef<THREE.Mesh[]>([]);
+  const bodyTex = configureTextures(useKTX2Texture(BODY_TEXTURE_PATHS))
+  const detailTex = configureTextures(useKTX2Texture(DETAIL_TEXTURE_PATHS));
 
-  const bodyTex = configureTextures(useTexture(BODY_TEXTURE_PATHS))
-  const detailTex = configureTextures(useTexture(DETAIL_TEXTURE_PATHS));
-
-  const { scene, animations } = useMemo((): { scene: THREE.Object3D | null; animations: THREE.AnimationClip[]; helmetRefs: React.RefObject<THREE.Mesh[]> } => {
-    if (!mesh || !bodyTex.map || !detailTex.map || !terrainUniforms || !uWorldPos) return { scene: null, animations: [], helmetRefs };
+  const { scene, animations, helmets } = useMemo((): { scene: THREE.Object3D | null; animations: THREE.AnimationClip[]; helmets: THREE.Mesh[] } => {
+    if (!mesh || !bodyTex.map || !detailTex.map || !terrainUniforms || !uWorldPos) return { scene: null, animations: [], helmets: [] };
 
     const clonedScene = SkeletonUtils.clone(mesh as any);
 
@@ -77,7 +80,8 @@ export function useCharacterAssets(terrainUniforms?: TerrainUniforms, uWorldPos?
     detailMat.vertexNode = vertexNode;
 
     // Assign materials based on mesh names and store all helmet references
-    helmetRefs.current = [];
+    const helmets: THREE.Mesh[] = [];
+
     clonedScene.traverse((child) => {
       if (child instanceof THREE.Mesh) {
         child.frustumCulled = false;
@@ -87,7 +91,7 @@ export function useCharacterAssets(terrainUniforms?: TerrainUniforms, uWorldPos?
         } else if (child.name.includes('Helmet')) {
           child.material = detailMat;
           child.visible = true;
-          helmetRefs.current.push(child);
+          helmets.push(child);
         } else if (!child.name.includes('Person')) {
           child.material = detailMat;
         } else {
@@ -107,7 +111,7 @@ export function useCharacterAssets(terrainUniforms?: TerrainUniforms, uWorldPos?
       .map(({ src, name }) => extractClip(src, name))
       .filter((clip): clip is THREE.AnimationClip => clip !== null);
 
-    return { scene: clonedScene, animations: anims, helmetRefs };
+    return { scene: clonedScene, animations: anims, helmets };
   }, [
     mesh,
     idleAnim,
@@ -119,5 +123,5 @@ export function useCharacterAssets(terrainUniforms?: TerrainUniforms, uWorldPos?
     uWorldPos,
   ]);
 
-  return { scene, animations, helmetRefs };
+  return { scene, animations, helmets };
 }

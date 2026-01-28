@@ -6,6 +6,8 @@ import { createVATMaterial } from "./core/vatMaterial";
 import { useGameStore } from "../../core/store/gameStore";
 import { useRoseUniforms } from "./hooks/useRoseUniforms";
 import { useRoseCompute } from "./hooks/useRoseCompute";
+import { useKTX2Texture } from "../../core/utils/useKTX2Texture";
+
 
 export type RoseHandle = {
     spawn: (pos: THREE.Vector3, count?: number, radius?: number) => void
@@ -13,12 +15,13 @@ export type RoseHandle = {
 
 const Rose = forwardRef<RoseHandle, { count: number }>(({ count }, ref) => {
     const { scene, posTex, nrmTex, meta, isLoaded } = useVATPreloader('/vat/Rose_meta.json')
-    const textures = useTexture({
-        petal: '/textures/Rose/Rose_Petal_Diff.png',
-        outline: '/textures/Rose/Rose_Outline.png',
-        normal: '/textures/Rose/Rose_Petal_Normal.png'
-    });
-    
+
+
+    const textures = useKTX2Texture({
+        petal: '/textures/Rose/Rose_Petal_Diff.ktx2',
+        outline: '/textures/Rose/Rose_Outline.ktx2',
+        normal: '/textures/Rose/Rose_Petal_Normal.ktx2'
+    })
     const terrainUniforms = useGameStore((state) => state.terrainUniforms)
     const windUniforms = useGameStore((state) => state.windUniforms)
     

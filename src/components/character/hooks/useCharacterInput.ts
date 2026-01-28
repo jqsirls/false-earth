@@ -23,16 +23,19 @@ export function useCharacterInput() {
 
       switch (key) {
         case 'w':
+        case 'arrowup':
           input.current.moveForward = isDown;
           break;
         case 'a':
+        case 'arrowleft':
           input.current.rotateLeft = isDown;
           break;
         case 'd':
+        case 'arrowright':
           input.current.rotateRight = isDown;
           break;
       }
-      if (code === 'ShiftLeft') input.current.run = isDown;
+      if (code === 'ShiftLeft' || code === 'ShiftRight') input.current.run = isDown;
     };
 
     const onDown = (e: KeyboardEvent) => handleKey(e, true);

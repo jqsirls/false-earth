@@ -7,6 +7,7 @@ import { CharacterProps } from './config';
 import { useCharacterAssets } from './hooks/useCharacterAssets';
 import { useCharacterPhysics } from './hooks/useCharacterPhysics';
 import { useGameStore, CameraMode } from '../../core/store/gameStore';
+import { useCharacterInput } from './hooks/useCharacterInput';
 
 export const Character = ({ position = [0, 0, 0], scale = 1 }: CharacterProps) => {
   const groupRef = useRef<Group>(null);
@@ -20,12 +21,13 @@ export const Character = ({ position = [0, 0, 0], scale = 1 }: CharacterProps) =
 
   const terrainUniforms = useGameStore((state) => state.terrainUniforms);
   const setCharacterRef = useGameStore((state) => state.setCharacterRef);
-  const { scene, animations, helmetRefs } = useCharacterAssets(terrainUniforms || undefined, uWorldPos);
-  
+  const { scene, animations, helmets } = useCharacterAssets(terrainUniforms || undefined, uWorldPos);
+
   // Get camera mode from store
   const cameraMode = useGameStore((state) => state.cameraMode);
 
-  useCharacterPhysics(groupRef, scene, animations);
+  const input = useCharacterInput();
+  useCharacterPhysics(groupRef, scene, animations, input.current);
 
   // Publish character ref to global store
   useEffect(() => {
@@ -34,15 +36,13 @@ export const Character = ({ position = [0, 0, 0], scale = 1 }: CharacterProps) =
   }, [setCharacterRef]);
 
   useEffect(() => {
-    if (helmetRefs.current && helmetRefs.current.length > 0) {
+    if (helmets && helmets.length > 0) {
       const shouldBeVisible = cameraMode !== CameraMode.FPV;
-      helmetRefs.current.forEach((helmet) => {
-        if (helmet && helmet.visible !== shouldBeVisible) {
-          helmet.visible = shouldBeVisible;
-        }
+      helmets.forEach((helmet) => {
+        helmet.visible = shouldBeVisible;
       });
     }
-  }, [cameraMode, helmetRefs]);
+  }, [cameraMode, helmets]);
 
   useFrame((_, delta) => {
     if (!groupRef.current) return;
