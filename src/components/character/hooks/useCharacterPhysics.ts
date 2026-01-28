@@ -4,6 +4,7 @@ import { useAnimations } from '@react-three/drei';
 import * as THREE from 'three/webgpu';
 import { Group, Object3D, AnimationClip } from 'three';
 import { CharacterInputState } from './useCharacterInput';
+import { calculateBlendWeights } from './calculateBlendWeights';
 
 export function useCharacterPhysics(
   groupRef: MutableRefObject<Group | null>,
@@ -75,42 +76,18 @@ export function useCharacterPhysics(
 
     // --- Animation Blending Logic (Blend Tree) ---
     const isRotating = input.rotateLeft || input.rotateRight;
-    const isStationary = Math.abs(s.speed) < 0.05;
-    const isTurningInPlace = isRotating && isStationary;
 
-    let targetIdle = 0;
-    let targetWalk = 0;
-    let targetRun = 0;
-
-    if (isTurningInPlace) {
-      targetIdle = 0.3;
-      targetWalk = 0.7;
-      targetRun = 0;
-    } else {
-      // Two-stage blending based on actual speed (1D Blend Tree)
-      // Stage 1: 0 -> walkSpeed (Idle blend Walk)
-      if (s.speed <= s.walkSpeed) {
-        const t = s.speed / s.walkSpeed; // 0 ~ 1
-        targetIdle = 1 - t;
-        targetWalk = t;
-        targetRun = 0;
-      } 
-      // Stage 2: walkSpeed -> runSpeed (Walk blend Run)
-      else {
-        // Calculate how much over walkSpeed as a ratio
-        const t = (s.speed - s.walkSpeed) / (s.runSpeed - s.walkSpeed);
-        const clampT = Math.min(Math.max(t, 0), 1);
-        
-        targetIdle = 0;
-        targetWalk = 1 - clampT;
-        targetRun = clampT;
-      }
-    }
+    const targetWeights = calculateBlendWeights(
+      s.speed,
+      isRotating,
+      s.walkSpeed,
+      s.runSpeed
+    );
 
     // Apply smooth weight transitions
-    s.idleWeight = THREE.MathUtils.lerp(s.idleWeight, targetIdle, s.animBlendLerpFactor);
-    s.walkWeight = THREE.MathUtils.lerp(s.walkWeight, targetWalk, s.animBlendLerpFactor);
-    s.runWeight = THREE.MathUtils.lerp(s.runWeight, targetRun, s.animBlendLerpFactor);
+    s.idleWeight = THREE.MathUtils.lerp(s.idleWeight, targetWeights.idle, s.animBlendLerpFactor);
+    s.walkWeight = THREE.MathUtils.lerp(s.walkWeight, targetWeights.walk, s.animBlendLerpFactor);
+    s.runWeight = THREE.MathUtils.lerp(s.runWeight, targetWeights.run, s.animBlendLerpFactor);
 
     actions['Idle']?.setEffectiveWeight(s.idleWeight);
     actions['Walk']?.setEffectiveWeight(s.walkWeight);

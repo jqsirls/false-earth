@@ -1,4 +1,4 @@
-import { Environment, Loader, StatsGl } from "@react-three/drei";
+import { Environment, Loader, Preload, StatsGl, useProgress } from "@react-three/drei";
 import { LevaWrapper } from "@packages/r3f-gist/components";
 import { Canvas } from "@react-three/fiber";
 import { useRef, useEffect, Suspense } from "react";
@@ -15,11 +15,13 @@ import { useGameStore } from "../core/store/gameStore";
 import { CameraViewControl } from "../components/camera/CameraViewControl";
 import Rose, { RoseHandle } from "../components/Rose/Rose";
 import { CosmicSystem } from "../components/cosmic/CosmicSystem";
+import { AsyncCompile } from "../core/utils/AsyncCompile";
+import { LoadingScreen } from "../components/LoadingScreen";
 
 export default function App() {
     const roseRef = useRef<RoseHandle>(null)
     const setRoseRef = useGameStore((state) => state.setRoseRef);
-    
+
     // Register roseRef to global store
     useEffect(() => {
         setRoseRef(roseRef);
@@ -42,7 +44,7 @@ export default function App() {
     }, [toggleCameraMode]);
 
     return <>
-        <LevaWrapper collapsed={true} />
+        <LevaWrapper collapsed={true} initialHidden={true} />
 
         <Canvas
             shadows
@@ -62,7 +64,7 @@ export default function App() {
                 renderer.setClearColor('#000000');
                 renderer.autoClear = true;
 
-                
+
                 return renderer.init().then(() => renderer);
             }}
             dpr={[1, 2]}
@@ -70,7 +72,7 @@ export default function App() {
         >
             <Suspense fallback={null}>
 
-                <StatsGl trackGPU={true}/>
+                <StatsGl />
 
                 {/* <color attach="background" args={['#000000']} /> */}
 
@@ -87,12 +89,22 @@ export default function App() {
 
                 <Terrain />
                 <Wind />
-                <Rose ref={roseRef} count={2000} />
-                <GrassWebGPU />
-                <Character position={[0, 0, 0]} scale={1} />
+                <AsyncCompile id="rose">
+                    <Rose ref={roseRef} count={2000} />
+                </AsyncCompile>
+
+                <AsyncCompile id="grass">
+                    <GrassWebGPU />
+                </AsyncCompile>
+
+                <AsyncCompile id="character">
+                    <Character position={[0, 0, 0]} scale={1} />
+                </AsyncCompile>
+                
                 <Effects />
             </Suspense>
         </Canvas>
-        <Loader />
+        {/* <Loader /> */}
+        <LoadingScreen />
     </>
 }

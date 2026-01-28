@@ -35,6 +35,12 @@ interface GameState {
   setActiveWaveCount: (count: number) => void;
   roseRef: React.MutableRefObject<RoseHandle | null> | null;
   setRoseRef: (ref: React.MutableRefObject<RoseHandle | null> | null) => void;
+
+  componentsReady: { rose: boolean; grass: boolean; character: boolean };
+  setComponentReady: (key: 'rose' | 'grass' | 'character') => void;
+
+  isGameLoaded: boolean;
+  setIsGameLoaded: (loaded: boolean) => void;
 }
 
 export const useGameStore = create<GameState>((set) => ({
@@ -64,4 +70,15 @@ export const useGameStore = create<GameState>((set) => ({
   setActiveWaveCount: (count) => set({ activeWaveCount: count }),
   roseRef: null,
   setRoseRef: (ref) => set({ roseRef: ref }),
+
+  componentsReady: { rose: false, grass: false, character: false },
+  setComponentReady: (key) => set((state) => ({
+    componentsReady: {
+      ...state.componentsReady,
+      [key]: true
+    }
+  })),
+
+  isGameLoaded: false,
+  setIsGameLoaded: (loaded) => set({ isGameLoaded: loaded }),
 }));

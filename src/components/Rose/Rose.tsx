@@ -1,13 +1,12 @@
 import { useEffect, useMemo, useRef, useImperativeHandle, forwardRef } from "react";
 import * as THREE from "three/webgpu";
-import { useTexture } from "@react-three/drei";
 import { useVATPreloader, extractGeometryFromScene, setupVATGeometry } from "./core";
 import { createVATMaterial } from "./core/vatMaterial";
 import { useGameStore } from "../../core/store/gameStore";
 import { useRoseUniforms } from "./hooks/useRoseUniforms";
 import { useRoseCompute } from "./hooks/useRoseCompute";
 import { useKTX2Texture } from "../../core/utils/useKTX2Texture";
-
+import { ROSE_TEXTURES } from "./core/config";
 
 export type RoseHandle = {
     spawn: (pos: THREE.Vector3, count?: number, radius?: number) => void
@@ -17,11 +16,7 @@ const Rose = forwardRef<RoseHandle, { count: number }>(({ count }, ref) => {
     const { scene, posTex, nrmTex, meta, isLoaded } = useVATPreloader('/vat/Rose_meta.json')
 
 
-    const textures = useKTX2Texture({
-        petal: '/textures/Rose/Rose_Petal_Diff.ktx2',
-        outline: '/textures/Rose/Rose_Outline.ktx2',
-        normal: '/textures/Rose/Rose_Petal_Normal.ktx2'
-    })
+    const textures = useKTX2Texture(ROSE_TEXTURES)
     const terrainUniforms = useGameStore((state) => state.terrainUniforms)
     const windUniforms = useGameStore((state) => state.windUniforms)
     
@@ -42,6 +37,7 @@ const Rose = forwardRef<RoseHandle, { count: number }>(({ count }, ref) => {
 
 
         textures.petal.colorSpace = THREE.SRGBColorSpace;
+        textures.normal.colorSpace = THREE.NoColorSpace;
         textures.normal.repeat.set(0.8, 1);
         textures.normal.offset.set(0.1, 0);
 

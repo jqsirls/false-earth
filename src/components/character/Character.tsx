@@ -1,5 +1,5 @@
-import { useRef, useMemo, useEffect } from 'react';
-import { useFrame } from '@react-three/fiber';
+import { useRef, useMemo, useEffect, useState } from 'react';
+import { useFrame, useThree } from '@react-three/fiber';
 import { Group } from 'three';
 import * as THREE from 'three/webgpu';
 import { uniform } from 'three/tsl';
@@ -64,6 +64,8 @@ export const Character = ({ position = [0, 0, 0], scale = 1 }: CharacterProps) =
 
     prevWorldPosRef.current.copy(worldPos);
   });
+  
+  if (!scene) return null;
 
   return (
     <group ref={groupRef} position={position} scale={scale} dispose={null}>

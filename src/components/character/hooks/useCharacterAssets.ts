@@ -29,16 +29,19 @@ const extractClip = (gltf: any, name: string): THREE.AnimationClip | null => {
 };
 
 export function useCharacterAssets(terrainUniforms?: TerrainUniforms, uWorldPos?: any) {
-  const { scene: mesh } = useGLTF('/models/Astronaut.glb');
-  const idleAnim = useGLTF('/models/Idle.glb');
-  // const idleAnim = useLoader(FBXLoader, '/models/Idle.fbx');
-  const walkAnim = useGLTF('/models/Walking.glb');
-  const runAnim = useGLTF('/models/Running.glb');
+  const [meshData, idleAnim, walkAnim, runAnim] = useGLTF([
+    '/models/Astronaut.glb',
+    '/models/Idle.glb',
+    '/models/Walking.glb',
+    '/models/Running.glb',
+  ]);
+  const mesh = meshData.scene;
 
   const bodyTex = configureTextures(useKTX2Texture(BODY_TEXTURE_PATHS))
   const detailTex = configureTextures(useKTX2Texture(DETAIL_TEXTURE_PATHS));
 
   const { scene, animations, helmets } = useMemo((): { scene: THREE.Object3D | null; animations: THREE.AnimationClip[]; helmets: THREE.Mesh[] } => {
+    
     if (!mesh || !bodyTex.map || !detailTex.map || !terrainUniforms || !uWorldPos) return { scene: null, animations: [], helmets: [] };
 
     const clonedScene = SkeletonUtils.clone(mesh as any);

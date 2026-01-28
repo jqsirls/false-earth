@@ -34,3 +34,10 @@ export const vatStructure = struct({
   seed: 'float',  // Seed for random values
   progress: 'float', // Lifecycle progress [0,1]
 })
+
+
+export const ROSE_TEXTURES = {
+  petal: '/textures/Rose/Rose_Petal_Diff.ktx2',
+  outline: '/textures/Rose/Rose_Outline.ktx2',
+  normal: '/textures/Rose/Rose_Petal_Normal.ktx2'
+}

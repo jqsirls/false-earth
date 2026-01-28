@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import { useLoader } from '@react-three/fiber'
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
+import { useEffect } from 'react'
 import { EXRLoader } from 'three/examples/jsm/loaders/EXRLoader.js'
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
@@ -107,53 +108,98 @@ function resolvePath(metaUrl: string, relativePath: string): string {
   const metaDir = metaUrl.substring(0, metaUrl.lastIndexOf('/') + 1)
   return metaDir + relativePath
 }
+export interface VATData {
+  scene: THREE.Group | null
+  posTex: THREE.Texture | null
+  nrmTex: THREE.Texture | null
+  meta: VATMeta | null
+  isLoaded: boolean
+}
 
-// Hook to preload VAT resources from meta JSON
-// Extracts all paths (GLB, textures) from the meta JSON file
+// Global Cache (Hidden from your component)
+const promiseCache = new Map<string, Promise<VATData>>()
+const resultCache = new Map<string, VATData>()
+
+// --- The Loader Logic ---
+export const preloadVATAssets = (metaUrl: string): Promise<VATData> => {
+  // Return cached result immediately if ready
+  if (resultCache.has(metaUrl)) return Promise.resolve(resultCache.get(metaUrl)!)
+  // Return existing promise if already downloading
+  if (promiseCache.has(metaUrl)) return promiseCache.get(metaUrl)!
+
+  const promise = (async () => {
+    try {
+      const loader = new THREE.FileLoader()
+      const metaStr = await loader.loadAsync(metaUrl)
+      const meta = JSON.parse(metaStr as string) as VATMeta
+
+      // Path resolver
+      const resolve = (p: string) => {
+         if (p.startsWith('/') || p.startsWith('http')) return p
+         const dir = metaUrl.substring(0, metaUrl.lastIndexOf('/') + 1)
+         return dir + p
+      }
+
+      // Helper Loaders
+      const loadMesh = async (path: string) => {
+          const ext = path.split('.').pop()?.toLowerCase()
+          if (ext === 'fbx') {
+             const l = new FBXLoader();
+             return await l.loadAsync(path);
+          } else {
+             const l = new GLTFLoader(); 
+             const g = await l.loadAsync(path); 
+             return g.scene 
+          }
+      }
+      
+      const loadTex = async (path: string) => {
+          const isEXR = path.toLowerCase().endsWith('exr')
+          const l = isEXR ? new EXRLoader().setDataType(THREE.FloatType) : new THREE.TextureLoader()
+          return await l.loadAsync(path)
+      }
+
+      // Parallel Download
+      const [scene, posTex, nrmTex] = await Promise.all([
+        meta.glb ? loadMesh(resolve(meta.glb)) : null,
+        meta.textures?.position ? loadTex(resolve(meta.textures.position)) : null,
+        meta.textures?.normal ? loadTex(resolve(meta.textures.normal)) : null
+      ])
+
+      const data: VATData = { scene, posTex, nrmTex, meta, isLoaded: true }
+      resultCache.set(metaUrl, data)
+      return data
+
+    } catch (e) {
+      console.error("VAT Load Failed", e)
+      return { scene: null, posTex: null, nrmTex: null, meta: null, isLoaded: false }
+    }
+  })()
+
+  promiseCache.set(metaUrl, promise)
+  return promise
+}
+
+// --- The Hook (Matches your previous setting exactly) ---
 export function useVATPreloader(metaUrl: string) {
-  // Load meta JSON first
-  const metaResponse = useLoader(THREE.FileLoader, metaUrl)
-  const meta = useMemo(() => {
-    if (!metaResponse) return null
-    return JSON.parse(metaResponse as string) as VATMeta
-  }, [metaResponse])
+  // 1. Check cache immediately so if data is ready, we return it instantly (no flash)
+  const [data, setData] = useState<VATData>(() => {
+    if (resultCache.has(metaUrl)) return resultCache.get(metaUrl)!
+    return { scene: null, posTex: null, nrmTex: null, meta: null, isLoaded: false }
+  })
 
-  // Extract paths from meta
-  const paths = useMemo(() => {
-    if (!meta) return null
+  useEffect(() => {
+    if (data.isLoaded) return // Already done
+
+    let active = true
     
-    const glbPath = meta.glb ? resolvePath(metaUrl, meta.glb) : null
-    const posPath = meta.textures?.position ? resolvePath(metaUrl, meta.textures.position) : null
-    const nrmPath = meta.textures?.normal ? resolvePath(metaUrl, meta.textures.normal) : null
-    
-    return { glbPath, posPath, nrmPath }
-  }, [meta, metaUrl])
+    // 2. Start/Connect to global download
+    preloadVATAssets(metaUrl).then((loadedData) => {
+      if (active) setData(loadedData)
+    })
 
-  // Determine mesh type and load
-  const meshExt = paths?.glbPath?.split('.').pop()?.toLowerCase()
-  const isFBX = meshExt === 'fbx'
-  const isGLTF = meshExt === 'gltf' || meshExt === 'glb'
-  
-  // Load mesh using appropriate loader
-  // Note: This conditionally calls hooks, which technically violates React's rules.
-  // However, since metaUrl is a prop and typically doesn't change during component lifetime,
-  // this works in practice. If metaUrl changes dynamically, consider using separate hooks
-  // or a factory pattern to ensure hooks are always called in the same order.
-  const fbxScene = (isFBX && paths?.glbPath) ? (useLoader(FBXLoader, paths.glbPath) as THREE.Group) : null
-  const gltfScene = (isGLTF && paths?.glbPath) ? (useLoader(GLTFLoader, paths.glbPath) as { scene: THREE.Group }) : null
-  
-  // Select the appropriate scene
-  const scene = isFBX ? fbxScene! : (gltfScene?.scene || null)
+    return () => { active = false }
+  }, [metaUrl, data.isLoaded])
 
-  // Load textures
-  const posTex = paths?.posPath ? useLoader(getLoaderForExtension(paths.posPath), paths.posPath, configureEXRLoader) : null
-  const nrmTex = paths?.nrmPath ? useLoader(getLoaderForExtension(paths.nrmPath), paths.nrmPath, configureEXRLoader) : null
-
-  return {
-    scene,
-    posTex,
-    nrmTex,
-    meta,
-    isLoaded: !!(scene && posTex && nrmTex && meta)
-  }
+  return data
 }
