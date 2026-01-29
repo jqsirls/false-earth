@@ -70,9 +70,8 @@ export function createGrassControls() {
     }, { collapsed: true }),
 
     Performance: folder({
-      LOD: folder({
         lodNoiseScale: { value: 0.1, min: 0.0, max: 0.5, step: 0.01 },
-      }, { collapsed: true }),
+        cullOffset: { value: 2, min: 0.1, max: 5.0, step: 0.01 },
     }, { collapsed: true }),
 
     Material: folder({

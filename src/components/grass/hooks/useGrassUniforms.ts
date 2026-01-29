@@ -102,7 +102,7 @@ export function useGrassUniforms(windUniforms: any) {
         uniforms.compute.uClumpYaw.value = params.clumpYaw
 
         // Culling parameters
-        uniforms.compute.uCullOffset.value = params.bladeHeightMax 
+        uniforms.compute.uCullOffset.value = params.cullOffset 
         // LOD parameters
         uniforms.compute.uLODNoiseScale.value = params.lodNoiseScale 
 

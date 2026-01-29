@@ -142,15 +142,13 @@ export function createGrassCompute(
     const worldPosBottom = worldPos;
     const worldPosTop = vec4(
       worldPosBottom.x,
-      worldPosBottom.y.add(uniforms.uCullOffset),
+      worldPosBottom.y.add(uniforms.uBladeHeightMax),
       worldPosBottom.z,
       float(1.0)
     );
 
-    // Get camera matrices from uniforms (manually updated each frame)
     const viewProjMatrix = uniforms.uViewProjectionMatrix;
 
-    // Transform bottom position to clip space
     const clipPosBottom = viewProjMatrix.mul(
       vec4(worldPosBottom.x, worldPosBottom.y, worldPosBottom.z, float(1.0))
     );
@@ -160,45 +158,35 @@ export function createGrassCompute(
     const isBottomInFront = clipPosBottom.w.greaterThan(float(0.0));
     const ndcBottom = clipPosBottom.xyz.div(clipPosBottom.w);
 
-    // Transform top position to clip space
     const clipPosTop = viewProjMatrix.mul(worldPosTop);
-    
-    // [Fix] Check if point is in front of camera (w > 0)
     const isTopInFront = clipPosTop.w.greaterThan(float(0.0));
     const ndcTop = clipPosTop.xyz.div(clipPosTop.w);
 
-    // Check if either bottom or top position is within frustum bounds
-    // Use a margin to account for blade width
-    const margin = float(0.1); // Margin for blade width
-
-    // Check if bottom position is in frustum
-    // Must satisfy: "in front of camera" AND "within frustum bounds"
+    const margin = float(0.2);
     const bottomInFrustum = isBottomInFront
       .and(ndcBottom.x.greaterThan(float(-1.0).sub(margin)))
       .and(ndcBottom.x.lessThan(float(1.0).add(margin)))
       .and(ndcBottom.y.greaterThan(float(-1.0).sub(margin)))
       .and(ndcBottom.y.lessThan(float(1.0).add(margin)))
-      // WebGPU uses [0, 1] depth range instead of [-1, 1]
       .and(ndcBottom.z.greaterThan(float(0.0).sub(margin)))
       .and(ndcBottom.z.lessThan(float(1.0).add(margin)));
 
-    // Check if top position is in frustum
-    // Must satisfy: "in front of camera" AND "within frustum bounds"
     const topInFrustum = isTopInFront
       .and(ndcTop.x.greaterThan(float(-1.0).sub(margin)))
       .and(ndcTop.x.lessThan(float(1.0).add(margin)))
       .and(ndcTop.y.greaterThan(float(-1.0).sub(margin)))
       .and(ndcTop.y.lessThan(float(1.0).add(margin)))
-      // WebGPU uses [0, 1] depth range instead of [-1, 1]
       .and(ndcTop.z.greaterThan(float(0.0).sub(margin)))
       .and(ndcTop.z.lessThan(float(1.0).add(margin)));
+      
 
+    const isCloseToCamera = clipPosBottom.w.greaterThan(uniforms.uCullOffset.negate())
+                           .and(clipPosBottom.w.lessThan(uniforms.uCullOffset));
 
-    // circle
     const isInCircle = length(worldPos.sub(uniforms.uGroupOffset)).lessThan(uniforms.uGrassAreaSize.mul(0.5));
 
     // Blade is in frustum if either bottom or top is visible
-    const inFrustum = bottomInFrustum.or(topInFrustum).and(isInCircle);
+    const inFrustum = bottomInFrustum.or(topInFrustum).or(isCloseToCamera).and(isInCircle);
     return inFrustum;
   });
 
