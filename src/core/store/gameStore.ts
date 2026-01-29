@@ -39,8 +39,8 @@ interface GameState {
   componentsReady: { rose: boolean; grass: boolean; character: boolean };
   setComponentReady: (key: 'rose' | 'grass' | 'character') => void;
 
-  isGameLoaded: boolean;
-  setIsGameLoaded: (loaded: boolean) => void;
+  isGameStarted: boolean;
+  setIsGameStarted: (loaded: boolean) => void;
 }
 
 export const useGameStore = create<GameState>((set) => ({
@@ -79,6 +79,6 @@ export const useGameStore = create<GameState>((set) => ({
     }
   })),
 
-  isGameLoaded: false,
-  setIsGameLoaded: (loaded) => set({ isGameLoaded: loaded }),
+  isGameStarted: false,
+  setIsGameStarted: (loaded) => set({ isGameStarted: loaded }),
 }));

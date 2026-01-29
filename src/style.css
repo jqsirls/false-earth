@@ -1,3 +1,14 @@
+@font-face {
+    font-family: 'Cousine';
+    src: url('/fonts/Cousine-Regular.ttf') format('truetype');
+    font-weight: 300;
+    font-style: normal;
+    font-display: swap;
+    font-feature-settings: normal;
+    font-variant-ligatures: none;
+    text-rendering: optimizeSpeed;
+}
+
 html,
 body,
 #root{
