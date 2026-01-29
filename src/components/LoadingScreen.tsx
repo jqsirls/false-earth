@@ -1,6 +1,7 @@
 import { useProgress } from "@react-three/drei";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useGameStore } from "../core/store/gameStore";
+import gsap from "gsap";
 
 const EXPECTED_COMPONENTS = ['grass', 'rose', 'character'];
 
@@ -23,14 +24,16 @@ const Key = ({ children }: { children: React.ReactNode }) => (
 export function LoadingScreen() {
     const { active, progress: downloadProgress } = useProgress();
     const componentsReady = useGameStore((state) => state.componentsReady) as Record<string, boolean>;
-    const isGameStarted = useGameStore((state) => state.isGameStarted);
+
+    const containerRef = useRef<HTMLDivElement>(null);
     const setIsGameStarted = useGameStore((state) => state.setIsGameStarted);
 
     const [isReadyToStart, setIsReadyToStart] = useState(false);
+    const [isVisible, setIsVisible] = useState(true);
 
     const readyCount = EXPECTED_COMPONENTS.filter(id => !!componentsReady[id]).length;
     const totalExpected = EXPECTED_COMPONENTS.length;
-    const compileProgress = (readyCount / totalExpected) * 100;
+    const compileProgress = (readyCount / totalExpected) * 100.0;
 
     let totalProgress = 0;
 
@@ -38,7 +41,7 @@ export function LoadingScreen() {
         totalProgress = downloadProgress * 0.5;
     } else {
         const baseProgress = 50;
-        totalProgress = baseProgress + (compileProgress * 0.5);
+        totalProgress = baseProgress + (compileProgress * 50);
     }
 
     const displayProgress = Math.min(Math.round(totalProgress), 99);
@@ -53,29 +56,33 @@ export function LoadingScreen() {
     const handleStart = () => {
         if (!isReadyToStart) return;
         setIsGameStarted(true);
+
+        gsap.to(containerRef.current, {
+            opacity: 0,
+            duration: 1,
+            ease: "power2.inOut",
+            onComplete: () => {
+                setIsVisible(false);
+            }
+        });
     };
 
-    let statusAction = "";
-    
-    if (active) {
-        statusAction = "ESTABLISHING UPLINK"; 
-    } else {
-        statusAction = "CALIBRATING SENSORS"; 
-    }
+    if (!isVisible) return null;
 
-
-    if (isGameStarted) return null;
 
     return (
-        <div style={{
-            position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
-            background: '#000', zIndex: 9999,
-            display: 'flex', flexDirection: 'column',
-            alignItems: 'center', justifyContent: 'center', color: 'white',
-            fontFamily: 'Cousine',
-            pointerEvents: 'auto',
-            fontSize: '0.9rem'
-        }}>
+        <div
+            ref={containerRef}
+            style={{
+                position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
+                background: '#000', zIndex: 9999,
+                display: 'flex', flexDirection: 'column',
+                alignItems: 'center', justifyContent: 'center', color: 'white',
+                fontFamily: 'Cousine',
+                pointerEvents: 'auto',
+                fontSize: '0.9rem',
+                opacity: 0.99, // prevent culling 3D scene 
+            }}>
 
             <div className='entry' style={{
                 opacity: 1,
@@ -89,7 +96,6 @@ export function LoadingScreen() {
                     fontWeight: 'bold',
                     letterSpacing: '0.5rem',
                     marginBottom: '2rem',
-                    textShadow: '0 0 20px rgba(255,255,255,0.5)'
                 }}>
                     FALSE EARTH
                 </div>
@@ -115,7 +121,6 @@ export function LoadingScreen() {
                             backgroundColor: 'transparent',
                             border: 'none',
                             letterSpacing: '3px',
-                            textShadow: '0 0 20px rgba(255,255,255,0.5)',
                             cursor: isReadyToStart ? 'pointer' : 'wait',
                             transition: 'all 0.5s ease',
                         }}
@@ -134,7 +139,7 @@ export function LoadingScreen() {
                             "START"
                         ) : (
                             <span>
-                                {statusAction}... {displayProgress}%
+                                {active ? "ESTABLISHING UPLINK" : "CALIBRATING SENSORS"}... {displayProgress}%
                             </span>
                         )}
                     </button>
@@ -144,31 +149,28 @@ export function LoadingScreen() {
                     </div>
 
                 </div>
-
-
-            </div>
-
-            <div style={{
-                position: 'absolute',
-                bottom: '150px',
-                color: '#ccc',
-                fontSize: '0.75rem',
-                display: 'flex',
-                justifyContent: 'center',
-                gap: '20px',
-                opacity: 0.8,
-                animation: 'fadeIn 3s ease'
-            }}>
-                <div>
-                    <Key>W</Key><Key>A</Key><Key>S</Key><Key>D</Key> <span>MOVE</span>
-                </div>
-                <div>
-                    <Key>SHIFT</Key> <span>BOOST</span>
-                </div>
-                <div>
-                    <Key>C</Key> <span>CAMERA</span>
+                <div style={{
+                    marginTop: '80px',
+                    color: '#ccc',
+                    fontSize: '0.75rem',
+                    display: 'flex',
+                    justifyContent: 'center',
+                    gap: '20px',
+                    opacity: 0.8,
+                    animation: 'fadeIn 3s ease'
+                }}>
+                    <div>
+                        <Key>W</Key><Key>A</Key><Key>S</Key><Key>D</Key> <span>MOVE</span>
+                    </div>
+                    <div>
+                        <Key>SHIFT</Key> <span>BOOST</span>
+                    </div>
+                    <div>
+                        <Key>C</Key> <span>CAMERA</span>
+                    </div>
                 </div>
             </div>
+
         </div>
     );
 }

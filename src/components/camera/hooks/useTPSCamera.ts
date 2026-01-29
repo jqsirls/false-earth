@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { CameraControls } from '@react-three/drei';
 import { Group } from 'three';
+import { CAMERA_INITIAL_POSITION, CAMERA_INITIAL_LOOKAT } from '../CameraViewControl';
 
 interface UseTPSCameraOptions {
   characterRef: React.MutableRefObject<Group | null> | null;
@@ -58,11 +59,10 @@ export function useTPSCamera({
   useEffect(() => {
     if (enabled && characterRef?.current && controlsRef.current) {
       const charPos = characterRef.current.position;
-      controlsRef.current.setLookAt(
-        charPos.x, charPos.y + 3, charPos.z - 4,
-        charPos.x, charPos.y, charPos.z,
-        true
-      );
+      const pos = charPos.clone().add(CAMERA_INITIAL_POSITION);
+      const lookAt = charPos.clone().add(CAMERA_INITIAL_LOOKAT);
+
+      controlsRef.current.setLookAt(pos.x, pos.y, pos.z, lookAt.x, lookAt.y, lookAt.z, true);
     }
   }, [enabled, characterRef]);
 

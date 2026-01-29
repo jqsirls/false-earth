@@ -3,11 +3,14 @@ import { CameraControls } from '@react-three/drei';
 import { useFPVCamera } from './hooks/useFPVCamera';
 import { useTPSCamera } from './hooks/useTPSCamera';
 import { useEffect, useState } from 'react';
-import { useFrame } from '@react-three/fiber';
+import * as THREE from 'three/webgpu';
 
 type Props = {
   boneName?: string;
 };
+
+export const CAMERA_INITIAL_POSITION = new THREE.Vector3(0, 2, -4);
+export const CAMERA_INITIAL_LOOKAT = new THREE.Vector3(0, 1, 0);
 
 export function CameraViewControl({ boneName = 'head' }: Props) {
   // Read mode and character ref directly from Store
@@ -32,14 +35,11 @@ export function CameraViewControl({ boneName = 'head' }: Props) {
 
   useEffect(() => {
     if (isGameLoaded && !introFinished && characterRef?.current && controlsRef.current) {
-      console.log("Intro Started");
       const charPos = characterRef.current.position;
+      const pos = charPos.clone().add(CAMERA_INITIAL_POSITION);
+      const lookAt = charPos.clone().add(CAMERA_INITIAL_LOOKAT);
 
-      controlsRef.current.setLookAt(
-        charPos.x, charPos.y + 2, charPos.z - 4,
-        charPos.x, charPos.y + 1, charPos.z,
-        true
-      ).then(() => {
+      controlsRef.current.setLookAt(pos.x, pos.y, pos.z, lookAt.x, lookAt.y, lookAt.z, true).then(() => {
         setIntroFinished(true);
       });
     }
