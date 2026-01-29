@@ -1,7 +1,7 @@
 import { memo, useEffect, useMemo } from 'react'
 import { useThree } from '@react-three/fiber'
 import { useControls } from 'leva'
-import { texture, equirectUV, uniform } from 'three/tsl'
+import { texture, equirectUV, uniform, vec2 } from 'three/tsl'
 import * as THREE from 'three'
 import { useKTX2Texture } from '../../core/utils/useKTX2Texture'
 
@@ -16,10 +16,15 @@ export const Background = memo(function Background() {
   const map = useKTX2Texture({ map: '/textures/starmap_2020_4k.ktx2' }).map
   map.mapping = THREE.EquirectangularReflectionMapping
   map.colorSpace = THREE.SRGBColorSpace
+  map.wrapS = THREE.RepeatWrapping
+  map.wrapT = THREE.RepeatWrapping
 
   useEffect(() => {
     if (map) {
-      const bgNode = texture(map, equirectUV()).mul(intensity)
+      const uvs = equirectUV()
+      const rotatedUVs = uvs.add(vec2(0.2, 0))
+      
+      const bgNode = texture(map, rotatedUVs).mul(intensity)
       scene.backgroundNode = bgNode
     }
     return () => {

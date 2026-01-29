@@ -41,7 +41,7 @@ export function Stars({
       value: 0.95, min: 0, max: 1, step: 0.01,
     },
     speed: {
-      value: 2, min: 0, max: 10, step: 0.01,
+      value: 4, min: 0, max: 10, step: 0.01,
       onChange: (v) => (uniforms.uSpeed.value = v)
     },
   }, { collapsed: true });

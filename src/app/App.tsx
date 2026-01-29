@@ -52,7 +52,7 @@ export default function App() {
                 fov: 45,
                 near: 0.1,
                 far: 200,
-                position: [-10, 20, 30]
+                position: [20, 20, 30]
             }}
             gl={(canvas) => {
                 const renderer = new WebGPURenderer({
@@ -83,6 +83,7 @@ export default function App() {
                     environmentIntensity={0.5}
                 />
                 <DirectionalLight />
+
                 <Background />
                 <Stars />
                 <CosmicSystem />
@@ -104,7 +105,6 @@ export default function App() {
                 <Effects />
             </Suspense>
         </Canvas>
-        {/* <Loader /> */}
         <LoadingScreen />
     </>
 }

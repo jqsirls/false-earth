@@ -9,7 +9,7 @@ type Props = {
   boneName?: string;
 };
 
-export const CAMERA_INITIAL_POSITION = new THREE.Vector3(0, 2, -4);
+export const CAMERA_INITIAL_POSITION = new THREE.Vector3(-4, 2, -0.5);
 export const CAMERA_INITIAL_LOOKAT = new THREE.Vector3(0, 1, 0);
 
 export function CameraViewControl({ boneName = 'head' }: Props) {
