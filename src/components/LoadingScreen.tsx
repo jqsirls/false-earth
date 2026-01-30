@@ -7,19 +7,80 @@ const EXPECTED_COMPONENTS = ['grass', 'rose', 'character'];
 
 const Key = ({ children }: { children: React.ReactNode }) => (
     <span style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+
+        minWidth: '18px',
+        height: '22px',
+        padding: '0 5px',
+        margin: '0 4px',
+
         border: '1px solid #555',
         borderRadius: '4px',
-        padding: '2px 6px',
-        margin: '0 4px',
-        fontFamily: 'monospace',
-        fontSize: '0.8rem',
         background: 'rgba(255,255,255,0.05)',
-        color: '#ccc'
+
+        fontFamily: 'monospace',
+        fontSize: '11px',
+        fontWeight: 'bold',
+        color: '#ccc',
+        lineHeight: 1,
+
+        verticalAlign: 'middle',
+        boxSizing: 'border-box'
     }}>
         {children}
     </span>
 );
 
+const MouseIcon = () => (
+    <span style={{
+        display: 'inline-block',
+        position: 'relative',
+        width: '12px',
+        height: '18px',
+        margin: '0 4px',
+
+        border: '1.5px solid #ccc',
+        borderRadius: '6px',
+
+        verticalAlign: 'middle',
+        boxSizing: 'border-box',
+        opacity: 0.8
+    }}>
+        <span style={{
+            position: 'absolute',
+            top: '3px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            width: '1.5px',
+            height: '4px',
+            background: '#ccc',
+            borderRadius: '1px'
+        }} />
+    </span>
+);
+
+const InstructionRow = ({
+    input,
+    label
+}: {
+    input: React.ReactNode,
+    label: string
+}) => (
+    <div style={{ display: 'flex', alignItems: 'center' }}>
+        {input}
+        <span style={{
+            marginLeft: '6px',
+            fontSize: '10px',
+            letterSpacing: '1px',
+            fontWeight: 500,
+            transform: 'translateY(1px)'
+        }}>
+            {label}
+        </span>
+    </div>
+);
 
 export function LoadingScreen() {
     const { active, progress: downloadProgress } = useProgress();
@@ -152,22 +213,32 @@ export function LoadingScreen() {
                 <div style={{
                     marginTop: '80px',
                     color: '#ccc',
-                    fontSize: '0.75rem',
                     display: 'flex',
                     justifyContent: 'center',
-                    gap: '20px',
+                    gap: '24px',
                     opacity: 0.8,
-                    animation: 'fadeIn 3s ease'
+                    animation: 'fadeIn 3s ease',
+                    userSelect: 'none'
                 }}>
-                    <div>
-                        <Key>W</Key><Key>A</Key><Key>S</Key><Key>D</Key> <span>MOVE</span>
-                    </div>
-                    <div>
-                        <Key>SHIFT</Key> <span>BOOST</span>
-                    </div>
-                    <div>
-                        <Key>C</Key> <span>CAMERA</span>
-                    </div>
+                    <InstructionRow
+                        input={<><Key>W</Key><Key>A</Key><Key>S</Key><Key>D</Key></>}
+                        label="MOVE"
+                    />
+
+                    <InstructionRow
+                        input={<Key>SHIFT</Key>}
+                        label="BOOST"
+                    />
+
+                    <InstructionRow
+                        input={<Key>C</Key>}
+                        label="CAMERA"
+                    />
+
+                    <InstructionRow
+                        input={<MouseIcon />}
+                        label="LOOK"
+                    />
                 </div>
             </div>
 
