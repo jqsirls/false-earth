@@ -10,6 +10,8 @@ import {
     uniform,
     positionLocal,
     modelWorldMatrix,
+    step,
+    length,
 } from 'three/tsl'
 import { DEFAULT_GRASS_AREA_SIZE } from '../grass/core/config'
 import {
@@ -78,7 +80,7 @@ export function Terrain({
         const mat = new THREE.MeshBasicNodeMaterial()
         mat.side = THREE.DoubleSide
         mat.colorNode = vec4(uniforms.uColor, float(1.0))
-        // mat.wireframe = true
+        mat.alphaTest = 0.5
 
         mat.positionNode = Fn(() => {
             const localPos = positionLocal
@@ -86,6 +88,12 @@ export function Terrain({
             const h = terrainHeight(worldPos.xz)
             const displacedPos = vec3(localPos.x, localPos.y, localPos.z.add(h))
             return vec4(displacedPos, float(1.0))
+        })()
+
+        mat.opacityNode = Fn(() => {
+            const dist = length(positionLocal.xy)
+            const radius = float(grassAreaSize * 0.5)
+            return float(1.0).sub(step(radius, dist))
         })()
 
         return mat

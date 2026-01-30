@@ -1,4 +1,4 @@
-import { Environment, Loader, Preload, StatsGl, useProgress } from "@react-three/drei";
+import { Environment } from "@react-three/drei";
 import { LevaWrapper } from "@packages/r3f-gist/components";
 import { Canvas } from "@react-three/fiber";
 import { useRef, useEffect, Suspense } from "react";
@@ -9,8 +9,6 @@ import { WebGPURenderer } from "three/webgpu";
 import GrassWebGPU from "../components/grass/GrassWebGPU";
 import Effects from "../components/Effects";
 import { Character } from "../components/character";
-import { Background } from "../components/background/Background";
-import { Stars } from "../components/background/Stars";
 import { useGameStore } from "../core/store/gameStore";
 import { CameraViewControl } from "../components/camera/CameraViewControl";
 import Rose, { RoseHandle } from "../components/Rose/Rose";
@@ -18,6 +16,7 @@ import { CosmicSystem } from "../components/cosmic/CosmicSystem";
 import { AsyncCompile } from "../core/utils/AsyncCompile";
 import { LoadingScreen } from "../components/LoadingScreen";
 import AudioButton from "../components/audio/AudioButton";
+import { StarrySky } from "../components/background/StarrySky";
 
 export default function App() {
     const roseRef = useRef<RoseHandle>(null)
@@ -85,8 +84,7 @@ export default function App() {
                 />
                 <DirectionalLight />
 
-                <Background />
-                <Stars />
+                <StarrySky />
                 <CosmicSystem />
 
                 <Terrain />

@@ -1,20 +1,26 @@
-import { useRef, useMemo } from 'react';
+import { useRef, useMemo, useEffect } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three/webgpu';
 import { uniform, time, instancedBufferAttribute, Fn, uv, vec3, float, length, smoothstep, mx_hsvtorgb, mx_rgbtohsv, fract, sin, PI2, vec4 } from 'three/tsl';
 import { useControls } from 'leva';
+import { CameraMode, useGameStore } from '../../core/store/gameStore';
 
 interface StarsProps {
   count?: number;
   radius?: number;
+  speed?: number;
+  axis?: [number, number, number];
 }
 
 export function Stars({
   count = 500,
   radius = 190,
+  speed = 2,
+  axis = [0.2, 1, 0],
 }: StarsProps) {
-  const {camera} = useThree();
+  const { camera } = useThree();
   const groupRef = useRef<THREE.Group>(null);
+  const cameraMode = useGameStore((state) => state.cameraMode);
 
   const uniforms = useMemo(() => ({
     uScale: uniform(0.25),
@@ -22,11 +28,12 @@ export function Stars({
     uHueVar: uniform(0.1),
     uRim: uniform(0.95),
     uSpeed: uniform(2),
+    uIntensity: uniform(1),
   }), []);
 
   const { rim } = useControls('Stars', {
     scale: {
-      value: 0.25, min: 0, max: 1, step: 0.01,
+      value: 0.5, min: 0, max: 1, step: 0.01,
       onChange: (v) => (uniforms.uScale.value = v)
     },
     baseColor: {
@@ -99,7 +106,7 @@ export function Stars({
     const brightAnim = sin(timePhase).mul(float(0.3)).add(float(0.7));
 
     const finalHsv = vec3(hueShifted, baseHSV.y, baseHSV.z.mul(brightAnim));
-    const finalColor = mx_hsvtorgb(finalHsv);
+    const finalColor = mx_hsvtorgb(finalHsv).mul(uniforms.uIntensity);
 
     const shape = Fn(() => {
       const d = length(uv().sub(0.5));
@@ -124,9 +131,15 @@ export function Stars({
     return s;
   }, [material, count, seedAttribute, positionAttribute]);
 
-  useFrame(() => {
+  useEffect(() => {
+    uniforms.uIntensity.value =  cameraMode === CameraMode.FPV ? 10 : 1
+  }, [cameraMode])
+
+  useFrame(({ clock }) => {
     if (groupRef.current) {
       groupRef.current.position.copy(camera.position);
+      const angle = clock.elapsedTime * -speed;
+      groupRef.current.setRotationFromAxisAngle(new THREE.Vector3(axis[0], axis[1], axis[2]), THREE.MathUtils.DEG2RAD * angle);
     }
   });
 
