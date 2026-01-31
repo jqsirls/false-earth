@@ -1,73 +1,30 @@
-import { forwardRef, useImperativeHandle, useRef, useEffect } from 'react';
-import { useLoader } from '@react-three/fiber';
-import { AudioLoader, PositionalAudio } from 'three/webgpu';
-import * as THREE from 'three/webgpu';
+import { forwardRef, useImperativeHandle } from 'react';
+import * as THREE from 'three';
+import { useOneShotAudio } from '../audio/useOneShotAudio';
 import { useGameStore } from '../../core/store/gameStore';
+import { AudioListener } from 'three/webgpu';
 
 export interface BeamAudioHandle {
-    playImpact: (position: THREE.Vector3, volume?: number) => void;
+  playImpact: (position: THREE.Vector3, volume?: number) => void;
 }
 
-const POOL_SIZE = 10;
-const REF_DISTANCE = 5;
-
 export const BeamAudio = forwardRef<BeamAudioHandle>((_, ref) => {
-    const listener = useGameStore((state) => state.audioListener);
+  const listener = useGameStore((state) => state.audioListener);
+  const { play } = useOneShotAudio(listener as AudioListener, ['/audio/wave01.mp3']);
 
-    const buffers = useLoader(AudioLoader, [
-        '/audio/wave01.mp3', 
-    ]);
+  useImperativeHandle(ref, () => ({
+    playImpact: (position: THREE.Vector3, volume: number = 1) => {
+      play({
+        position,
+        volume,
+        detuneRange: 300,
+        refDistance: 5,
+        maxDistance: 60
+      });
+    },
+  }));
 
-    const pool = useRef<PositionalAudio[]>([]);
-    const poolIndex = useRef(0);
-
-    useEffect(() => {
-        pool.current.forEach((sound) => {
-            if (sound) {
-                sound.setRefDistance(REF_DISTANCE);
-                sound.setRolloffFactor(1); 
-            }
-        });
-    }, []);
-
-    useImperativeHandle(ref, () => ({
-        playImpact: (position: THREE.Vector3, volume: number = 1) => {
-            const sound = pool.current[poolIndex.current];
-
-            if (sound && buffers.length > 0) {
-                if (sound.isPlaying) sound.stop();
-
-                sound.position.copy(position);
-                sound.updateMatrixWorld();
-
-                const detune = (Math.random() - 0.5) * 300; 
-                const buffer = buffers[Math.floor(Math.random() * buffers.length)];
-                sound.setBuffer(buffer);
-                sound.setDetune(detune);
-                sound.setVolume(volume);
-                sound.play();
-
-                poolIndex.current = (poolIndex.current + 1) % POOL_SIZE;
-            }
-        },
-    }));
-
-    if (!listener) return null;
-
-    return (
-    
-        <group>
-            {Array.from({ length: POOL_SIZE }).map((_, i) => (
-                <positionalAudio
-                    key={`beam-impact-${i}`}
-                    ref={(el) => {
-                        if (el) pool.current[i] = el;
-                    }}
-                    args={[listener]}
-                />
-            ))}
-        </group>
-    );
+  return null;
 });
 
 BeamAudio.displayName = 'BeamAudio';

@@ -1,6 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useGameStore } from '../../core/store/gameStore';
 import * as THREE from 'three/webgpu';
+import { useLoader } from '@react-three/fiber';
+import { AudioLoader } from 'three';
 
 interface Track {
   id: string;
@@ -14,46 +16,47 @@ interface BgmProps {
 }
 
 const Bgm = ({ active, tracks }: BgmProps) => {
+  const listener = useGameStore((state) => state.audioListener);
+
+  const urls = useMemo(() => tracks.map(t => t.url), [tracks]);
+  const buffers = useLoader(AudioLoader, urls);
+
   const sounds = useRef<Map<string, THREE.Audio>>(new Map());
-  const [ready, setReady] = useState(false);
-  const listener = useGameStore((state) => state.audioListener);  
 
   useEffect(() => {
     if (!listener) return;
 
-    const loader = new THREE.AudioLoader();
-    let loadedCount = 0;
+    sounds.current.forEach(s => {
+      if (s.isPlaying) s.stop();
+      s.disconnect();
+    })
+    sounds.current.clear();
 
-    tracks.forEach((t) => {
+    tracks.forEach((t, index) => {
       const sound = new THREE.Audio(listener);
-      
-      loader.load(t.url, (buffer) => {
-        sound.setBuffer(buffer);
-        sound.setLoop(true);
-        sound.setVolume(t.volume ?? 0.5);
-        
-        sounds.current.set(t.id, sound);
-        
-        loadedCount++;
-        if (loadedCount === tracks.length) setReady(true);
-      });
+      sound.setBuffer(buffers[index]);
+      sound.setLoop(true);
+      sound.setVolume(t.volume ?? 0.5);
+      sounds.current.set(t.id, sound);
     });
 
+
     return () => {
-      // Clean up sound instances to avoid memory leaks
-      sounds.current.forEach(s => s.isPlaying && s.stop());
+      sounds.current.forEach(s => {
+        if (s.isPlaying) s.stop();
+        s.disconnect();
+      })
       sounds.current.clear();
-    };
-  }, [tracks, listener]);
+    }
+  }, [tracks, listener, buffers]);
 
   useEffect(() => {
-    // Sync playback state with the game status
-    if (active && ready) {
+    if (active) {
       sounds.current.forEach(s => !s.isPlaying && s.play());
     } else {
       sounds.current.forEach(s => s.isPlaying && s.pause());
     }
-  }, [active, ready]);
+  }, [active, buffers]);
 
   return null;
 };
