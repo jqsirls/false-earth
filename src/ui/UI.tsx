@@ -6,6 +6,7 @@ import { TouchControls } from "../core/input/TouchControls";
 
 export function UI() {
     const isMobile = useGameStore((state) => state.isMobile);
+    const isControlEnabled = useGameStore((state) => state.isControlEnabled);
 
     return (
         <div style={{ 
@@ -18,9 +19,21 @@ export function UI() {
             zIndex: 10 // Ensure UI is above Canvas
         }}>
             <LoadingScreen />
-            <AudioButton />
-            <SideBar />
-            {isMobile && <TouchControls />}
+
+            <div style={{
+                position: 'absolute',
+                top: 0, left: 0, width: '100%', height: '100%',
+                pointerEvents: 'none',
+                
+                opacity: isControlEnabled ? 1 : 0,
+                visibility: isControlEnabled ? 'visible' : 'hidden',
+                transition: `opacity 0.5s ease, visibility 0s linear ${isControlEnabled ? '0s' : '0.5s'}`
+            }}>
+                <AudioButton />
+                <SideBar />
+                
+                {isMobile && <TouchControls />}
+            </div>
         </div>
     );
 }

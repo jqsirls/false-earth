@@ -4,8 +4,6 @@ import { inputState } from '../../core/input/InputManager';
 import { useGameStore } from '../../core/store/gameStore';
 
 export function TouchControls() {
-  const isControlEnabled = useGameStore((state) => state.isControlEnabled);
-
   const [joystickPos, setJoystickPos] = useState({ x: 0, y: 0 });
   const [isRunning, setIsRunning] = useState(false); 
   const joystickContainerRef = useRef<HTMLDivElement>(null);
@@ -16,7 +14,7 @@ export function TouchControls() {
   const RUN_THRESHOLD = 0.8; 
 
   const handleJoystickMove = (clientX: number, clientY: number) => {
-    if (!isControlEnabled || !joystickContainerRef.current) return;
+    if (!joystickContainerRef.current) return;
 
     const rect = joystickContainerRef.current.getBoundingClientRect();
     const centerX = rect.left + rect.width / 2;
@@ -68,7 +66,6 @@ export function TouchControls() {
   };
 
   const handlePointerDown = (e: React.PointerEvent) => {
-    if (!isControlEnabled) return;
     e.currentTarget.setPointerCapture(e.pointerId);
     handleJoystickMove(e.clientX, e.clientY);
   };
@@ -116,11 +113,11 @@ export function TouchControls() {
         backdropFilter: 'blur(4px)',
         
         touchAction: 'none',
-        pointerEvents: isControlEnabled ? 'auto' : 'none',
-        cursor: isControlEnabled ? 'pointer' : 'default',
+        pointerEvents: 'auto',
+        cursor: 'pointer',
         userSelect: 'none',
 
-        opacity: isControlEnabled ? 0.5 : 0,
+        opacity: 0.5,
         transition: 'opacity 0.5s ease-in-out, border-color 0.2s',
       }}
     >
