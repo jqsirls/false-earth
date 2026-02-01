@@ -76,8 +76,8 @@ export default function Effects() {
     // Computed DoF Params
     const dofParams = useMemo(() => {
         switch (cameraMode) {
-            case CameraMode.TPV: return dofParamsTPS;
-            case CameraMode.FREE: return dofParamsFREE;
+            case CameraMode.Follow: return dofParamsTPS;
+            case CameraMode.Detached: return dofParamsFREE;
             case CameraMode.FPV: return dofParamsFPV;
             default: return dofParamsTPS;
         }

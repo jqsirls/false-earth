@@ -14,7 +14,7 @@ const Key = ({ children }: { children: React.ReactNode }) => (
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
         minWidth: '18px', height: '22px', padding: '0 5px', margin: '0 4px',
         border: '1px solid #555', borderRadius: '4px', background: 'rgba(255,255,255,0.05)',
-        fontFamily: 'monospace', fontSize: '11px', fontWeight: 'bold', color: '#ccc',
+        fontFamily: 'monospace', fontSize: '0.7rem', fontWeight: 'bold', color: '#ccc',
         lineHeight: 1, verticalAlign: 'middle', boxSizing: 'border-box'
     }}>
         {children}
@@ -36,7 +36,7 @@ const MouseIcon = () => (
 const InstructionRow = ({ input, label }: { input: React.ReactNode, label: string }) => (
     <div style={{ display: 'flex', alignItems: 'center' }}>
         {input}
-        <span style={{ marginLeft: '6px', fontSize: '10px', letterSpacing: '1px', fontWeight: 500, transform: 'translateY(1px)' }}>
+        <span style={{ marginLeft: '6px', fontSize: '0.7rem', letterSpacing: '1px', fontWeight: 500, transform: 'translateY(1px)' }}>
             {label}
         </span>
     </div>
@@ -165,21 +165,20 @@ export function LoadingScreen() {
                     </div>
                 </div>
 
-                {/* Controls Instructions */}
                 <div style={{
                     marginTop: '80px', color: '#ccc', opacity: 0.8, animation: 'fadeIn 3s ease',
                     userSelect: 'none', display: 'flex', justifyContent: 'center', gap: '24px',
-                    flexDirection: isMobile ? 'column' : 'row',
+                    flexDirection: 'row',
                 }}>
                     {isMobile ? (
                         <>
-                            <InstructionRow input={<Key>ONE FINGER</Key>} label="MOVE" />
-                            <InstructionRow input={<Key>TWO FINGERS</Key>} label="LOOK" />
+                            <InstructionRow input={<Key>L-STICK</Key>} label="MOVE" />
+                            <InstructionRow input={<Key>TOUCH</Key>} label="LOOK" />
                         </>
                     ) : (
                         <>
                             <InstructionRow input={<><Key>W</Key><Key>A</Key><Key>S</Key><Key>D</Key></>} label="MOVE" />
-                            <InstructionRow input={<Key>SHIFT</Key>} label="BOOST" />
+                            <InstructionRow input={<Key>SHIFT</Key>} label="RUN" />
                             <InstructionRow input={<Key>C</Key>} label="CAMERA" />
                             <InstructionRow input={<MouseIcon />} label="LOOK" />
                         </>

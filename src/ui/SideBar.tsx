@@ -2,8 +2,8 @@ import { IconButton, Tooltip } from '@mui/material';
 import { CameraMode, useGameStore } from '../core/store/gameStore';
 import PersonIcon from '@mui/icons-material/Person';
 import VisibilityIcon from '@mui/icons-material/Visibility';
-import OpenWithIcon from '@mui/icons-material/OpenWith';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import ThreeSixtyIcon from '@mui/icons-material/ThreeSixty';
 
 export function SideBar() {
     const isMobile = useGameStore((state) => state.isMobile);
@@ -46,7 +46,7 @@ export function SideBar() {
 
 
     const cameraConfig = {
-        [CameraMode.TPV]: {
+        [CameraMode.Follow]: {
             icon: <PersonIcon sx={iconBaseStyle} />,
             title: "Third Person"
         },
@@ -54,9 +54,9 @@ export function SideBar() {
             icon: <VisibilityIcon sx={iconBaseStyle} />,
             title: "First Person"
         },
-        [CameraMode.FREE]: {
-            icon: <OpenWithIcon sx={iconBaseStyle} />,
-            title: "Free Cam"
+        [CameraMode.Detached]: {
+            icon: <ThreeSixtyIcon sx={iconBaseStyle} />,
+            title: "Tripod View"
         },
     };
     const currentCamera = cameraConfig[cameraMode];
@@ -76,18 +76,17 @@ export function SideBar() {
             zIndex: 50,
         }}>
             
-            <Tooltip title={currentCamera.title} placement="left">
-                <IconButton sx={btnStyle} onClick={cycleCameraMode}>
-                    {currentCamera.icon}
-                </IconButton>
-            </Tooltip>
-
             <Tooltip title={ qualityTooltip } placement="left">
                 <IconButton sx={btnStyle} onClick={toggleQuality}>
                     <AutoAwesomeIcon sx={qualityIconStyle} />
                 </IconButton>
             </Tooltip>
 
+            <Tooltip title={currentCamera.title} placement="left">
+                <IconButton sx={btnStyle} onClick={cycleCameraMode}>
+                    {currentCamera.icon}
+                </IconButton>
+            </Tooltip>
         </div>
     );
 }

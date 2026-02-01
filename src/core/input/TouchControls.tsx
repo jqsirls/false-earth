@@ -1,21 +1,23 @@
 // src/ui/controls/TouchControls.tsx
 import { useState, useRef } from 'react';
-import { inputState } from './InputManager';
+import { inputState } from '../../core/input/InputManager';
+import { useGameStore } from '../../core/store/gameStore';
 
 export function TouchControls() {
+  const isControlEnabled = useGameStore((state) => state.isControlEnabled);
+
   const [joystickPos, setJoystickPos] = useState({ x: 0, y: 0 });
-  const [isRunning, setIsRunning] = useState(false); // For visual feedback
+  const [isRunning, setIsRunning] = useState(false); 
   const joystickContainerRef = useRef<HTMLDivElement>(null);
   
-  // --- Configuration ---
+  // Config
   const MAX_RADIUS = 50; 
-  const DEAD_ZONE = 10;      // Dead zone: No response if moved less than 10px (prevents jitter)
-  const RUN_THRESHOLD = 0.8; // Threshold: Trigger run if pushed past 80% (approx 40px)
+  const DEAD_ZONE = 10;      
+  const RUN_THRESHOLD = 0.8; 
 
   const handleJoystickMove = (clientX: number, clientY: number) => {
-    if (!joystickContainerRef.current) return;
+    if (!isControlEnabled || !joystickContainerRef.current) return;
 
-    // 1. Calculate center point
     const rect = joystickContainerRef.current.getBoundingClientRect();
     const centerX = rect.left + rect.width / 2;
     const centerY = rect.top + rect.height / 2;
@@ -23,12 +25,9 @@ export function TouchControls() {
     let deltaX = clientX - centerX;
     let deltaY = clientY - centerY;
 
-    // 2. Calculate distance
     const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-    
-    // 3. Clamp range & Normalize
-    // If finger drags outside circle, clamp to MAX_RADIUS
     let clampedDistance = distance;
+    
     if (distance > MAX_RADIUS) {
       const angle = Math.atan2(deltaY, deltaX);
       deltaX = Math.cos(angle) * MAX_RADIUS;
@@ -36,38 +35,40 @@ export function TouchControls() {
       clampedDistance = MAX_RADIUS;
     }
 
-    // 4. Update UI visuals
     setJoystickPos({ x: deltaX, y: deltaY });
 
-    // --- Core Logic: Update InputManager ---
+    let normX = 0;
+    let normY = 0;
 
-    // A. Handle movement & rotation (Dead Zone Check)
     if (clampedDistance > DEAD_ZONE) {
-      // Push up (Y < 0) to move forward
-      inputState.moveForward = deltaY < -DEAD_ZONE;
-      
-      // Push left/right to rotate
-      inputState.rotateLeft = deltaX < -DEAD_ZONE;
-      inputState.rotateRight = deltaX > DEAD_ZONE;
-    } else {
-      // Stop all movement if inside dead zone
-      inputState.moveForward = false;
-      inputState.rotateLeft = false;
-      inputState.rotateRight = false;
+       normX = deltaX / MAX_RADIUS;
+       normY = -(deltaY / MAX_RADIUS); 
     }
 
-    // B. Handle sprinting (Run Logic based on Radius)
-    // Calculate pull ratio (0.0 ~ 1.0)
+    inputState.joystickInput.x = normX;
+    inputState.joystickInput.y = normY;
+
+    if (clampedDistance > DEAD_ZONE) {
+        inputState.moveForward = normY > 0.5;
+        inputState.moveBackward = normY < -0.5;
+        inputState.rotateLeft = normX < -0.5;
+        inputState.rotateRight = normX > 0.5;
+    } else {
+        inputState.moveForward = false;
+        inputState.moveBackward = false;
+        inputState.rotateLeft = false;
+        inputState.rotateRight = false;
+    }
+
     const pullRatio = clampedDistance / MAX_RADIUS;
-    
-    // If pulled past 80%, treat as running
     const shouldRun = pullRatio > RUN_THRESHOLD;
     
     inputState.run = shouldRun;
-    setIsRunning(shouldRun); // Update local state to change joystick color
+    setIsRunning(shouldRun);
   };
 
   const handlePointerDown = (e: React.PointerEvent) => {
+    if (!isControlEnabled) return;
     e.currentTarget.setPointerCapture(e.pointerId);
     handleJoystickMove(e.clientX, e.clientY);
   };
@@ -81,66 +82,57 @@ export function TouchControls() {
   const handlePointerUp = (e: React.PointerEvent) => {
     e.currentTarget.releasePointerCapture(e.pointerId);
     
-    // Reset visuals
     setJoystickPos({ x: 0, y: 0 });
     setIsRunning(false);
     
-    // Reset all input states
+    inputState.joystickInput.x = 0;
+    inputState.joystickInput.y = 0;
     inputState.moveForward = false;
+    inputState.moveBackward = false;
     inputState.rotateLeft = false;
     inputState.rotateRight = false;
     inputState.run = false;
   };
 
   return (
-    <div style={{
-      position: 'absolute',
-      bottom: '40px',
-      left: '0',
-      width: '100%', 
-      height: '150px',
-      pointerEvents: 'none',
-      display: 'flex',
-      justifyContent: 'flex-start', // Align left
-      padding: '0 40px',
-      userSelect: 'none',
-      zIndex: 100
-    }}>
-      {/* Virtual Joystick */}
-      <div 
-        ref={joystickContainerRef}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        onPointerCancel={handlePointerUp}
-        style={{
-          width: '120px',
-          height: '120px',
-          background: 'rgba(255, 255, 255, 0.1)',
-          border: `2px solid ${isRunning ? 'rgba(255, 200, 0, 0.6)' : 'rgba(255, 255, 255, 0.3)'}`, // Change border color when running
-          backdropFilter: 'blur(4px)',
-          borderRadius: '50%',
-          position: 'relative',
-          pointerEvents: 'auto',
-          touchAction: 'none',
-          transition: 'border-color 0.2s', // Color transition effect
-        }}
-      >
-        {/* Joystick Knob */}
-        <div style={{
-          width: '50px',
-          height: '50px',
-          // Yellow when running, white when walking
-          background: isRunning ? 'rgba(255, 200, 0, 0.9)' : 'rgba(255, 255, 255, 0.8)',
-          borderRadius: '50%',
-          position: 'absolute',
-          top: '50%',
-          left: '50%',
-          transform: `translate(calc(-50% + ${joystickPos.x}px), calc(-50% + ${joystickPos.y}px))`,
-          transition: joystickPos.x === 0 ? 'transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)' : 'background 0.2s',
-          boxShadow: isRunning ? '0 0 10px rgba(255, 200, 0, 0.5)' : 'none', // Glow when running
-        }} />
-      </div>
+    <div 
+      ref={joystickContainerRef}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp}
+      style={{
+        position: 'absolute', 
+        left: '20px', 
+        bottom: '20px', 
+        zIndex: 100,
+
+        width: '100px', 
+        height: '100px',
+        borderRadius: '50%',
+
+        background: 'rgba(255, 255, 255, 0.1)',
+        border: `2px solid rgba(255, 255, 255, 0.3)`,
+        backdropFilter: 'blur(4px)',
+        
+        touchAction: 'none',
+        pointerEvents: isControlEnabled ? 'auto' : 'none',
+        cursor: isControlEnabled ? 'pointer' : 'default',
+        userSelect: 'none',
+
+        opacity: isControlEnabled ? 0.5 : 0,
+        transition: 'opacity 0.5s ease-in-out, border-color 0.2s',
+      }}
+    >
+      <div style={{
+        width: '50px', height: '50px',
+        background: 'rgba(255, 255, 255, 0.8)',
+        borderRadius: '50%', 
+        position: 'absolute',
+        top: '50%', left: '50%',
+        transform: `translate(calc(-50% + ${joystickPos.x}px), calc(-50% + ${joystickPos.y}px))`,
+        transition: joystickPos.x === 0 ? 'transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)' : 'background 0.2s',
+      }} />
     </div>
   );
 }

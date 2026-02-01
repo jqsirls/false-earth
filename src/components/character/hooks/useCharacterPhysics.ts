@@ -1,18 +1,21 @@
 import { useEffect, useRef, MutableRefObject } from 'react';
-import { useFrame } from '@react-three/fiber';
+import { useFrame, useThree } from '@react-three/fiber';
 import { useAnimations } from '@react-three/drei';
 import * as THREE from 'three/webgpu';
 import { Group, Object3D, AnimationClip } from 'three';
-import { calculateBlendWeights } from './calculateBlendWeights';
+
+import { calculateBlendWeights } from '../utils/calculateBlendWeights';
 import { inputState } from '../../../core/input/InputManager';
+import { CameraMode, useGameStore } from '../../../core/store/gameStore';
+import { INITIAL_PHYSICS_STATE, PhysicsState } from '../config';
+import { solveTank } from '../utils/solveTank';
+import { solveCam } from '../utils/solveCam';
 
-
-export type StepType = 'walk' | 'run' | 'back'
+export type StepType = 'walk' | 'run' | 'back';
 export interface StepEvent {
   type: StepType;
   volume: number;
 }
-
 
 export function useCharacterPhysics(
   groupRef: MutableRefObject<Group | null>,
@@ -20,6 +23,11 @@ export function useCharacterPhysics(
   animations: AnimationClip[],
   onStep: (event: StepEvent) => void
 ) {
+  const { camera } = useThree();
+  const cameraMode = useGameStore((state) => state.cameraMode);
+  const isMobile = useGameStore((state) => state.isMobile);
+  const isControlEnabled = useGameStore((state) => state.isControlEnabled);
+
   const sceneRef = useRef<Object3D | null>(null);
   sceneRef.current = scene;
   const { actions } = useAnimations(animations, sceneRef);
@@ -30,32 +38,11 @@ export function useCharacterPhysics(
     lastBackTime: 0
   });
 
-  // Physics State
-  const state = useRef({
-    speed: 0,
-    rotationVelocity: 0,
+  const state = useRef<PhysicsState>({ ...INITIAL_PHYSICS_STATE });
 
-    // Animation weights
-    idleWeight: 1.0,
-    walkWeight: 0.0,
-    runWeight: 0.0,
-    backWeight: 0.0,
-
-    // Parameters
-    walkSpeed: 1.0,
-    runSpeed: 3.5,
-    backSpeed: 0.6,
-    rotateSpeed: 2.5,
-
-    speedLerpFactor: 0.1,
-    rotationLerpFactor: 0.15, // Smoothing factor for rotation
-    animBlendLerpFactor: 0.15,
-  });
-
-
-  // Initial Animation Start
+  // Init Animations
   useEffect(() => {
-    ['Idle', 'Walk', 'Run', 'Back'].forEach(name => {
+    ['Idle', 'Walk', 'Run', 'Back'].forEach((name) => {
       const action = actions[name];
       if (action) {
         action.reset().play();
@@ -64,55 +51,51 @@ export function useCharacterPhysics(
     });
   }, [actions]);
 
-  // Game Loop
+  const processFootstep = (
+    actionName: string,
+    weight: number,
+    thresholds: number[],
+    stateKey: keyof typeof animState.current,
+    type: StepType
+  ) => {
+    const action = actions[actionName];
+    if (!action || weight <= 0.5) return;
+
+    const duration = action.getClip().duration;
+    const time = (action.time % duration) / duration;
+    const lastTime = animState.current[stateKey];
+
+    thresholds.forEach(t => {
+      if (lastTime < t && time >= t) {
+        onStep?.({ type, volume: weight });
+      }
+    });
+
+    animState.current[stateKey] = time;
+  };
+
   useFrame((_, delta) => {
-    if (!groupRef.current) return;
+    if (!groupRef.current || !isControlEnabled) return;
+    
     const s = state.current;
 
-    const { moveForward, rotateLeft, rotateRight, moveBackward, run } = inputState;
-
-    // --- Rotation ---
-    let targetRotationVelocity = 0;
-    if (rotateLeft) {
-      targetRotationVelocity = s.rotateSpeed;
-    } else if (rotateRight) {
-      targetRotationVelocity = -s.rotateSpeed;
+    if (cameraMode === CameraMode.FPV) {
+      solveTank(groupRef.current, s, delta, isMobile);
+    } else {
+      solveCam(groupRef.current, camera, s, delta);
     }
 
-    s.rotationVelocity = THREE.MathUtils.lerp(s.rotationVelocity, targetRotationVelocity, s.rotationLerpFactor);
-
-    if (Math.abs(s.rotationVelocity) > 0.001) {
-      groupRef.current.rotation.y += s.rotationVelocity * delta;
-    }
-
-    // --- Movement Calculation ---
-    let targetSpeed = 0;
-
-    if (moveForward) {
-      targetSpeed = run ? s.runSpeed : s.walkSpeed;
-    } else if (moveBackward) {
-      targetSpeed = -s.backSpeed;
-    }
-
-    s.speed = THREE.MathUtils.lerp(s.speed, targetSpeed, s.speedLerpFactor);
-
-    if (Math.abs(s.speed) > 0.01) {
-      groupRef.current.translateZ(s.speed * delta);
-    }
-
-    // --- Animation Blending Logic (Blend Tree) ---
-    const isRotating = rotateLeft || rotateRight;
-
-    const speed = Math.abs(s.speed);
+    // Animation blending
+    const { rotateLeft, rotateRight } = inputState;
+    const isRotating = (cameraMode === CameraMode.FPV) && (rotateLeft || rotateRight);
     const targetWeights = calculateBlendWeights(
-      speed,
+      Math.abs(s.speed),
       isRotating,
       s.walkSpeed,
       s.runSpeed,
       s.backSpeed
     );
 
-    // Apply smooth weight transitions
     s.idleWeight = THREE.MathUtils.lerp(s.idleWeight, targetWeights.idle, s.animBlendLerpFactor);
     s.walkWeight = THREE.MathUtils.lerp(s.walkWeight, targetWeights.walk, s.animBlendLerpFactor);
     s.runWeight = THREE.MathUtils.lerp(s.runWeight, targetWeights.run, s.animBlendLerpFactor);
@@ -123,45 +106,10 @@ export function useCharacterPhysics(
     actions['Run']?.setEffectiveWeight(s.runWeight);
     actions['Back']?.setEffectiveWeight(s.backWeight);
 
-
-    const walkAction = actions['Walk'];
-    if (walkAction && s.walkWeight > 0.5) {
-      const duration = walkAction.getClip().duration;
-      const time = (walkAction.time % duration) / duration;
-
-      // Standard forward check: time increases across threshold
-      [0.05, 0.55].forEach(threshold => {
-        if (animState.current.lastWalkTime < threshold && time >= threshold) {
-          onStep?.({ type: 'walk', volume: s.walkWeight });
-        }
-      });
-      animState.current.lastWalkTime = time;
-    }
-
-    const runAction = actions['Run'];
-    if (runAction && s.runWeight > 0.5) {
-      const duration = runAction.getClip().duration;
-      const time = (runAction.time % duration) / duration;
-
-      [0.1, 0.6].forEach(threshold => {
-        if (animState.current.lastRunTime < threshold && time >= threshold) {
-          onStep?.({ type: 'run', volume: s.runWeight });
-        }
-      });
-      animState.current.lastRunTime = time;
-    }
-
-    const backAction = actions['Back'];
-    if (backAction && s.backWeight > 0.5) {
-      const duration = backAction.getClip().duration;
-      const time = (backAction.time % duration) / duration;
-
-      [0.1, 0.6].forEach(threshold => {
-        if (animState.current.lastBackTime < threshold && time >= threshold) {
-          onStep?.({ type: 'back', volume: s.backWeight });
-        }
-      });
-      animState.current.lastBackTime = time;
-    }
+    // Footsteps
+    processFootstep('Walk', s.walkWeight, [0.05, 0.55], 'lastWalkTime', 'walk');
+    processFootstep('Run', s.runWeight, [0.1, 0.6], 'lastRunTime', 'run');
+    processFootstep('Back', s.backWeight, [0.1, 0.6], 'lastBackTime', 'back');
   });
 }
+

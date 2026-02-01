@@ -1,27 +1,37 @@
-// define input state interface
+// src/core/input/InputManager.ts
+
 export interface InputState {
+    // Buttons (Digital)
     moveForward: boolean;
+    moveBackward: boolean;
     rotateLeft: boolean;
     rotateRight: boolean;
-    moveBackward: boolean;
     run: boolean;
+
+    // Joystick (Analog) - New!
+    // x: -1 (Left) to 1 (Right)
+    // y: -1 (Back) to 1 (Forward)
+    joystickInput: { x: number, y: number };
 }
 
-
-// singleton object
+// Singleton state
 export const inputState: InputState = {
     moveForward: false,
+    moveBackward: false,
     rotateLeft: false,
     rotateRight: false,
-    moveBackward: false,
     run: false,
+    
+    joystickInput: { x: 0, y: 0 }
 };
 
-// reset input
 export const resetInput = () => {
     inputState.moveForward = false;
+    inputState.moveBackward = false;
     inputState.rotateLeft = false;
     inputState.rotateRight = false;
-    inputState.moveBackward = false;
     inputState.run = false;
+    
+    inputState.joystickInput.x = 0;
+    inputState.joystickInput.y = 0;
 };

@@ -6,9 +6,9 @@ import { TerrainUniforms, WindUniforms } from '../types';
 import { RoseHandle } from '../../components/Rose/Rose';
 
 export enum CameraMode {
-  TPV  = 0,
+  Follow  = 0,
   FPV = 1,
-  FREE = 2,
+  Detached = 2,
 }
 
 interface GameState {
@@ -54,11 +54,14 @@ interface GameState {
 
   quality: 'low' | 'high';
   toggleQuality: () => void;
+
+  isControlEnabled: boolean; 
+  setControlEnabled: (enabled: boolean) => void;
 }
 
 export const useGameStore = create<GameState>((set) => ({
   // ===== Camera State =====
-  cameraMode: CameraMode.TPV,
+  cameraMode: CameraMode.Follow,
   setCameraMode: (mode) => set({ cameraMode: mode }),
   toggleCameraMode: () => set((state) => ({
     cameraMode: (state.cameraMode + 1) % 3
@@ -106,4 +109,7 @@ export const useGameStore = create<GameState>((set) => ({
 
   quality: 'high',
   toggleQuality: () => set((state) => ({ quality: state.quality === 'high' ? 'low' : 'high' })),
+
+  isControlEnabled: false,
+  setControlEnabled: (enabled) => set({ isControlEnabled: enabled }),
 }));

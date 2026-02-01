@@ -7,7 +7,6 @@ import { CharacterProps } from './config';
 import { useCharacterAssets } from './hooks/useCharacterAssets';
 import { useCharacterPhysics } from './hooks/useCharacterPhysics';
 import { useGameStore, CameraMode } from '../../core/store/gameStore';
-import { useCharacterInput } from './hooks/useCharacterInput';
 import { CharacterAudio, CharacterAudioHandle } from './CharacterAudio';
 
 export const Character = ({ position = [0, 0, 0], scale = 1 }: CharacterProps) => {
