@@ -2,7 +2,7 @@ import { useGameStore, CameraMode } from '../../core/store/gameStore';
 import { CameraControls } from '@react-three/drei';
 import { useFPVCamera } from './hooks/useFPVCamera';
 import { useFollowCamera } from './hooks/useFollowCamera';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import * as THREE from 'three/webgpu';
 
 type Props = {
@@ -13,7 +13,6 @@ export const CAMERA_POSITION = new THREE.Vector3(-4, 2, -0.5);
 export const CAMERA_LOOKAT = new THREE.Vector3(0, 1, 0);
 
 export function CameraViewControl({ boneName = 'head' }: Props) {
-  // Read mode and character ref directly from Store
   const cameraMode = useGameStore((state) => state.cameraMode);
   const characterRef = useGameStore((state) => state.characterRef);
   const isGameLoaded = useGameStore((state) => state.isGameStarted);
@@ -34,20 +33,37 @@ export function CameraViewControl({ boneName = 'head' }: Props) {
     enabled: cameraMode === CameraMode.Follow && isControlEnabled,
   });
 
-  useEffect(() => {
-    if (isGameLoaded && !isControlEnabled && characterRef?.current && controlsRef.current) {
-      const charPos = characterRef.current.position;
-      const pos = charPos.clone().add(CAMERA_POSITION);
-      const lookAt = charPos.clone().add(CAMERA_LOOKAT);
+  const resetCamera = useCallback((transition: boolean = true) => {
+    if (!characterRef?.current || !controlsRef.current) return Promise.resolve();
 
+    const charPos = characterRef.current.position;
+    const pos = charPos.clone().add(CAMERA_POSITION);
+    const lookAt = charPos.clone().add(CAMERA_LOOKAT);
+
+    return controlsRef.current.setLookAt(
+      pos.x, pos.y, pos.z,
+      lookAt.x, lookAt.y, lookAt.z,
+      transition
+    );
+  }, [characterRef]);
+
+  // initial sequence, reset camera to back
+  useEffect(() => {
+    if (isGameLoaded && !isControlEnabled) {
       document.body.style.cursor = 'wait';
 
-      controlsRef.current.setLookAt(pos.x, pos.y, pos.z, lookAt.x, lookAt.y, lookAt.z, true).then(() => {
+      resetCamera(true).then(() => {
         setControlEnabled(true);
         document.body.style.cursor = 'default';
       });
     }
-  }, [isGameLoaded, isControlEnabled, characterRef]);
+  }, [isGameLoaded, isControlEnabled, resetCamera, setControlEnabled]);
+
+  useEffect(() => {
+    if (isControlEnabled && cameraMode !== CameraMode.FPV) {
+      resetCamera(true);
+    }
+  }, [cameraMode, isControlEnabled, resetCamera]);
 
   return (
     <CameraControls

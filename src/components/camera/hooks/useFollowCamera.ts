@@ -61,18 +61,6 @@ export function useFollowCamera({
     };
   }, [enabled, gl.domElement]);
 
-  // Auto-position camera behind character on Init/Enable
-  useEffect(() => {
-    if (enabled && characterRef?.current && controlsRef.current) {
-      const charPos = characterRef.current.position;
-      const pos = charPos.clone().add(CAMERA_POSITION);
-      const lookAt = charPos.clone().add(CAMERA_LOOKAT);
-
-      controlsRef.current.setLookAt(pos.x, pos.y, pos.z, lookAt.x, lookAt.y, lookAt.z, true);
-    }
-  }, [enabled, characterRef, controlsRef]);
-
-
   useFrame(() => {
     if (!enabled || !controlsRef.current || !characterRef?.current) return;
     
