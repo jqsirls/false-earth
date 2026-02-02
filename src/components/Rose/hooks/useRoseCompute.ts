@@ -63,7 +63,7 @@ export function useRoseCompute(
         spawnUniforms.uSpawnRadius.value = radius;
     }, [spawnUniforms]);
 
-    useFrame((stae, delta) => {
+    useFrame(() => {
         const renderer = gl as unknown as WebGPURenderer
         if (!computeRefs.current) return
 
@@ -72,7 +72,6 @@ export function useRoseCompute(
             camera.matrixWorldInverse
         )
         uniforms.uCameraPosition.value.copy(camera.position)
-        uniforms.uDeltaTime.value = Math.min(delta, 0.1)
 
         renderer.compute(computeRefs.current.reset)
         renderer.compute(computeRefs.current.spawn)

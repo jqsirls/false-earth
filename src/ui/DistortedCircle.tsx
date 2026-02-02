@@ -8,6 +8,7 @@ import {
   mix, smoothstep, positionLocal, uniform, 
   mx_noise_float 
 } from 'three/tsl';
+import { uTime } from '../core/shaders/uniforms';
 
 interface DistortedCircleProps {
   radius?: number;
@@ -29,7 +30,6 @@ export default function DistortedCircle({
   const meshRef = useRef<THREE.Mesh>(null);
 
   // Uniforms
-  const uTime = useMemo(() => uniform(0), []);
   const uStrength = useMemo(() => uniform(0), []); // Start at 0
   const uSeed = useMemo(() => uniform(seed), [seed]);
   const uColor = useMemo(() => uniform(new THREE.Color(color)), [color]);
@@ -77,10 +77,9 @@ export default function DistortedCircle({
       transparent: true,
       blending: THREE.AdditiveBlending,
     });
-  }, [radius, uColor, uSeed, uStrength, uTime]);
+  }, [radius, uColor, uSeed, uStrength]);
 
-  useFrame((state, delta) => {
-    uTime.value += delta;
+  useFrame(() => {
     // Smoothly interpolate strength based on prop (replaces GSAP)
     uStrength.value = THREE.MathUtils.lerp(uStrength.value, distortionStrength, 0.1);
   });

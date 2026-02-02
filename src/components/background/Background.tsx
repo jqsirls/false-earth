@@ -1,9 +1,10 @@
+import * as THREE from 'three'
 import { useMemo, useEffect, memo } from 'react'
 import { useThree } from '@react-three/fiber'
-import { texture, equirectUV, uniform, mx_rotate3d, time, vec3, positionWorld } from 'three/tsl'
-import * as THREE from 'three'
+import { texture, equirectUV, uniform, mx_rotate3d, vec3, positionWorld } from 'three/tsl'
 import { useKTX2Texture } from '../../core/utils/useKTX2Texture'
 import { CameraMode, useGameStore } from '../../core/store/gameStore'
+import { uTime } from '../../core/shaders/uniforms';
 
 export const Background = memo(function Background({ intensity, axis, speed }: { intensity: number, axis: [number, number, number], speed: number }) {
   const { scene } = useThree()
@@ -30,7 +31,7 @@ export const Background = memo(function Background({ intensity, axis, speed }: {
   useEffect(() => {
     if (map) {
       const dir = positionWorld.normalize()
-      const angle = time.mul(uniforms.uSpeed)
+      const angle = uTime.mul(uniforms.uSpeed)
       const rotatedDir = mx_rotate3d(dir, angle, uniforms.uAxis)
       const finalUVs = equirectUV(rotatedDir)
 

@@ -2,7 +2,6 @@ import { create } from 'zustand';
 import { Group } from 'three';
 import { AudioListener } from 'three/webgpu';
 import * as THREE from 'three/webgpu';
-import { TerrainUniforms, WindUniforms } from '../types';
 import { RoseHandle } from '../../components/Rose/Rose';
 
 export enum CameraMode {
@@ -20,14 +19,6 @@ interface GameState {
   // ===== Character State =====
   characterRef: React.MutableRefObject<Group | null> | null;
   setCharacterRef: (ref: React.MutableRefObject<Group | null> | null) => void;
-  
-  // ===== Terrain State =====
-  terrainUniforms: TerrainUniforms | null;
-  setTerrainUniforms: (uniforms: TerrainUniforms | null) => void;
-  
-  // ===== Wind State =====
-  windUniforms: WindUniforms | null;
-  setWindUniforms: (uniforms: WindUniforms | null) => void;
   
   // ===== Cosmic/Wave State =====
   waveStorageBuffer: THREE.StorageBufferAttribute | null;
@@ -70,14 +61,6 @@ export const useGameStore = create<GameState>((set) => ({
   // ===== Character State =====
   characterRef: null,
   setCharacterRef: (ref) => set({ characterRef: ref }),
-  
-  // ===== Terrain State =====
-  terrainUniforms: null,
-  setTerrainUniforms: (uniforms) => set({ terrainUniforms: uniforms }),
-  
-  // ===== Wind State =====
-  windUniforms: null,
-  setWindUniforms: (uniforms) => set({ windUniforms: uniforms }),
   
   // ===== Cosmic/Wave State =====
   waveStorageBuffer: null,

@@ -4,7 +4,7 @@ import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import * as THREE from 'three/webgpu';
 import { Fn, vec3, vec4, float, positionLocal, modelWorldMatrix, cameraViewMatrix, cameraProjectionMatrix, oneMinus, texture, uv } from 'three/tsl';
 import { getTerrainHeight } from '../../../core/shaders/terrainHelpers';
-import { TerrainUniforms } from '../../../core/types';
+import { uTerrainAmp, uTerrainFreq, uTerrainSeed } from '../../../core/shaders/uniforms';
 import { BODY_MESH_NAMES, BODY_TEXTURE_PATHS, DETAIL_TEXTURE_PATHS } from '../config';
 import { useKTX2Texture } from '../../../core/utils/useKTX2Texture';
 
@@ -28,7 +28,7 @@ const extractClip = (gltf: any, name: string): THREE.AnimationClip | null => {
   return clip;
 };
 
-export function useCharacterAssets(terrainUniforms?: TerrainUniforms, uWorldPos?: any) {
+export function useCharacterAssets(uWorldPos?: any) {
   const [meshData, idleAnim, walkAnim, runAnim, backAnim] = useGLTF([
     '/models/Astronaut.glb',
     '/models/Idle.glb',
@@ -43,16 +43,12 @@ export function useCharacterAssets(terrainUniforms?: TerrainUniforms, uWorldPos?
 
   const { scene, animations, helmets } = useMemo((): { scene: THREE.Object3D | null; animations: THREE.AnimationClip[]; helmets: THREE.Mesh[] } => {
     
-    if (!mesh || !bodyTex.map || !detailTex.map || !terrainUniforms || !uWorldPos) return { scene: null, animations: [], helmets: [] };
+    if (!mesh || !bodyTex.map || !detailTex.map || !uWorldPos) return { scene: null, animations: [], helmets: [] };
 
     const clonedScene = SkeletonUtils.clone(mesh as any);
 
     const vertexNode = Fn(() => {
-      const terrainHeightFn = getTerrainHeight(
-        terrainUniforms.uTerrainAmp,
-        terrainUniforms.uTerrainFreq,
-        terrainUniforms.uTerrainSeed
-      );
+      const terrainHeightFn = getTerrainHeight(uTerrainAmp, uTerrainFreq, uTerrainSeed);
 
       const worldPos = modelWorldMatrix.mul(vec4(positionLocal, float(1.0))).xyz;
       const th = terrainHeightFn(uWorldPos.xz);
@@ -125,7 +121,6 @@ export function useCharacterAssets(terrainUniforms?: TerrainUniforms, uWorldPos?
     backAnim,
     bodyTex,
     detailTex,
-    terrainUniforms,
     uWorldPos,
   ]);
 

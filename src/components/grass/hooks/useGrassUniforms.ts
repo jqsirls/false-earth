@@ -5,7 +5,7 @@ import { uniform, vec2, vec3, vec4 } from "three/tsl";
 import { createGrassControls } from "../core/grassControls";
 import { DEFAULT_BLADES_PER_AXIS, DEFAULT_GRASS_AREA_SIZE, DEFAULT_GRID_DIVISIONS } from "../core/config";
 
-export function useGrassUniforms(windUniforms: any) {
+export function useGrassUniforms() {
 
     const [params] = useControls('Grass', () => createGrassControls(), { collapsed: true })
 
@@ -31,11 +31,9 @@ export function useGrassUniforms(windUniforms: any) {
                 uTypeTrendScale: uniform(0.1),
 
                 // Wind Parameters
-                uTime: uniform(0.0),
                 uWindScale: uniform(0.25),
                 uWindSpeed: uniform(0.6),
                 uWindStrength: uniform(0.35),
-                uWindDir: windUniforms?.uWindDir ?? uniform(new THREE.Vector2(1, 0)),
                 uWindFacing: uniform(0.6),
 
                 // Culling Parameters
@@ -51,8 +49,6 @@ export function useGrassUniforms(windUniforms: any) {
                 uGroupOffset: uniform(new THREE.Vector3()),
             },
             material: {
-                uTime: uniform(0.0),
-                uWindDir: windUniforms?.uWindDir ?? uniform(vec2(1, 0)),
                 uWindSwayFreqMin: uniform(0.4),
                 uWindSwayFreqMax: uniform(1.5),
                 uWindSwayStrength: uniform(0.1),
@@ -79,7 +75,7 @@ export function useGrassUniforms(windUniforms: any) {
                 uCharacterFlattenAmount: uniform(0.5),
                 uActiveWaveCount: uniform(0.0)
             }
-        }), [windUniforms])
+        }), [])
 
     useEffect(() => {
         uniforms.compute.uBladeHeightMin.value = params.bladeHeightMin
@@ -113,7 +109,6 @@ export function useGrassUniforms(windUniforms: any) {
 
     useEffect(() => {
         // Wind parameters are now managed globally via Wind component
-        // Skip updating: uWindDir, uTime
         uniforms.material.uWindSwayFreqMin.value = params.swayFreqMin;
         uniforms.material.uWindSwayFreqMax.value = params.swayFreqMax;
         uniforms.material.uWindSwayStrength.value = params.swayStrength;
@@ -155,11 +150,6 @@ export function useGrassUniforms(windUniforms: any) {
         uniforms.material.uCharacterFlattenAmount.value = params.flattenAmount
     }, [params, uniforms.material])
 
-
-    useEffect(() => {
-        if (!windUniforms) return;
-        uniforms.material.uWindDir = windUniforms.uWindDir
-    }, [windUniforms])
 
     return {
         uniforms,

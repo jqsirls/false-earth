@@ -2,8 +2,7 @@ import { Environment } from "@react-three/drei";
 import { LevaWrapper } from "@packages/r3f-gist/components";
 import { Canvas } from "@react-three/fiber";
 import { useRef, useEffect, Suspense } from "react";
-import { Terrain } from "../components/terrain/Terrain";
-import { Wind } from "../components/wind/Wind";
+import { Terrain } from "../components/Terrain";
 import { DirectionalLight } from "../components/DirectionalLight";
 import { WebGPURenderer } from "three/webgpu";
 import GrassWebGPU from "../components/grass/GrassWebGPU";
@@ -20,6 +19,7 @@ import { DeviceDetector } from "../core/utils/DeviceDetector";
 import { UI } from "../ui/UI";
 import { useKeyboard } from "../core/input/useKeyboard";
 import { preloadVATAssets } from "../components/Rose/core";
+import { WorldController } from "../components/WorldController";
 
 preloadVATAssets('/vat/Rose_meta.json');
 
@@ -83,6 +83,7 @@ export default function App() {
             performance={{ min: 0.5, max: 1 }}
         >
             <AudioManager />
+            <WorldController />
 
             <Suspense fallback={null}>
 
@@ -92,7 +93,6 @@ export default function App() {
 
                 <CameraViewControl />
 
-
                 <Environment
                     files="/textures/potsdamer_platz_1k_nb.hdr"
                     environmentIntensity={0.5}
@@ -100,10 +100,11 @@ export default function App() {
                 <DirectionalLight />
 
                 <StarrySky />
+
                 <CosmicSystem />
 
                 <Terrain />
-                <Wind />
+
                 <AsyncCompile id="rose">
                     <Rose ref={roseRef} count={2000} />
                 </AsyncCompile>

@@ -4,7 +4,6 @@
 import { struct } from 'three/tsl'
 import { instancedArray, storage } from 'three/tsl'
 import * as THREE from 'three/webgpu'
-import { TerrainUniforms } from '../../../core/types'
 
 export const DEFAULT_BLADES_PER_AXIS = 1024;
 export const DEFAULT_GRASS_AREA_SIZE = 80;

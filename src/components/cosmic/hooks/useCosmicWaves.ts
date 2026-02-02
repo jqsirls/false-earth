@@ -2,11 +2,9 @@ import { useMemo, useRef, useCallback, useEffect } from 'react';
 import * as THREE from 'three/webgpu';
 import { useFrame } from '@react-three/fiber';
 import { useGameStore } from '../../../core/store/gameStore';
-import { useThree } from '@react-three/fiber';
 import { struct } from 'three/tsl';
+import { uTime } from '../../../core/shaders/uniforms';
 
-// Wave data structure for shockwave effects
-// Each wave contains: x position, z position, start time, max radius, lifetime
 export const waveStructure = struct({
   x: 'float',
   z: 'float',
@@ -19,8 +17,6 @@ const MAX_WAVES = 16; // Maximum number of waves that can exist simultaneously
 const DATA_PER_WAVE = 5; // x, z, startTime, maxRadius, lifetime
 
 export function useCosmicWaves() {
-  const { clock } = useThree();
-
   const setWaveStorageBuffer = useGameStore((state) => state.setWaveStorageBuffer);
   const setActiveWaveCount = useGameStore((state) => state.setActiveWaveCount);
   
@@ -49,7 +45,7 @@ export function useCosmicWaves() {
   const triggerShockwave = useCallback((position: THREE.Vector3, maxRadius: number = 15.0, lifetime: number = 5.0) => {
     activeWaves.current.push({
       pos: new THREE.Vector2(position.x, position.z),
-      startTime: clock.getElapsedTime(),
+      startTime: uTime.value,
       maxRadius,
       lifetime
     });
@@ -61,14 +57,12 @@ export function useCosmicWaves() {
   }, []);
 
   // 4. Update Buffer every frame
-  useFrame(({ clock }) => {
-    const now = clock.getElapsedTime();
-    // Clear array (or only overwrite needed region)
+  useFrame(() => {
     waveDataArray.fill(0);
 
     // Filter out expired waves - this compacts the array so active waves are contiguous
     activeWaves.current = activeWaves.current.filter(wave => {
-      const age = now - wave.startTime;
+      const age = uTime.value - wave.startTime;
       return age <= wave.lifetime;
     });
 
@@ -77,7 +71,7 @@ export function useCosmicWaves() {
     let activeCount = 0;
     for (let i = 0; i < activeWaves.current.length; i++) {
       const wave = activeWaves.current[i];
-      const age = now - wave.startTime;
+      const age = uTime.value - wave.startTime;
       
       // Early break if we find an expired wave (shouldn't happen after filter, but safety check)
       if (age > wave.lifetime) break;

@@ -67,7 +67,6 @@ export function useRoseUniforms() {
         uDieMax: uniform(0),
         uViewProjectionMatrix: uniform(new THREE.Matrix4()),
         uCameraPosition: uniform(new THREE.Vector3()),
-        uDeltaTime: uniform(0),
         uCharacterWorldPos: uniform(new THREE.Vector3()),
       },
     }),

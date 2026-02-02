@@ -21,9 +21,8 @@ export const Character = ({ position = [0, 0, 0], scale = 1 }: CharacterProps) =
   const uWorldPos = useMemo(() => uniform(new THREE.Vector3(0, 0, 0)), []);
   const uVelocity = useMemo(() => uniform(new THREE.Vector3(0, 0, 0)), []);
 
-  const terrainUniforms = useGameStore((state) => state.terrainUniforms);
   const setCharacterRef = useGameStore((state) => state.setCharacterRef);
-  const { scene, animations, helmets } = useCharacterAssets(terrainUniforms || undefined, uWorldPos);
+  const { scene, animations, helmets } = useCharacterAssets(uWorldPos);
 
   // Get camera mode from store
   const cameraMode = useGameStore((state) => state.cameraMode);

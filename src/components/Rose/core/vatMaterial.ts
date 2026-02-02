@@ -32,7 +32,6 @@ import {
   acos,
   length,
   If,
-  time,
   positionWorld,
   cameraPosition,
   oneMinus,
@@ -49,11 +48,11 @@ import {
   degrees,
   sqrt,
 } from "three/tsl";
+
 import { VATMeta } from "./config";
-import { TerrainUniforms } from "../../../core/types";
 import { getTerrainHeight, getTerrainNormal, rotateAxis } from "../../../core/shaders/terrainHelpers";
 import { calculateWindStrength, safeNormalize } from "../../../core/shaders/windHelpers";
-import { WindUniforms } from "../../../core/types";
+import { uWindDir, uWindScale, uWindSpeed, uWindStrength, uTerrainAmp, uTerrainFreq, uTerrainSeed, uTime } from "../../../core/shaders/uniforms";
 
 const hsvShift = Fn(([color, shift]: [any, any]) => {
   const hsv = mx_rgbtohsv(color);
@@ -91,8 +90,6 @@ export function createVATMaterial(
   colorTex: THREE.Texture,
   outlineTex: THREE.Texture,
   normalMapTex: THREE.Texture,
-  terrainUniforms?: TerrainUniforms,
-  windUniforms?: WindUniforms,
 ): THREE.MeshStandardNodeMaterial {
   const material = new THREE.MeshStandardNodeMaterial();
   material.side = THREE.DoubleSide;
@@ -118,18 +115,16 @@ export function createVATMaterial(
   const frameIndex = uFrames.sub(float(1.0)).mul(frame);
   const sampleUV = vec2(uv(1).x.add(frameIndex.mul(1.0 / meta.textureWidth)), uv(1).y);
 
-  // terrain
-  const terrainHeightFn = terrainUniforms
-    ? getTerrainHeight(terrainUniforms.uTerrainAmp, terrainUniforms.uTerrainFreq, terrainUniforms.uTerrainSeed)
-    : null;
-  const terrainNormalFn = terrainHeightFn ? getTerrainNormal(terrainHeightFn) : null;
+  // terrain (from core/shaders/uniforms)
+  const terrainHeightFn = getTerrainHeight(uTerrainAmp, uTerrainFreq, uTerrainSeed);
+  const terrainNormalFn = getTerrainNormal(terrainHeightFn);
 
   const applyRotation = Fn(([vec]: [any]) => {
     const randomAngleRad = seed.mul(2 * Math.PI);
     const randDir = vec2(sin(randomAngleRad), cos(randomAngleRad));
 
     const toChar = uniforms.uCharacterWorldPos.xz.sub(instancePos.xz);
-    const safeToChar = toChar.add(1e-6); 
+    const safeToChar = toChar.add(1e-6);
     const charDir = normalize(safeToChar);
 
     const dist = length(toChar);
@@ -145,7 +140,7 @@ export function createVATMaterial(
 
     const xNew = vec.x.mul(cosTheta).sub(vec.z.mul(sinTheta));
     const zNew = vec.x.mul(sinTheta).add(vec.z.mul(cosTheta));
-    
+
     let result = vec3(xNew, vec.y, zNew);
 
     if (terrainNormalFn) {
@@ -174,27 +169,25 @@ export function createVATMaterial(
 
     const heightFactor = smoothstep(float(0.0), float(0.08), vatPos.y.abs()).mul(0.2);
 
-    if (windUniforms) {
-      const windDirNorm = safeNormalize(windUniforms.uWindDir);
-      const windStrength = calculateWindStrength(instancePos.xz, {
-        uWindDir: windUniforms.uWindDir,
-        uWindScale: windUniforms.uWindScale,
-        uTime: windUniforms.uTime,
-        uWindSpeed: windUniforms.uWindSpeed,
-        uWindStrength: windUniforms.uWindStrength,
-      });
-      const sway = vec3(windDirNorm.x, 0.0, windDirNorm.y).mul(windStrength.mul(heightFactor));
-      worldPos = worldPos.add(sway);
-    }
+    const windDirNorm = safeNormalize(uWindDir);
+    const windStrength = calculateWindStrength(instancePos.xz, 
+      uWindDir,
+      uWindScale,
+      uTime,
+      uWindSpeed,
+      uWindStrength,
+    );
+    const sway = vec3(windDirNorm.x, 0.0, windDirNorm.y).mul(windStrength.mul(heightFactor));
+    worldPos = worldPos.add(sway);
 
 
     const charPos = uniforms.uCharacterWorldPos;
-    const dirToFlower = instancePos.xz.sub(charPos.xz); 
+    const dirToFlower = instancePos.xz.sub(charPos.xz);
     const dist = length(dirToFlower);
 
     const radius = float(1);
     const maxPush = float(2.0);
-    
+
     const pushFactor = smoothstep(radius, float(0.2), dist);
     const pushDir = normalize(dirToFlower);
     const pushVec = vec3(pushDir.x, float(-0.3), pushDir.y).mul(pushFactor).mul(maxPush).mul(heightFactor);
@@ -269,7 +262,7 @@ export function createVATMaterial(
     // Apply fresnel to emissive
     const u = mix(uv(0).x, uv(0).y, isPetal);
     const animSpeed = mix(-0.2, -0.7, fract(seed.mul(35.8)));
-    const t = time.add(seed.mul(123.0)).mul(animSpeed);
+    const t = uTime.add(seed.mul(123.0)).mul(animSpeed);
     const wave = smoothstep(0.3, 0.0, abs(u.sub(mix(-0.2, 1.2, fract(t)))));
     const glow = wave.mul(uniforms.uEmissiveIntensity);
 

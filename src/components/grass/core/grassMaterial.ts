@@ -38,11 +38,11 @@ import {
   materialEmissive,
   storage,
 } from "three/tsl";
+
 import {
   getTerrainHeight,
   getTerrainNormal,
 } from "../../../core/shaders/terrainHelpers";
-import { TerrainUniforms } from "../../../core/types";
 import {
   bezier3,
   bezier3Tangent,
@@ -58,6 +58,7 @@ import {
   createWaveLogic,
 } from "./shaderHelpers";
 import { waveStructure } from "../../cosmic/hooks/useCosmicWaves";
+import { uTime, uWindDir, uTerrainAmp, uTerrainFreq, uTerrainSeed } from "../../../core/shaders/uniforms";
 
 /**
  * Creates a grass material with vertex shader that scales blade geometry
@@ -68,7 +69,6 @@ export function createGrassMaterial(
   positions: ReturnType<typeof instancedArray>,
   visibleIndicesBuffer: ReturnType<typeof instancedArray>,
   uniforms: Record<string, any>,
-  terrainUniforms?: TerrainUniforms,
   lodDebugColor?: THREE.Color, // LOD debug color for visualization
   waveStorageBuffer?: THREE.StorageBufferAttribute, // Wave data buffer for shockwave effects
 ) {
@@ -88,10 +88,10 @@ export function createGrassMaterial(
   const material = new THREE.MeshStandardNodeMaterial();
   material.side = THREE.DoubleSide;
 
-  // Use terrain uniforms (required)
-  const terrainAmp = terrainUniforms?.uTerrainAmp ?? uniform(2.5);
-  const terrainFreq = terrainUniforms?.uTerrainFreq ?? uniform(0.1);
-  const terrainSeed = terrainUniforms?.uTerrainSeed ?? uniform(0.0);
+  // Terrain uniforms from core/shaders/uniforms
+  const terrainAmp = uTerrainAmp;
+  const terrainFreq = uTerrainFreq;
+  const terrainSeed = uTerrainSeed;
 
   // LOD debug color uniform (for coloring different LODs)
   const uLodDebugColor = uniform(
@@ -113,7 +113,7 @@ export function createGrassMaterial(
   const uActiveWaveCount = uniforms.uActiveWaveCount ?? uniform(float(0.0));
 
   // Create reusable wave calculation function
-  const calculateWaves = createWaveLogic(waveBuffer, uActiveWaveCount, uniforms.uTime);
+  const calculateWaves = createWaveLogic(waveBuffer, uActiveWaveCount, uTime);
 
   const trueIndex = visibleIndicesBuffer.element(instanceIndex);
   const data = grassData.element(trueIndex);
@@ -181,7 +181,7 @@ export function createGrassMaterial(
     let { p1, p2 } = getBezierControlPoints(bladeType, height, bend);
 
     // Apply Wind Push (affects control points for overall blade push)
-    const getWindDir = getWindDirection(uniforms.uWindDir);
+    const getWindDir = getWindDirection(uWindDir);
     const windPushed = applyWindPush(getWindDir)(p1, p2, p3, windStrength, height);
     p1 = windPushed.p1;
     p2 = windPushed.p2;
@@ -207,7 +207,7 @@ export function createGrassMaterial(
     // Apply sin-like sway effect to vertices at top of blade
     const vertexSway = applyVertexSway(
       getWindDir,
-      uniforms.uTime,
+      uTime,
       uniforms.uWindSwayFreqMin,
       uniforms.uWindSwayFreqMax,
       uniforms.uWindSwayStrength

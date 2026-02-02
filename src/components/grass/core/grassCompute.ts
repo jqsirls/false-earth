@@ -15,27 +15,20 @@ import {
   atan,
   cos,
   If,
-  Loop,
   float,
-  PI,
-  TWO_PI,
-  clamp,
   floor,
   uint,
   oneMinus,
-  select,
-  mx_fractal_noise_float,
-  hash,
   smoothstep,
-  remapClamp,
   atomicAdd,
   atomicStore,
-  int,
-  mx_noise_float,
   abs,
 } from "three/tsl";
+
+import { uWindDir, uWindScale, uWindSpeed, uWindStrength, uWindFacing } from "../../../core/shaders/uniforms";
 import type { LODBufferConfig } from "./config";
-import { safeNormalize, normalizeAngle, calculateWindStrength, applyWindFacingAndNormalize } from "../../../core/shaders/windHelpers";
+import { calculateWindStrength, applyWindFacingAndNormalize } from "../../../core/shaders/windHelpers";
+import { uTime } from "../../../core/shaders/uniforms";
 
 export function createGrassCompute(
   grassData: ReturnType<typeof instancedArray>,
@@ -408,17 +401,17 @@ export function createGrassCompute(
     );
 
     // Apply wind effects
-    const windStrength = calculateWindStrength(worldXZ, {
-      uWindDir: uniforms.uWindDir,
-      uWindScale: uniforms.uWindScale,
-      uTime: uniforms.uTime,
-      uWindSpeed: uniforms.uWindSpeed,
-      uWindStrength: uniforms.uWindStrength,
-    });
-    const facingAngle01 = applyWindFacingAndNormalize(baseAngle, windStrength, {
-      uWindDir: uniforms.uWindDir,
-      uWindFacing: uniforms.uWindFacing,
-    });
+    const windStrength = calculateWindStrength(worldXZ, 
+      uWindDir,
+      uWindScale,
+      uTime,
+      uWindSpeed,
+      uWindStrength,
+    );
+    const facingAngle01 = applyWindFacingAndNormalize(baseAngle, windStrength, 
+      uWindDir,
+      uWindFacing,
+    );
 
     // Write all parameters back to data structure
     data.get("bladeHeight").assign(bladeParams.height);

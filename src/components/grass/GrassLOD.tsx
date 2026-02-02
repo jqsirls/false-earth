@@ -26,7 +26,6 @@ export function GrassLOD({
 
   const { scene } = useThree();
   const bladesPerAxis = DEFAULT_BLADES_PER_AXIS;
-  const terrainUniforms = useGameStore((state) => state.terrainUniforms);
   const waveStorageBuffer = useGameStore((state) => state.waveStorageBuffer);
   const activeWaveCount = useGameStore((state) => state.activeWaveCount);
 
@@ -50,7 +49,6 @@ export function GrassLOD({
       positions,
       lodBuffer.indices,
       uniforms,
-      terrainUniforms || undefined,
       lodDebugColor,
       waveStorageBuffer || undefined,
     );
@@ -73,7 +71,6 @@ export function GrassLOD({
     positions,
     lodBuffer,
     uniforms,
-    terrainUniforms,
     waveStorageBuffer,
     scene.environment,
   ]);

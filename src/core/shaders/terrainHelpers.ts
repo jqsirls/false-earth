@@ -17,21 +17,21 @@ import {
 
 /**
  * Returns function that calculates terrain height
- * @param uTerrainAmp - Terrain amplitude uniform
- * @param uTerrainFreq - Terrain frequency uniform
- * @param uTerrainSeed - Terrain seed uniform
+ * @param terrainAmp - Terrain amplitude uniform
+ * @param terrainFreq - Terrain frequency uniform
+ * @param terrainSeed - Terrain seed uniform
  */
 export function getTerrainHeight(
-  uTerrainAmp: any,
-  uTerrainFreq: any,
-  uTerrainSeed: any
+  terrainAmp: any,
+  terrainFreq: any,
+  terrainSeed: any
 ) {
   return Fn(([xz]: [any]) => {
     const samplePos = xz.add(vec2(0.001)); // Offset to avoid origin artifacts
     const noiseValue = mx_fractal_noise_float(
-      samplePos.mul(uTerrainFreq).add(vec2(uTerrainSeed, float(0.0)))
+      samplePos.mul(terrainFreq).add(vec2(terrainSeed, float(0.0)))
     );
-    return noiseValue.mul(uTerrainAmp);
+    return noiseValue.mul(terrainAmp);
   });
 }
 

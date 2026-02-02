@@ -1,24 +1,20 @@
 import * as THREE from 'three/webgpu'
-import { useMemo, useEffect, useRef } from 'react'
-import { useControls } from 'leva'
+import { useMemo, useRef } from 'react'
 import { useThree } from '@react-three/fiber'
 import {
     Fn,
     vec3,
     vec4,
     float,
-    uniform,
     positionLocal,
     modelWorldMatrix,
     step,
     length,
 } from 'three/tsl'
-import { DEFAULT_GRASS_AREA_SIZE } from '../grass/core/config'
-import {
-    getTerrainHeight,
-} from '../../core/shaders/terrainHelpers'
-import { useGridSnapping } from '../../core/utils/gridSnapping'
-import { useGameStore } from '../../core/store/gameStore'
+import { DEFAULT_GRASS_AREA_SIZE } from './grass/core/config'
+import { getTerrainHeight } from '../core/shaders/terrainHelpers'
+import { uTerrainAmp, uTerrainFreq, uTerrainSeed, uTerrainColor } from '../core/shaders/uniforms'
+import { useGridSnapping } from '../core/utils/gridSnapping'
 
 
 export function Terrain({
@@ -44,42 +40,14 @@ export function Terrain({
             }
         },
     })
-    
-    const terrainParams = useControls('Terrain', {
-        amplitude: { value: 1.5, min: 0.1, max: 3.0, step: 0.1 },
-        frequency: { value: 0.05, min: 0.01, max: 0.1, step: 0.01 },
-        seed: { value: 0.0, min: 0.0, max: 100.0, step: 0.1 },
-        color: { value: '#000000' }
-    }, { collapsed: true })
 
-
-    const setTerrainUniforms = useGameStore((state) => state.setTerrainUniforms)
-
-    const uniforms = useMemo(() => {
-        return {
-            uTerrainAmp: uniform(1.5),
-            uTerrainFreq: uniform(0.05),
-            uTerrainSeed: uniform(0.0),
-            uColor: uniform(vec3(0, 0, 0))
-        }
-    }, [])
-
-    useEffect(() => {
-        uniforms.uTerrainAmp.value = terrainParams.amplitude
-        uniforms.uTerrainFreq.value = terrainParams.frequency
-        uniforms.uTerrainSeed.value = terrainParams.seed
-        const colorObj = new THREE.Color(terrainParams.color)
-        uniforms.uColor.value.set(colorObj.r, colorObj.g, colorObj.b)
-        setTerrainUniforms(uniforms)
-    }, [setTerrainUniforms, uniforms, terrainParams])
-
-    // Create material with terrain functions
+    // Create material with terrain functions (uses global uniforms from core/shaders/uniforms)
     const material = useMemo(() => {
-        const terrainHeight = getTerrainHeight(uniforms.uTerrainAmp, uniforms.uTerrainFreq, uniforms.uTerrainSeed)
+        const terrainHeight = getTerrainHeight(uTerrainAmp, uTerrainFreq, uTerrainSeed)
 
         const mat = new THREE.MeshBasicNodeMaterial()
         mat.side = THREE.DoubleSide
-        mat.colorNode = vec4(uniforms.uColor, float(1.0))
+        mat.colorNode = vec4(uTerrainColor, float(1.0))
         mat.alphaTest = 0.5
 
         mat.positionNode = Fn(() => {

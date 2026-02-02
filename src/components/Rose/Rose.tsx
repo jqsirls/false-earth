@@ -18,8 +18,6 @@ const Rose = forwardRef<RoseHandle, { count: number }>(({ count }, ref) => {
 
 
     const textures = useKTX2Texture(ROSE_TEXTURES)
-    const terrainUniforms = useGameStore((state) => state.terrainUniforms)
-    const windUniforms = useGameStore((state) => state.windUniforms)
     const characterRef = useGameStore((state) => state.characterRef)
     const characterPos = useMemo(() => new THREE.Vector3(), [])
 
@@ -36,14 +34,12 @@ const Rose = forwardRef<RoseHandle, { count: number }>(({ count }, ref) => {
 
 
     const material = useMemo(() => {
-        if (!scene || !meta || !isLoaded || !vatData || !terrainUniforms || !windUniforms || !geometry) return
-
+        if (!scene || !meta || !isLoaded || !vatData || !geometry) return
 
         textures.petal.colorSpace = THREE.SRGBColorSpace;
         textures.normal.colorSpace = THREE.NoColorSpace;
         textures.normal.repeat.set(0.8, 1);
         textures.normal.offset.set(0.1, 0);
-
 
         const mat = createVATMaterial(
             posTex as THREE.Texture,
@@ -55,12 +51,10 @@ const Rose = forwardRef<RoseHandle, { count: number }>(({ count }, ref) => {
             textures.petal,
             textures.outline,
             textures.normal,
-            terrainUniforms || undefined,
-            windUniforms || undefined,
         )
 
         return mat
-    }, [scene, meta, isLoaded, posTex, nrmTex, vatData, terrainUniforms, windUniforms])
+    }, [scene, meta, isLoaded, posTex, nrmTex, vatData])
 
     useEffect(() => {
         if (!material) return

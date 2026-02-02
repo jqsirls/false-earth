@@ -6,6 +6,7 @@ import {
     distance,
     smoothstep
 } from "three/tsl";
+import { uDeltaTime } from "../../../core/shaders/uniforms";
 
 /**
  * Create update compute shader
@@ -51,7 +52,7 @@ export function createUpdateCompute(
             // const speedMultiplier = mix(float(1.0), float(10), smoothstep(float(2.0), float(0), distToChar));
             // const finalSpeed = mix(float(1.0), speedMultiplier, isGrowing);
 
-            const dt = uniforms.uDeltaTime;
+            const dt = uDeltaTime;
             currentAge.addAssign(dt.mul(1));
 
             const progress = currentAge.div(lifetime)

@@ -1,9 +1,10 @@
 import { useRef, useMemo, useEffect } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three/webgpu';
-import { uniform, time, instancedBufferAttribute, Fn, uv, vec3, float, length, smoothstep, mx_hsvtorgb, mx_rgbtohsv, fract, sin, PI2, vec4 } from 'three/tsl';
+import { uniform, instancedBufferAttribute, Fn, uv, vec3, float, length, smoothstep, mx_hsvtorgb, mx_rgbtohsv, fract, sin, PI2, vec4 } from 'three/tsl';
 import { useControls } from 'leva';
 import { CameraMode, useGameStore } from '../../core/store/gameStore';
+import { uTime } from '../../core/shaders/uniforms';
 
 interface StarsProps {
   count?: number;
@@ -102,7 +103,7 @@ export function Stars({
     const hueShifted = fract(baseHSV.x.add(seed.mul(float(uniforms.uHueVar))));
 
     // Blink
-    const timePhase = time.add(seed.mul(PI2)).mul(uniforms.uSpeed);
+    const timePhase = uTime.add(seed.mul(PI2)).mul(uniforms.uSpeed);
     const brightAnim = sin(timePhase).mul(float(0.3)).add(float(0.7));
 
     const finalHsv = vec3(hueShifted, baseHSV.y, baseHSV.z.mul(brightAnim));

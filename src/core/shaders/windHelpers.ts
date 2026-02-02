@@ -36,17 +36,17 @@ export function normalizeAngle(angle: any) {
  * @param uniforms - Wind-related uniforms: uWindDir, uWindScale, uTime, uWindSpeed, uWindStrength
  * @returns Wind strength value in [0, 1] range
  */
-export function calculateWindStrength(worldXZ: any, uniforms: {
-  uWindDir: any;
-  uWindScale: any;
-  uTime: any;
-  uWindSpeed: any;
-  uWindStrength: any;
-}) {
-  const windDirNorm = safeNormalize(uniforms.uWindDir);
+export function calculateWindStrength(worldXZ: any,
+  windDir: any,
+  windScale: any,
+  time: any,
+  windSpeed: any,
+  windStrength: any,
+) {
+  const windDirNorm = safeNormalize(windDir);
   const windUv = worldXZ
-    .mul(uniforms.uWindScale)
-    .add(windDirNorm.mul(uniforms.uTime).mul(uniforms.uWindSpeed));
+    .mul(windScale)
+    .add(windDirNorm.mul(time).mul(windSpeed));
 
   const windStrength01 = mx_fractal_noise_float(windUv);
   // Remap noise value from [-1, 1] to [0, uWindStrength] and clamp to [0, 1]
@@ -55,7 +55,7 @@ export function calculateWindStrength(worldXZ: any, uniforms: {
     float(-1.0),
     float(1.0),
     float(0.0),
-    uniforms.uWindStrength
+    windStrength
   );
 }
 
@@ -69,19 +69,16 @@ export function calculateWindStrength(worldXZ: any, uniforms: {
 export function applyWindFacingAndNormalize(
   baseAngle: any,
   windStrength01: any,
-  uniforms: {
-    uWindDir: any;
-    uWindFacing: any;
-  }
+  windDir: any,
+  windFacing: any,
 ) {
-  const windDir = safeNormalize(uniforms.uWindDir);
   const windAngle = atan(windDir.y, windDir.x);
   const angleDiff = atan(
     sin(windAngle.sub(baseAngle)),
     cos(windAngle.sub(baseAngle))
   );
   const facingAngle = baseAngle.add(
-    angleDiff.mul(uniforms.uWindFacing.mul(windStrength01))
+    angleDiff.mul(windFacing.mul(windStrength01))
   );
   return normalizeAngle(facingAngle).add(PI).div(TWO_PI);
 }

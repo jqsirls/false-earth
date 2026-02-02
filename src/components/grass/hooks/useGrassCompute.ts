@@ -12,7 +12,6 @@ import { WebGPURenderer } from 'three/webgpu'
 
 export function useGrassCompute(
     uniforms: any,
-    windUniforms: any,
     cameraToUse: THREE.Camera
 ) {
     const { gl } = useThree()
@@ -23,8 +22,6 @@ export function useGrassCompute(
     const positionsRef = useRef<ReturnType<typeof createPositions> | null>(null)
 
     useEffect(() => {
-        if(!windUniforms) return
-
         const grassBlades = DEFAULT_BLADES_PER_AXIS * DEFAULT_BLADES_PER_AXIS
         // Create positions and grass data
         const positions = createPositions(grassBlades)
@@ -50,20 +47,8 @@ export function useGrassCompute(
         })
         setLodBuffers(configs)
 
-        // Merge wind uniforms into compute uniforms if available
-        const mergedUniforms = {
-            ...uniforms.compute,
-            ...(windUniforms ? {
-                uWindDir: windUniforms.uWindDir,
-                uWindScale: windUniforms.uWindScale,
-                uWindSpeed: windUniforms.uWindSpeed,
-                uWindStrength: windUniforms.uWindStrength,
-                uWindFacing: windUniforms.uWindFacing,
-            } : {})
-        }
-
         computeRefs.current = {
-            main: createGrassCompute(grassData, positions, configs, mergedUniforms).computeFn().compute(grassBlades),
+            main: createGrassCompute(grassData, positions, configs, uniforms.compute).computeFn().compute(grassBlades),
             reset: createResetDrawBufferCompute(configs),
         }
 
@@ -72,16 +57,12 @@ export function useGrassCompute(
             grassDataRef.current = null
             positionsRef.current = null
         }
-    }, [windUniforms])
+    }, [])
 
 
-    useFrame(({ clock }) => {
+    useFrame(() => {
         if (!computeRefs.current) return
-
         const renderer = gl as unknown as WebGPURenderer
-
-        uniforms.material.uTime.value = clock.getElapsedTime()
-        uniforms.compute.uTime.value = clock.getElapsedTime()
 
         if (cameraToUse) {
             cameraToUse.updateMatrixWorld()

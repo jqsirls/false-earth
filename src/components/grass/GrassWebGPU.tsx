@@ -15,12 +15,11 @@ export default function GrassWebGPU({ cullCamera }: GrassProps = {} as GrassProp
   const cameraToUse = cullCamera || defaultCamera
 
   const characterRef = useGameStore((state) => state.characterRef)
-  const windUniforms = useGameStore((state) => state.windUniforms)
 
   const characterPos = useMemo(() => new THREE.Vector3(), [])
 
-  const { uniforms, params } = useGrassUniforms(windUniforms)
-  const { lodBuffers, grassData, positions } = useGrassCompute(uniforms, windUniforms, cameraToUse)
+  const { uniforms, params } = useGrassUniforms()
+  const { lodBuffers, grassData, positions } = useGrassCompute(uniforms, cameraToUse)
 
   // Use centralized grid snapping hook
   const { gridCellSize } = useGridSnapping({
