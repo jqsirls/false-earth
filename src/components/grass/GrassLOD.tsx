@@ -5,7 +5,6 @@ import { createBladeGeometry, createGrassData, createPositions } from "./core/gr
 import { createGrassMaterial } from "./core/grassMaterial";
 import { DEFAULT_BLADES_PER_AXIS } from "./core/config";
 import type { LODBufferConfig } from "./core/config";
-import { useGameStore } from "../../core/store/gameStore";
 
 interface GrassLODProps {
   grassParams: any;
@@ -26,8 +25,6 @@ export function GrassLOD({
 
   const { scene } = useThree();
   const bladesPerAxis = DEFAULT_BLADES_PER_AXIS;
-  const waveStorageBuffer = useGameStore((state) => state.waveStorageBuffer);
-  const activeWaveCount = useGameStore((state) => state.activeWaveCount);
 
   const mesh = useMemo(() => {
     if (!grassData || !positions || !lodBuffer) {
@@ -50,7 +47,6 @@ export function GrassLOD({
       lodBuffer.indices,
       uniforms,
       lodDebugColor,
-      waveStorageBuffer || undefined,
     );
 
     // Get environment map from scene if available
@@ -71,15 +67,8 @@ export function GrassLOD({
     positions,
     lodBuffer,
     uniforms,
-    waveStorageBuffer,
     scene.environment,
   ]);
-
-  // Update active wave count uniform dynamically
-  useEffect(() => {
-    if (!mesh || !uniforms.uActiveWaveCount) return;
-    uniforms.uActiveWaveCount.value = activeWaveCount;
-  }, [mesh, uniforms, activeWaveCount]);
 
   // Update material properties
   useEffect(() => {

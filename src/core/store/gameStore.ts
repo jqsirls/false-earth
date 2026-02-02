@@ -19,12 +19,7 @@ interface GameState {
   // ===== Character State =====
   characterRef: React.MutableRefObject<Group | null> | null;
   setCharacterRef: (ref: React.MutableRefObject<Group | null> | null) => void;
-  
-  // ===== Cosmic/Wave State =====
-  waveStorageBuffer: THREE.StorageBufferAttribute | null;
-  setWaveStorageBuffer: (buffer: THREE.StorageBufferAttribute | null) => void;
-  activeWaveCount: number;
-  setActiveWaveCount: (count: number) => void;
+
   roseRef: React.MutableRefObject<RoseHandle | null> | null;
   setRoseRef: (ref: React.MutableRefObject<RoseHandle | null> | null) => void;
 
@@ -61,12 +56,7 @@ export const useGameStore = create<GameState>((set) => ({
   // ===== Character State =====
   characterRef: null,
   setCharacterRef: (ref) => set({ characterRef: ref }),
-  
-  // ===== Cosmic/Wave State =====
-  waveStorageBuffer: null,
-  setWaveStorageBuffer: (buffer) => set({ waveStorageBuffer: buffer }),
-  activeWaveCount: 0,
-  setActiveWaveCount: (count) => set({ activeWaveCount: count }),
+
   roseRef: null,
   setRoseRef: (ref) => set({ roseRef: ref }),
 

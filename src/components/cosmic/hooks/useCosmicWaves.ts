@@ -1,9 +1,8 @@
 import { useMemo, useRef, useCallback, useEffect } from 'react';
 import * as THREE from 'three/webgpu';
 import { useFrame } from '@react-three/fiber';
-import { useGameStore } from '../../../core/store/gameStore';
 import { struct } from 'three/tsl';
-import { uTime } from '../../../core/shaders/uniforms';
+import { uTime, uActiveWaveCount, GlobalWaveState } from '../../../core/shaders/uniforms';
 
 export const waveStructure = struct({
   x: 'float',
@@ -17,63 +16,48 @@ const MAX_WAVES = 16; // Maximum number of waves that can exist simultaneously
 const DATA_PER_WAVE = 5; // x, z, startTime, maxRadius, lifetime
 
 export function useCosmicWaves() {
-  const setWaveStorageBuffer = useGameStore((state) => state.setWaveStorageBuffer);
-  const setActiveWaveCount = useGameStore((state) => state.setActiveWaveCount);
-  
   // 1. Create data buffer
   const waveDataArray = useMemo(() => new Float32Array(MAX_WAVES * DATA_PER_WAVE), []);
-  
+
   // 2. Create WebGPU Storage Buffer
-  // Use StorageBufferAttribute to allow Shader to read the array
   const waveStorageBuffer = useMemo(() => {
-    const attr = new THREE.StorageBufferAttribute(waveDataArray, DATA_PER_WAVE);
-    return attr;
+    return new THREE.StorageBufferAttribute(waveDataArray, DATA_PER_WAVE);
   }, [waveDataArray]);
 
-  // Update global store when buffer is created
+  // Publish buffer to global state (singleton)
   useEffect(() => {
-    setWaveStorageBuffer(waveStorageBuffer);
+    GlobalWaveState.buffer = waveStorageBuffer;
     return () => {
-      setWaveStorageBuffer(null);
+      GlobalWaveState.buffer = null;
     };
-  }, [waveStorageBuffer, setWaveStorageBuffer]);
+  }, [waveStorageBuffer]);
 
-  // Track active waves on the JS side
   const activeWaves = useRef<any[]>([]);
 
-  // 3. Trigger function: called externally (e.g., when a ray hits the ground)
+  // 3. Trigger: called externally (e.g. when a ray hits the ground)
   const triggerShockwave = useCallback((position: THREE.Vector3, maxRadius: number = 15.0, lifetime: number = 5.0) => {
     activeWaves.current.push({
       pos: new THREE.Vector2(position.x, position.z),
       startTime: uTime.value,
       maxRadius,
-      lifetime
+      lifetime,
     });
-
-    // Limit count, remove oldest
-    if (activeWaves.current.length > MAX_WAVES) {
-      activeWaves.current.shift();
-    }
+    if (activeWaves.current.length > MAX_WAVES) activeWaves.current.shift();
   }, []);
 
-  // 4. Update Buffer every frame
+  // 4. Update buffer and uniform every frame
   useFrame(() => {
     waveDataArray.fill(0);
 
-    // Filter out expired waves - this compacts the array so active waves are contiguous
     activeWaves.current = activeWaves.current.filter(wave => {
       const age = uTime.value - wave.startTime;
       return age <= wave.lifetime;
     });
 
-    // Update data to Array - active waves are written contiguously starting from index 0
-    // This allows the shader to loop only through activeWaveCount instead of all 16
     let activeCount = 0;
     for (let i = 0; i < activeWaves.current.length; i++) {
       const wave = activeWaves.current[i];
       const age = uTime.value - wave.startTime;
-      
-      // Early break if we find an expired wave (shouldn't happen after filter, but safety check)
       if (age > wave.lifetime) break;
 
       const index = activeCount * DATA_PER_WAVE;
@@ -84,13 +68,13 @@ export function useCosmicWaves() {
       waveDataArray[index + 4] = wave.lifetime;
       activeCount++;
     }
-    
-    setActiveWaveCount(activeCount);
+
+    uActiveWaveCount.value = activeCount;
     waveStorageBuffer.needsUpdate = true;
   });
 
   return {
     triggerShockwave,
-    waveCount: MAX_WAVES
+    waveCount: MAX_WAVES,
   };
 }

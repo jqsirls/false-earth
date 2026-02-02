@@ -58,7 +58,7 @@ import {
   createWaveLogic,
 } from "./shaderHelpers";
 import { waveStructure } from "../../cosmic/hooks/useCosmicWaves";
-import { uTime, uWindDir, uTerrainAmp, uTerrainFreq, uTerrainSeed } from "../../../core/shaders/uniforms";
+import { uTime, uWindDir, uTerrainAmp, uTerrainFreq, uTerrainSeed, uActiveWaveCount, GlobalWaveState } from "../../../core/shaders/uniforms";
 
 /**
  * Creates a grass material with vertex shader that scales blade geometry
@@ -70,7 +70,6 @@ export function createGrassMaterial(
   visibleIndicesBuffer: ReturnType<typeof instancedArray>,
   uniforms: Record<string, any>,
   lodDebugColor?: THREE.Color, // LOD debug color for visualization
-  waveStorageBuffer?: THREE.StorageBufferAttribute, // Wave data buffer for shockwave effects
 ) {
 
   // Define varyings for passing data from vertex to fragment
@@ -103,16 +102,11 @@ export function createGrassMaterial(
   const uGroupOffset = uniforms.uGroupOffset ?? uniform(new THREE.Vector3(0, 0, 0));
   const uCharacterWorldPos = uniforms.uCharacterWorldPos ?? uniform(new THREE.Vector3(0, 0, 0));
 
-  // Wave storage buffer (if available)
-  // Structure: waveStructure per wave, max 16 waves
-  const waveBuffer = waveStorageBuffer
-    ? storage(waveStorageBuffer, waveStructure, 16)
+  // Wave: read from global state (useCosmicWaves publishes buffer; material created after scene mount so buffer exists)
+  const waveBuffer = GlobalWaveState.buffer
+    ? storage(GlobalWaveState.buffer, waveStructure, 16)
     : null;
 
-  // Active wave count uniform (for optimizing shader loop)
-  const uActiveWaveCount = uniforms.uActiveWaveCount ?? uniform(float(0.0));
-
-  // Create reusable wave calculation function
   const calculateWaves = createWaveLogic(waveBuffer, uActiveWaveCount, uTime);
 
   const trueIndex = visibleIndicesBuffer.element(instanceIndex);
