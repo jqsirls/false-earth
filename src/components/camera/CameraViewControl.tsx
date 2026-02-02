@@ -33,18 +33,25 @@ export function CameraViewControl({ boneName = 'head' }: Props) {
     enabled: cameraMode === CameraMode.Follow && isControlEnabled,
   });
 
-  const resetCamera = useCallback((transition: boolean = true) => {
+  const resetCamera = useCallback((earlyStop: boolean = true) => {
     if (!characterRef?.current || !controlsRef.current) return Promise.resolve();
 
     const charPos = characterRef.current.position;
     const pos = charPos.clone().add(CAMERA_POSITION);
     const lookAt = charPos.clone().add(CAMERA_LOOKAT);
 
+    const originalThreshold = controlsRef.current.restThreshold;
+    controlsRef.current.restThreshold = earlyStop ? 0.05 : originalThreshold;
+
     return controlsRef.current.setLookAt(
       pos.x, pos.y, pos.z,
       lookAt.x, lookAt.y, lookAt.z,
-      transition
-    );
+      true
+    ).then(() => {
+      if (controlsRef.current) {
+        controlsRef.current.restThreshold = originalThreshold;
+      }
+    });
   }, [characterRef]);
 
   // initial sequence, reset camera to back
@@ -61,7 +68,7 @@ export function CameraViewControl({ boneName = 'head' }: Props) {
 
   useEffect(() => {
     if (isControlEnabled && cameraMode !== CameraMode.FPV) {
-      resetCamera(true);
+      resetCamera(false);
     }
   }, [cameraMode, isControlEnabled, resetCamera]);
 
@@ -73,7 +80,7 @@ export function CameraViewControl({ boneName = 'head' }: Props) {
       minDistance={2}
       maxDistance={20}
       maxPolarAngle={Math.PI / 2}
-      smoothTime={ isControlEnabled ? 0.1 : 1 }
+      smoothTime={isControlEnabled ? 0.1 : 1}
     />
   );
 }

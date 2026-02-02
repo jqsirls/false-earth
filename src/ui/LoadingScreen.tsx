@@ -81,7 +81,7 @@ export function LoadingScreen() {
 
     const handleStart = () => {
         if (!isReadyToStart) return;
-        
+
         setIsGameStarted(true);
 
         // Animate out
@@ -121,7 +121,7 @@ export function LoadingScreen() {
                 opacity: 1, textAlign: 'center', maxWidth: isMobile ? '90%' : '600px',
                 padding: '20px', animation: 'fadeIn 2s ease'
             }}>
-                
+
                 {/* Title */}
                 <div style={{
                     fontSize: '1rem', fontWeight: 'bold',
@@ -132,9 +132,15 @@ export function LoadingScreen() {
 
                 {/* Intro Text */}
                 <div style={{ lineHeight: '1.5', color: '#ccc', marginBottom: '3rem', textAlign: 'left' }}>
-                    <p>After a long period of drifting, solid ground appears on a planet that closely resembles Earth.</p>
-                    <p>As movement continues across an endless field, the horizon remains fixed, and flowers appear where light from the sky reaches the ground.</p>
-                    <p>Travel through the open terrain, influence the falling light through your movement, and witness a quiet phenomenon unfolding across the surface.</p>
+                    <p>
+                        Continue the journey after the long drift through space, arriving on a surface that stretches without end.
+                        What was once motion in the void becomes movement across an unfamiliar field, where distance replaces direction.
+                    </p>
+
+                    <p>
+                        As you travel forward, the ground begins to change beneath you, leaving visible traces of passage behind.
+                        This experience is not about reaching a destination, but about crossing a world shaped by movement itself.
+                    </p>
                 </div>
 
                 {/* Play Button & Progress Bar */}
@@ -153,9 +159,9 @@ export function LoadingScreen() {
                         )}
                     </button>
 
-                    <div style={{ 
-                        width: '250px', height: '1px', background: '#222', margin: '10px auto', 
-                        opacity: isReadyToStart ? 0 : 1, transition: 'opacity 0.5s' 
+                    <div style={{
+                        width: '250px', height: '1px', background: '#222', margin: '10px auto',
+                        opacity: isReadyToStart ? 0 : 1, transition: 'opacity 0.5s'
                     }}>
                         <div style={{ width: `${displayProgress}%`, height: '100%', background: '#666', transition: 'width 0.2s' }} />
                     </div>
