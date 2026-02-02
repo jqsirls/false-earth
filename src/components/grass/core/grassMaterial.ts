@@ -58,7 +58,8 @@ import {
   createWaveLogic,
 } from "./shaderHelpers";
 import { waveStructure } from "../../cosmic/hooks/useCosmicWaves";
-import { uTime, uWindDir, uTerrainAmp, uTerrainFreq, uTerrainSeed, uActiveWaveCount, GlobalWaveState } from "../../../core/shaders/uniforms";
+import { uTime, uWindDir, uTerrainAmp, uTerrainFreq, uTerrainSeed, uActiveWaveCount, GlobalWaveState, uGlobalHueShift } from "../../../core/shaders/uniforms";
+import { shiftHSV } from "../../../core/shaders/colorHelper";
 
 /**
  * Creates a grass material with vertex shader that scales blade geometry
@@ -374,7 +375,8 @@ export function createGrassMaterial(
     );
     finalColor = mul(finalColor, noiseRemapped);
 
-    return vec4(finalColor, float(1.0));
+    const hueShifted = shiftHSV(finalColor, vec3(uGlobalHueShift, float(0.0), float(0.0)));
+    return vec4(hueShifted, float(1.0));
   })();
 
   // Override roughness with AO effect: bottom (low AO) is rougher, top (high AO) is smoother
@@ -427,7 +429,9 @@ export function createGrassMaterial(
       .mul(electricCrackle)
       .mul(float(5.0)); // Boost intensity for Bloom 
 
-    return glow.mul(isActive);
+    const hueShifted = shiftHSV(glow, vec3(uGlobalHueShift, float(0.0), float(0.0))); 
+
+    return hueShifted.mul(isActive);
   })();
 
 

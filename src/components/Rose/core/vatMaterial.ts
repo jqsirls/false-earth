@@ -52,14 +52,8 @@ import {
 import { VATMeta } from "./config";
 import { getTerrainHeight, getTerrainNormal, rotateAxis } from "../../../core/shaders/terrainHelpers";
 import { calculateWindStrength, safeNormalize } from "../../../core/shaders/windHelpers";
-import { uWindDir, uWindScale, uWindSpeed, uWindStrength, uTerrainAmp, uTerrainFreq, uTerrainSeed, uTime } from "../../../core/shaders/uniforms";
-
-const hsvShift = Fn(([color, shift]: [any, any]) => {
-  const hsv = mx_rgbtohsv(color);
-  const shifted = vec3(hsv.x.add(shift.x), hsv.y.add(shift.y), hsv.z.add(shift.z));
-  const clamped = vec3(shifted.x.clamp(0.0, 1.0), shifted.y.clamp(0.0, 1.0), shifted.z.clamp(0.0, 1.0));
-  return mx_hsvtorgb(clamped);
-});
+import { uWindDir, uWindScale, uWindSpeed, uWindStrength, uTerrainAmp, uTerrainFreq, uTerrainSeed, uTime, uGlobalHueShift } from "../../../core/shaders/uniforms";
+import { shiftHSV } from "../../../core/shaders/colorHelper";
 
 const decodeVatNormal = (texel: any, isCompressed: boolean) => {
   if (isCompressed) {
@@ -211,8 +205,8 @@ export function createVATMaterial(
 
     const hueShift = seed2.mul(float(uniforms.uHueRandomness).add(smoothstep(float(0.6), float(1.0), progress).mul(0.03))).add(uniforms.uHueShift);
     const valueShift = fract(seed2.mul(25.0)).mul(1);
-    petalCol = hsvShift(petalCol, vec3(hueShift, 0.0, valueShift));
-    const darker = hsvShift(petalCol, vec3(0.0, 0.0, -0.1));
+    petalCol = shiftHSV(petalCol, vec3(hueShift, 0.0, valueShift));
+    const darker = shiftHSV(petalCol, vec3(0.0, 0.0, -0.1));
     petalCol = mix(darker, petalCol, outline.rgb);
 
     petalCol.mulAssign(n);
@@ -221,7 +215,8 @@ export function createVATMaterial(
       .add(stemColor.mul(isStem))
       .add(stemColor.mul(isLeaf));
 
-    return vec4(finalColor.mul(smoothstep(0.95, 0.8, progress)), 1.0);
+    const hueShifted = shiftHSV(finalColor, vec3(uGlobalHueShift, float(0.0), float(0.0)));
+    return vec4(hueShifted.mul(smoothstep(0.95, 0.8, progress)), 1.0);
   })();
 
 
