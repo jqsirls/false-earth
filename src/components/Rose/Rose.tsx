@@ -9,13 +9,10 @@ import { useKTX2Texture } from "../../core/utils/useKTX2Texture";
 import { ROSE_TEXTURES } from "./core/config";
 import { useFrame } from "@react-three/fiber";
 
-export type RoseHandle = {
-    spawn: (pos: THREE.Vector3, count?: number, radius?: number) => void
-}
+import { gameEvents } from "../../core/events";
 
-const Rose = forwardRef<RoseHandle, { count: number }>(({ count }, ref) => {
+export default function Rose({ count }: { count: number }) {
     const { scene, posTex, nrmTex, meta, isLoaded } = useVATPreloader('/vat/Rose_meta.json')
-
 
     const textures = useKTX2Texture(ROSE_TEXTURES)
     const characterRef = useGameStore((state) => state.characterRef)
@@ -31,7 +28,6 @@ const Rose = forwardRef<RoseHandle, { count: number }>(({ count }, ref) => {
     }, [scene, meta]);
 
     const { vatData, visibleIndices, spawn } = useRoseCompute(count, geometry, uniforms.compute)
-
 
     const material = useMemo(() => {
         if (!scene || !meta || !isLoaded || !vatData || !geometry) return
@@ -62,16 +58,20 @@ const Rose = forwardRef<RoseHandle, { count: number }>(({ count }, ref) => {
         material.roughness = config.roughness
     }, [config.metalness, config.roughness])
 
-
-
     useFrame(() => {
         if (!characterRef?.current) return
         characterRef.current.getWorldPosition(characterPos)
         uniforms.mat.uCharacterWorldPos.value.copy(characterPos)
         uniforms.compute.uCharacterWorldPos.value.copy(characterPos)
     })
-    
-    useImperativeHandle(ref, () => ({ spawn }), [spawn]);
+
+    useEffect(() => {
+        const onHit = ({ position, radius }: { position: THREE.Vector3, radius: number }) => {
+            spawn(position, 256, radius);
+        };
+        gameEvents.on('beam:hit', onHit);
+        return () => gameEvents.off('beam:hit', onHit);
+    }, [spawn]);
 
     useEffect(() => {
         return () => {
@@ -83,8 +83,4 @@ const Rose = forwardRef<RoseHandle, { count: number }>(({ count }, ref) => {
     if (!geometry || !material) return null
 
     return <mesh geometry={geometry} material={material} count={count} frustumCulled={false} />
-})
-
-Rose.displayName = 'Rose'
-
-export default Rose
+}

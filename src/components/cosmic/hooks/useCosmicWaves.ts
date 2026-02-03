@@ -2,7 +2,12 @@ import { useMemo, useRef, useCallback, useEffect } from 'react';
 import * as THREE from 'three/webgpu';
 import { useFrame } from '@react-three/fiber';
 import { struct } from 'three/tsl';
+import { MathUtils } from 'three';
 import { uTime, uActiveWaveCount, GlobalWaveState } from '../../../core/shaders/uniforms';
+import { gameEvents, type GameEvents } from '../../../core/events';
+
+const MAX_WAVES = 16;
+const DATA_PER_WAVE = 5; // x, z, startTime, maxRadius, lifetime
 
 export const waveStructure = struct({
   x: 'float',
@@ -12,19 +17,23 @@ export const waveStructure = struct({
   lifetime: 'float',
 });
 
-const MAX_WAVES = 16; // Maximum number of waves that can exist simultaneously
-const DATA_PER_WAVE = 5; // x, z, startTime, maxRadius, lifetime
+interface UseCosmicWavesOptions {
+  enabled?: boolean;
+  waveParams?: {
+    radiusMin: number;
+    radiusMax: number;
+    lifetimeMin: number;
+    lifetimeMax: number;
+  };
+}
 
-export function useCosmicWaves() {
-  // 1. Create data buffer
+export function useCosmicWaves({ enabled = true, waveParams }: UseCosmicWavesOptions = {}) {
   const waveDataArray = useMemo(() => new Float32Array(MAX_WAVES * DATA_PER_WAVE), []);
+  const waveStorageBuffer = useMemo(
+    () => new THREE.StorageBufferAttribute(waveDataArray, DATA_PER_WAVE),
+    [waveDataArray]
+  );
 
-  // 2. Create WebGPU Storage Buffer
-  const waveStorageBuffer = useMemo(() => {
-    return new THREE.StorageBufferAttribute(waveDataArray, DATA_PER_WAVE);
-  }, [waveDataArray]);
-
-  // Publish buffer to global state (singleton)
   useEffect(() => {
     GlobalWaveState.buffer = waveStorageBuffer;
     return () => {
@@ -32,24 +41,48 @@ export function useCosmicWaves() {
     };
   }, [waveStorageBuffer]);
 
-  const activeWaves = useRef<any[]>([]);
+  const activeWaves = useRef<{
+    pos: THREE.Vector2;
+    startTime: number;
+    maxRadius: number;
+    lifetime: number;
+  }[]>([]);
 
-  // 3. Trigger: called externally (e.g. when a ray hits the ground)
-  const triggerShockwave = useCallback((position: THREE.Vector3, maxRadius: number = 15.0, lifetime: number = 5.0) => {
-    activeWaves.current.push({
-      pos: new THREE.Vector2(position.x, position.z),
-      startTime: uTime.value,
-      maxRadius,
-      lifetime,
-    });
-    if (activeWaves.current.length > MAX_WAVES) activeWaves.current.shift();
-  }, []);
+  const triggerShockwave = useCallback(
+    (position: THREE.Vector3, maxRadius: number = 15.0, lifetime: number = 5.0) => {
+      activeWaves.current.push({
+        pos: new THREE.Vector2(position.x, position.z),
+        startTime: uTime.value,
+        maxRadius,
+        lifetime,
+      });
+      if (activeWaves.current.length > MAX_WAVES) activeWaves.current.shift();
+    },
+    []
+  );
 
-  // 4. Update buffer and uniform every frame
+  useEffect(() => {
+    if (!enabled || !waveParams) return;
+
+    const onHit = ({ position, radius }: GameEvents['beam:hit']) => {
+      const lifetime = MathUtils.lerp(
+        waveParams.lifetimeMin,
+        waveParams.lifetimeMax,
+        Math.random()
+      );
+      triggerShockwave(position, radius, lifetime);
+    };
+
+    gameEvents.on('beam:hit', onHit);
+    return () => gameEvents.off('beam:hit', onHit);
+  }, [enabled, waveParams, triggerShockwave]);
+
   useFrame(() => {
+    if (!enabled) return;
+
     waveDataArray.fill(0);
 
-    activeWaves.current = activeWaves.current.filter(wave => {
+    activeWaves.current = activeWaves.current.filter((wave) => {
       const age = uTime.value - wave.startTime;
       return age <= wave.lifetime;
     });

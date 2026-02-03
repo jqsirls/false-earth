@@ -1,129 +1,148 @@
 // src/components/cosmic/CosmicBeams.tsx
-// Decoupled beam component - only handles beam rendering and animation
 import { useRef, useMemo, useImperativeHandle, forwardRef, useEffect } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three/webgpu";
-import { createCosmicBeamMaterial } from "./CosmicBeamMaterial";
 import gsap from "gsap";
+import { MAX_BEAMS, BEAM_HEIGHT, DROP_HEIGHT } from "./config";
 
-import { MAX_BEAMS, BEAM_HEIGHT, DROP_HEIGHT } from './config';
+import {
+  Fn,
+  vec3,
+  vec4,
+  uv,
+  float,
+  mix,
+  smoothstep,
+  uniform,
+  abs,
+} from "three/tsl";
+import { uGlobalHueShift } from "../../core/shaders/uniforms";
+import { shiftHSV } from "../../core/shaders/colorHelper";
+
+function createCosmicBeamMaterial() {
+  const material = new THREE.MeshBasicNodeMaterial();
+  material.depthWrite = true;
+  material.blending = THREE.AdditiveBlending;
+  material.transparent = true;
+
+  const uCoreColor = uniform(new THREE.Color("#ffffff"));
+  const uGlowColor = uniform(new THREE.Color("#00ffff"));
+
+  material.fragmentNode = Fn(() => {
+    const vUv = uv();
+
+    const distFromCenter = abs(vUv.x.sub(0.5)).mul(2.0);
+    const coreBeam = smoothstep(float(0.4), float(0.0), distFromCenter);
+
+    const finalColor = mix(uGlowColor, uCoreColor, coreBeam);
+    const hueShifted = shiftHSV(
+      finalColor,
+      vec3(uGlobalHueShift, float(0.0), float(0.0))
+    );
+
+    const fade = smoothstep(float(0.0), float(0.2), vUv.y).mul(
+      smoothstep(float(1.0), float(0.8), vUv.y)
+    );
+
+    return vec4(hueShifted, fade);
+  })();
+
+  return { material };
+}
 
 export interface CosmicBeamsRef {
-  triggerBeam: (position: THREE.Vector3, onHit?: (position: THREE.Vector3) => void) => void;
-  getBeamPositions: () => THREE.Vector3[]; // Get positions of all active beams
+  triggerBeam: (
+    position: THREE.Vector3,
+    onHit?: (position: THREE.Vector3) => void
+  ) => void;
+  getBeamPositions: () => THREE.Vector3[];
 }
 
 export const CosmicBeams = forwardRef<CosmicBeamsRef, {}>((_props, ref) => {
   const meshRef = useRef<THREE.InstancedMesh>(null);
-  
-  const beams = useMemo(() => {
-    return Array.from({ length: MAX_BEAMS }).map(() => ({
-      position: new THREE.Vector3(),
-      y: -5000,
-      scaleWidth: 0,
-      isAnimating: false,
-      onHit: null as ((position: THREE.Vector3) => void) | null
-    }));
-  }, []);
 
-  const { material } = useMemo(() => createCosmicBeamMaterial(), []);
-  
+  const beams = useMemo(
+    () =>
+      Array.from({ length: MAX_BEAMS }).map(() => ({
+        position: new THREE.Vector3(),
+        y: -5000,
+        scaleWidth: 0,
+        isAnimating: false,
+      })),
+    []
+  );
+
   const dummy = useMemo(() => new THREE.Object3D(), []);
 
-  const startBeamAnimation = (position: THREE.Vector3, onHit?: (position: THREE.Vector3) => void) => {
-    const beam = beams.find(b => !b.isAnimating);
-    
-    if (beam) {
-      beam.isAnimating = true;
-      beam.position.copy(position);
-      beam.onHit = onHit || null;
-      
-      // GSAP Animation Logic
-      const beamIndex = beams.indexOf(beam);
-      const tl = gsap.timeline({
-        onComplete: () => {
-          // Update matrix to hidden state before cleanup
-          if (meshRef.current) {
-            dummy.position.set(0, -5000, 0);
-            dummy.scale.set(0, 0, 0);
-            dummy.updateMatrix();
-            meshRef.current.setMatrixAt(beamIndex, dummy.matrix);
-            meshRef.current.instanceMatrix.needsUpdate = true;
-          }
-          
-          // Cleanup when all animation finishes
-          beam.isAnimating = false; // Animation finished, release back to pool
-          beam.y = -5000; // Hide
-          beam.scaleWidth = 0;
-          beam.onHit = null;
-        }
-      });
+  const { material } = useMemo(() => createCosmicBeamMaterial(), []);
 
-      // Set initial state
-      beam.y = DROP_HEIGHT + (BEAM_HEIGHT / 2);
-      beam.scaleWidth = 0.1;
+  const startBeamAnimation = (
+    position: THREE.Vector3,
+    onHit?: (position: THREE.Vector3) => void
+  ) => {
+    const beam = beams.find((b) => !b.isAnimating);
+    if (!beam) return;
 
-      // Phase 1: Fast drop (Strike)
-      tl.to(beam, {
-        y: BEAM_HEIGHT / 2, // Hit ground
-        scaleWidth: 0.15,   // Slightly thicker (Stretch)
-        duration: 0.3,
-        ease: "power2.in",
-        onComplete: () => {
-          if (beam.onHit) {
-            beam.onHit(beam.position.clone());
-            beam.onHit = null;
-          }
-        }
-      });
+    beam.isAnimating = true;
+    beam.position.copy(position);
+    beam.y = position.y + DROP_HEIGHT;
+    beam.scaleWidth = 0.1;
 
-      // Phase 2: Fade out after impact (Decay)
-      tl.to(beam, {
-        scaleWidth: 0,      // Width becomes 0
-        duration: 0.35,
-        ease: "power2.out",
-      });
-    }
+    const tl = gsap.timeline({
+      onComplete: () => {
+        beam.isAnimating = false;
+        beam.y = -5000;
+      },
+    });
+
+    tl.to(beam, {
+      y: position.y + BEAM_HEIGHT / 2,
+      duration: 0.2,
+      ease: "power2.in",
+      onComplete: () => {
+        if (onHit) onHit(position);
+      },
+    });
+
+    tl.to(beam, {
+      scaleWidth: 0,
+      duration: 0.3,
+      ease: "power2.out",
+    });
   };
 
-  // Initialize all beams to be hidden on mount
+  useImperativeHandle(ref, () => ({
+    triggerBeam: startBeamAnimation,
+    getBeamPositions: () =>
+      beams.filter((b) => b.isAnimating).map((b) => b.position.clone()),
+  }));
+
   useEffect(() => {
     if (!meshRef.current) return;
-    
     dummy.position.set(0, -5000, 0);
     dummy.scale.set(0, 0, 0);
     dummy.updateMatrix();
-    
     for (let i = 0; i < MAX_BEAMS; i++) {
       meshRef.current.setMatrixAt(i, dummy.matrix);
     }
     meshRef.current.instanceMatrix.needsUpdate = true;
   }, [dummy]);
 
-  useImperativeHandle(ref, () => ({
-    triggerBeam: (position: THREE.Vector3, onHit?: (position: THREE.Vector3) => void) => {
-      startBeamAnimation(position, onHit);
-    },
-    getBeamPositions: () => {
-      // Return positions of all currently animating beams
-      return beams.map(beam => beam.position.clone());
-    }
-  }));
-
-  // Render Loop: Only sync data (Sync)
   useFrame(() => {
     if (!meshRef.current) return;
-    
     let needsUpdate = false;
 
-    // Iterate through all animating beams, update matrices
     beams.forEach((beam, i) => {
-      // Only update matrices for beams that are animating (performance optimization)
       if (beam.isAnimating) {
         dummy.position.copy(beam.position);
-        dummy.position.y = beam.y;           // Y calculated by GSAP
-        dummy.scale.set(beam.scaleWidth, 1, beam.scaleWidth); // Width calculated by GSAP
-        
+        dummy.position.y = beam.y;
+        dummy.scale.set(beam.scaleWidth, 1, beam.scaleWidth);
+        dummy.updateMatrix();
+        meshRef.current!.setMatrixAt(i, dummy.matrix);
+        needsUpdate = true;
+      } else {
+        dummy.position.set(0, -5000, 0);
+        dummy.scale.set(0, 0, 0);
         dummy.updateMatrix();
         meshRef.current!.setMatrixAt(i, dummy.matrix);
         needsUpdate = true;
@@ -136,11 +155,11 @@ export const CosmicBeams = forwardRef<CosmicBeamsRef, {}>((_props, ref) => {
   });
 
   return (
-    <instancedMesh 
-        ref={meshRef} 
-        args={[undefined, undefined, MAX_BEAMS]} 
-        frustumCulled={false} // Always render, beams are very tall
-        layers={1}
+    <instancedMesh
+      ref={meshRef}
+      args={[undefined, undefined, MAX_BEAMS]}
+      frustumCulled={false}
+      layers={1}
     >
       <cylinderGeometry args={[1, 1, BEAM_HEIGHT, 8]} />
       <primitive object={material} attach="material" />
@@ -148,4 +167,4 @@ export const CosmicBeams = forwardRef<CosmicBeamsRef, {}>((_props, ref) => {
   );
 });
 
-CosmicBeams.displayName = 'CosmicBeams';
+CosmicBeams.displayName = "CosmicBeams";

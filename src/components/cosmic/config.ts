@@ -1,7 +1,3 @@
-// ============================================================================
-// Cosmic Configuration
-// ============================================================================
-
 // Beam spawning constants
 export const MIN_BEAM_DISTANCE = 10.0;
 export const MAX_POSITION_ATTEMPTS = 10;

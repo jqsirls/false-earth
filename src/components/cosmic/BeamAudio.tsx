@@ -1,30 +1,27 @@
-import { forwardRef, useImperativeHandle } from 'react';
-import * as THREE from 'three';
+import { useEffect } from 'react';
 import { useOneShotAudio } from '../audio/useOneShotAudio';
 import { useGameStore } from '../../core/store/gameStore';
 import { AudioListener } from 'three/webgpu';
+import { gameEvents } from '../../core/events';
+import * as THREE from 'three/webgpu';
 
-export interface BeamAudioHandle {
-  playImpact: (position: THREE.Vector3, volume?: number) => void;
-}
-
-export const BeamAudio = forwardRef<BeamAudioHandle>((_, ref) => {
+export function BeamAudio() {
   const listener = useGameStore((state) => state.audioListener);
   const { play } = useOneShotAudio(listener as AudioListener, ['/audio/wave01.mp3']);
 
-  useImperativeHandle(ref, () => ({
-    playImpact: (position: THREE.Vector3, volume: number = 1) => {
+  useEffect(() => {
+    const onHit = (payload: { position: THREE.Vector3; radius: number }) => {
       play({
-        position,
-        volume,
+        position: payload.position,
+        volume: 0.5,
         detuneRange: 300,
         refDistance: 5,
         maxDistance: 60
       });
-    },
-  }));
+    };
+    gameEvents.on('beam:hit', onHit);
+    return () => gameEvents.off('beam:hit', onHit);
+  }, [play]);
 
   return null;
-});
-
-BeamAudio.displayName = 'BeamAudio';
+}

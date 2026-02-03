@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useRef } from 'react';
+import { Suspense, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useControls } from 'leva';
 import * as THREE from 'three/webgpu';
@@ -21,20 +21,12 @@ import { Terrain } from './Terrain';
 import { StarrySky } from './background/StarrySky';
 import { useGameStore } from '../core/store/gameStore';
 import { AsyncCompile } from '../core/utils/AsyncCompile';
-import Rose, { RoseHandle } from './Rose/Rose';
+import Rose from './Rose/Rose';
 import GrassWebGPU from './grass/GrassWebGPU';
 import { Character } from './character';
 
 
 export function WorldController() {
-    const roseRef = useRef<RoseHandle>(null)
-    const setRoseRef = useGameStore((state) => state.setRoseRef);
-
-    useEffect(() => {
-        setRoseRef(roseRef);
-        return () => setRoseRef(null);
-    }, [setRoseRef]);
-
     const setActiveTargets = useGameStore((state) => state.setActiveTargets);
 
     const { enableEnv, enableRose, enableGrass, enableCharacter } = useControls('Game.Content', {
@@ -111,7 +103,7 @@ export function WorldController() {
         <Suspense fallback={null}>
             {enableRose && (
                 <AsyncCompile id="rose">
-                    <Rose ref={roseRef} count={2000} />
+                    <Rose count={2000} />
                 </AsyncCompile>
             )}
 

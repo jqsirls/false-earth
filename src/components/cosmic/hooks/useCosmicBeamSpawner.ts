@@ -2,7 +2,7 @@
 // Cosmic Beam Spawner Hook
 // ============================================================================
 
-import { useRef, useMemo } from 'react';
+import { useRef, useMemo, useEffect, useCallback } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three/webgpu';
 import { MathUtils } from 'three';
@@ -25,7 +25,8 @@ interface UseCosmicBeamSpawnerOptions {
 }
 
 /**
- * Hook to handle automatic beam spawning based on character movement
+ * Hook to handle automatic beam spawning (speed-based) and manual trigger (key 'Z').
+ * Parent only defines what happens when a beam is spawned (onBeamSpawn).
  */
 export function useCosmicBeamSpawner({
   beamsRef,
@@ -37,29 +38,25 @@ export function useCosmicBeamSpawner({
   const prevCharacterPos = useRef<THREE.Vector3 | null>(null);
   const spawnTimer = useRef<number>(0);
 
-  // Function to spawn a beam at a valid position
-  const spawnBeam = () => {
-    if (!characterRef?.current) {
-      return;
-    }
-    characterRef.current.getWorldPosition(characterPos);
+  const spawnBeam = useCallback(() => {
+    if (!characterRef?.current) return;
 
+    characterRef.current.getWorldPosition(characterPos);
     const beamPositions = beamsRef.current?.getBeamPositions() || [];
 
     let position: THREE.Vector3 | null = null;
     for (let attempt = 0; attempt < MAX_POSITION_ATTEMPTS; attempt++) {
-      const candidatePosition = generateRandomDonutPosition(
+      const candidate = generateRandomDonutPosition(
         characterPos,
         waveParams.donutMinRadius,
         waveParams.donutMaxRadius
       );
-      if (isPositionValid(candidatePosition, beamPositions)) {
-        position = candidatePosition;
+      if (isPositionValid(candidate, beamPositions)) {
+        position = candidate;
         break;
       }
     }
 
-    // If no valid position found after attempts, use a random one anyway
     if (!position) {
       position = generateRandomDonutPosition(
         characterPos,
@@ -69,25 +66,21 @@ export function useCosmicBeamSpawner({
     }
 
     onBeamSpawn(position);
-  };
+  }, [characterRef, characterPos, beamsRef, waveParams, onBeamSpawn]);
 
-  // Auto-spawn logic based on character speed
   useFrame((_, delta) => {
-    if (!waveParams.autoSpawn || !characterRef?.current) {
-      return;
-    }
+    if (!waveParams.autoSpawn || !characterRef?.current) return;
 
     const currentPos = new THREE.Vector3();
     characterRef.current.getWorldPosition(currentPos);
 
-    let speed = 0;
-    if (prevCharacterPos.current) {
-      const distance = currentPos.distanceTo(prevCharacterPos.current);
-      speed = distance / delta;
-    } else {
+    if (!prevCharacterPos.current) {
       prevCharacterPos.current = currentPos.clone();
       return;
     }
+
+    const distance = currentPos.distanceTo(prevCharacterPos.current);
+    const speed = distance / delta;
 
     prevCharacterPos.current = currentPos.clone();
     characterPos.copy(currentPos);
@@ -113,6 +106,6 @@ export function useCosmicBeamSpawner({
   });
 
   return {
-    spawnBeam,
+    spawnBeam
   };
 }

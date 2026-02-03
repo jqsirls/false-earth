@@ -2,7 +2,6 @@ import { create } from 'zustand';
 import { Group } from 'three';
 import { AudioListener } from 'three/webgpu';
 import * as THREE from 'three/webgpu';
-import { RoseHandle } from '../../components/Rose/Rose';
 
 export enum CameraMode {
   Follow  = 0,
@@ -19,9 +18,6 @@ interface GameState {
   // ===== Character State =====
   characterRef: React.MutableRefObject<Group | null> | null;
   setCharacterRef: (ref: React.MutableRefObject<Group | null> | null) => void;
-
-  roseRef: React.MutableRefObject<RoseHandle | null> | null;
-  setRoseRef: (ref: React.MutableRefObject<RoseHandle | null> | null) => void;
 
   activeTargets: string[];
   setActiveTargets: (targets: string[]) => void;
@@ -61,9 +57,6 @@ export const useGameStore = create<GameState>((set, get) => ({
   // ===== Character State =====
   characterRef: null,
   setCharacterRef: (ref) => set({ characterRef: ref }),
-
-  roseRef: null,
-  setRoseRef: (ref) => set({ roseRef: ref }),
 
   activeTargets: [],
   setActiveTargets: (targets) => set({ activeTargets: targets }),
