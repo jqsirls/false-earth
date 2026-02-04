@@ -1,17 +1,29 @@
 // src/ui/controls/TouchControls.tsx
-import { useState, useRef } from 'react';
+import { useRef } from 'react';
 import { inputState } from '../../core/input/InputManager';
-import { useGameStore } from '../../core/store/gameStore';
 
 export function TouchControls() {
-  const [joystickPos, setJoystickPos] = useState({ x: 0, y: 0 });
-  const [isRunning, setIsRunning] = useState(false); 
+  // Use refs instead of state to avoid re-renders on every touch move
+  const knobRef = useRef<HTMLDivElement>(null);
   const joystickContainerRef = useRef<HTMLDivElement>(null);
   
   // Config
   const MAX_RADIUS = 50; 
   const DEAD_ZONE = 10;      
   const RUN_THRESHOLD = 0.8; 
+
+  // Update knob position directly via DOM manipulation (no React re-render)
+  const updateKnobPosition = (x: number, y: number) => {
+    if (knobRef.current) {
+      knobRef.current.style.transform = `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`;
+      // Apply smooth transition only when resetting to center
+      if (x === 0 && y === 0) {
+        knobRef.current.style.transition = 'transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+      } else {
+        knobRef.current.style.transition = 'background 0.2s';
+      }
+    }
+  };
 
   const handleJoystickMove = (clientX: number, clientY: number) => {
     if (!joystickContainerRef.current) return;
@@ -33,7 +45,8 @@ export function TouchControls() {
       clampedDistance = MAX_RADIUS;
     }
 
-    setJoystickPos({ x: deltaX, y: deltaY });
+    // Update DOM directly instead of setting state
+    updateKnobPosition(deltaX, deltaY);
 
     let normX = 0;
     let normY = 0;
@@ -62,7 +75,6 @@ export function TouchControls() {
     const shouldRun = pullRatio > RUN_THRESHOLD;
     
     inputState.run = shouldRun;
-    setIsRunning(shouldRun);
   };
 
   const handlePointerDown = (e: React.PointerEvent) => {
@@ -79,9 +91,10 @@ export function TouchControls() {
   const handlePointerUp = (e: React.PointerEvent) => {
     e.currentTarget.releasePointerCapture(e.pointerId);
     
-    setJoystickPos({ x: 0, y: 0 });
-    setIsRunning(false);
+    // Reset visual position directly
+    updateKnobPosition(0, 0);
     
+    // Reset inputs
     inputState.joystickInput.x = 0;
     inputState.joystickInput.y = 0;
     inputState.moveForward = false;
@@ -121,15 +134,20 @@ export function TouchControls() {
         transition: 'opacity 0.5s ease-in-out, border-color 0.2s',
       }}
     >
-      <div style={{
-        width: '50px', height: '50px',
-        background: 'rgba(255, 255, 255, 0.8)',
-        borderRadius: '50%', 
-        position: 'absolute',
-        top: '50%', left: '50%',
-        transform: `translate(calc(-50% + ${joystickPos.x}px), calc(-50% + ${joystickPos.y}px))`,
-        transition: joystickPos.x === 0 ? 'transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)' : 'background 0.2s',
-      }} />
+      <div 
+        ref={knobRef}
+        style={{
+          width: '50px', 
+          height: '50px',
+          background: 'rgba(255, 255, 255, 0.8)',
+          borderRadius: '50%', 
+          position: 'absolute',
+          top: '50%', 
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          pointerEvents: 'none', // Let clicks pass through to container
+        }} 
+      />
     </div>
   );
 }

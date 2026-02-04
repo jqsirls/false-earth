@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useGameStore } from '../../core/store/gameStore';
 import * as THREE from 'three/webgpu';
 import { useLoader } from '@react-three/fiber';

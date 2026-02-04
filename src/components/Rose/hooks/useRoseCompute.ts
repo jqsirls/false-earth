@@ -55,6 +55,10 @@ export function useRoseCompute(
         const updateCompute = createUpdateCompute(drawStorage, visibleIndices, vatData, count, uniforms).setName('RoseUpdate')
 
         computeRefs.current = { reset: resetCompute, spawn: spawnCompute, update: updateCompute }
+
+        return () => {
+            computeRefs.current = null
+        }
     }, [geometry, uniforms])
 
     const spawn = useCallback((pos: THREE.Vector3, amount: number = 1, radius: number = 0.5) => {

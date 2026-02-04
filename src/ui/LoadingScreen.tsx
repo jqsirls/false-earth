@@ -50,6 +50,7 @@ export function LoadingScreen() {
     const [isReadyToStart, setIsReadyToStart] = useState(false);
     const [isVisible, setIsVisible] = useState(true);
     const containerRef = useRef<HTMLDivElement>(null);
+    const animationRef = useRef<gsap.core.Tween | null>(null);
 
     const total = activeTargets.length;
     const loaded = activeTargets.filter((id) => readyStatus[id]).length;
@@ -74,7 +75,7 @@ export function LoadingScreen() {
 
         // Animate out
         if (containerRef.current) {
-            gsap.to(containerRef.current, {
+            animationRef.current = gsap.to(containerRef.current, {
                 opacity: 0,
                 duration: 1,
                 ease: "power2.inOut",
@@ -82,6 +83,15 @@ export function LoadingScreen() {
             });
         }
     };
+
+    // Cleanup GSAP animation on unmount
+    useEffect(() => {
+        return () => {
+            if (animationRef.current) {
+                animationRef.current.kill();
+            }
+        };
+    }, []);
 
     if (!isVisible) return null;
 

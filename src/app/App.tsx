@@ -1,5 +1,5 @@
-import { Environment } from "@react-three/drei";
-import { LevaWrapper } from "@packages/r3f-gist/components";
+import { Environment, StatsGl } from "@react-three/drei";
+import LevaWrapper from "../debug/LevaWrapper";
 import { Canvas } from "@react-three/fiber";
 import { useEffect, Suspense, useMemo } from "react";
 import { DirectionalLight } from "../components/DirectionalLight";
@@ -63,7 +63,7 @@ export default function App() {
 
                 return renderer.init().then(() => renderer);
             }}
-            dpr={[1, 2]}
+            dpr={[1, 1.5]}
             performance={{ min: 0.5, max: 1 }}
         >
             <AudioManager />

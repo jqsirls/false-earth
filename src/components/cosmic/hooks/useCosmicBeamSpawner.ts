@@ -2,7 +2,7 @@
 // Cosmic Beam Spawner Hook
 // ============================================================================
 
-import { useRef, useMemo, useEffect, useCallback } from 'react';
+import { useRef, useMemo, useCallback } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three/webgpu';
 import { MathUtils } from 'three';
@@ -35,6 +35,7 @@ export function useCosmicBeamSpawner({
 }: UseCosmicBeamSpawnerOptions) {
   const characterRef = useGameStore((state) => state.characterRef);
   const characterPos = useMemo(() => new THREE.Vector3(), []);
+  const currentPosCache = useMemo(() => new THREE.Vector3(), []); // Reuse for getWorldPosition
   const prevCharacterPos = useRef<THREE.Vector3 | null>(null);
   const spawnTimer = useRef<number>(0);
 
@@ -71,19 +72,19 @@ export function useCosmicBeamSpawner({
   useFrame((_, delta) => {
     if (!waveParams.autoSpawn || !characterRef?.current) return;
 
-    const currentPos = new THREE.Vector3();
-    characterRef.current.getWorldPosition(currentPos);
+    // Reuse cached vector instead of creating new one
+    characterRef.current.getWorldPosition(currentPosCache);
 
     if (!prevCharacterPos.current) {
-      prevCharacterPos.current = currentPos.clone();
+      prevCharacterPos.current = currentPosCache.clone();
       return;
     }
 
-    const distance = currentPos.distanceTo(prevCharacterPos.current);
+    const distance = currentPosCache.distanceTo(prevCharacterPos.current);
     const speed = distance / delta;
 
-    prevCharacterPos.current = currentPos.clone();
-    characterPos.copy(currentPos);
+    prevCharacterPos.current.copy(currentPosCache);
+    characterPos.copy(currentPosCache);
 
     if (speed < waveParams.speedThreshold) {
       spawnTimer.current = 0;

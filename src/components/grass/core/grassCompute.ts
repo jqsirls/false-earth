@@ -103,11 +103,6 @@ export function createGrassCompute(
 
   const buildLODRouting = createLODRoutingChainBuilder(lodConfigs);
 
-  const calculateDistance = Fn(([worldPos]: [any]) => {
-    const camPos = uniforms.uCameraPosition;
-    return length(worldPos.sub(camPos));
-  });
-
   const DOMAIN_WRAP = float(32.0);
   const getSafeHashPos = (pos: any) => vec2(abs(pos.x).mod(DOMAIN_WRAP), abs(pos.y).mod(DOMAIN_WRAP));
 
@@ -290,8 +285,9 @@ export function createGrassCompute(
     const worldPos = calculateJitteredPosition(instanceIndex);
     positions.element(instanceIndex).assign(worldPos);
 
-    const distToCamera = calculateDistance(worldPos);
-    const isCloseEnough = distToCamera.lessThan(float(2.5));
+    const diff = worldPos.sub(uniforms.uCameraPosition);
+    const distToCamera = length(diff);
+    const isCloseEnough = abs(diff.x).add(abs(diff.z)).lessThan(float(2.5));
     const isVisible = isCloseEnough.or(performCulling(worldPos));
 
     // 4. [Optimization] Expensive Logic Block

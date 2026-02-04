@@ -8,7 +8,7 @@ import { useGameStore } from '../../core/store/gameStore'
 import { useGrassUniforms } from './hooks/useGrassUniforms'
 import { useGrassCompute } from './hooks/useGrassCompute'
 
-export default function GrassWebGPU({ cullCamera }: GrassProps = {} as GrassProps) {
+export default function GrassWebGPU({ cullCamera, visible = true }: GrassProps = {} as GrassProps) {
   const { camera: defaultCamera } = useThree()
   const groupRef = useRef<THREE.Group>(null)
 
@@ -46,7 +46,7 @@ export default function GrassWebGPU({ cullCamera }: GrassProps = {} as GrassProp
   })
 
   return (
-    <group ref={groupRef}>
+    <group ref={groupRef} visible={visible}>
       {lodBuffers.map((lodBuffer) => (
         <GrassLOD
           key={`lod-${lodBuffer.segments}-${lodBuffer.minDistance}-${lodBuffer.maxDistance}`}

@@ -86,6 +86,7 @@ export interface TerrainParams {
 export interface GrassProps {
   cullCamera?: THREE.PerspectiveCamera; // Camera used for culling calculation (separate from render camera)
   trailTexture?: THREE.StorageTexture | null; // Character trail texture for flattening grass
+  visible?: boolean; // Toggle visibility without remounting
 }
 
 export interface LODSegmentsConfig {

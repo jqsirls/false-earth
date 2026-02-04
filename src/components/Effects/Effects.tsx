@@ -2,7 +2,7 @@ import { useRef, useEffect, useMemo } from "react";
 import { useThree, useFrame } from "@react-three/fiber";
 import * as THREE from "three/webgpu";
 import { WebGPURenderer } from "three/webgpu";
-import { clamp, float, length, mix, pass, pow, smoothstep, uniform, uv, vec4 } from "three/tsl";
+import { clamp, float, Fn, If, length, mix, pass, pow, smoothstep, uniform, uv, vec4 } from "three/tsl";
 import { bloom } from "three/addons/tsl/display/BloomNode.js";
 import { dof } from "three/addons/tsl/display/DepthOfFieldNode.js";
 import { smaa } from "three/addons/tsl/display/SMAANode.js";
@@ -68,23 +68,31 @@ export default function Effects() {
     const beamDepth = beamPass.getViewZNode();
 
     const uvNode = uv();
+
+    const getBaseColor = Fn(() => {
+      const outputColor = vec4(0.0).toVar();
+      If(uParams.current.helmetStr.greaterThan(float(0.01)), () => {
+        const toCenter = uvNode.sub(0.5);
+        const dist = length(toCenter);
+        const distortStr = float(0.2).mul(uParams.current.helmetStr);
+        const distortOffset = toCenter.normalize().mul(pow(dist, 3.0)).mul(distortStr);
+        const distortedUV = uvNode.sub(distortOffset);
+        const aberStr = float(0.01).mul(uParams.current.helmetStr);
+        const aberOffset = toCenter.normalize().mul(dist).mul(aberStr);
+        const r = sceneTex.sample(distortedUV.sub(aberOffset)).r;
+        const g = sceneTex.sample(distortedUV).g;
+        const b = sceneTex.sample(distortedUV.add(aberOffset)).b;
+        outputColor.assign(vec4(r, g, b, 1.0));
+      }).Else(() => {
+        outputColor.assign(sceneTex.sample(uvNode));
+      });
+      return outputColor;
+    });
+
+    let finalNode: any = getBaseColor();
+
     const toCenter = uvNode.sub(0.5);
     const dist = length(toCenter);
-
-    const distortStr = float(0.2).mul(uParams.current.helmetStr);
-    const distortOffset = toCenter.normalize().mul(pow(dist, 3.0)).mul(distortStr);
-    const distortedUV = uvNode.sub(distortOffset);
-
-    const aberStr = float(0.01).mul(uParams.current.helmetStr);
-    const aberOffset = toCenter.normalize().mul(dist).mul(aberStr);
-
-    const r = sceneTex.sample(distortedUV.sub(aberOffset)).r;
-    const g = sceneTex.sample(distortedUV).g;
-    const b = sceneTex.sample(distortedUV.add(aberOffset)).b;
-
-    const baseColor = vec4(r, g, b, 1.0);
-
-    let finalNode: any = baseColor;
 
     if (isHighQuality && dofCfg.enabled) {
       finalNode = dof(

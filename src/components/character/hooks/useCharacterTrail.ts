@@ -116,6 +116,14 @@ export function useCharacterTrail(
     uTrailRadius.value = controls.trailRadius;
   }, [controls]);
 
+  // Cleanup textures on unmount
+  useEffect(() => {
+    return () => {
+      pingTexture.dispose();
+      pongTexture.dispose();
+    };
+  }, [pingTexture, pongTexture]);
+
   // Update trail each frame
   useFrame(() => {
     if (!renderer || !uWorldPos?.value) return;

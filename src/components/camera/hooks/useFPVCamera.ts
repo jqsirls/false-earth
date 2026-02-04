@@ -28,7 +28,7 @@ export function useFPVCamera({
   
   const lastTouchRef = useRef<{ x: number, y: number } | null>(null);
 
-  const { vec3, quat, quatOffset, quatBone, quatLookForward, modelCorrectionQuat, dummyEuler, mouseQuat } = useMemo(() => ({
+  const { vec3, quat, quatOffset, quatBone, quatLookForward, modelCorrectionQuat, dummyEuler, mouseQuat, offsetVec } = useMemo(() => ({
     vec3: new Vector3(),
     quat: new Quaternion(),
     quatOffset: new Quaternion(),
@@ -37,6 +37,7 @@ export function useFPVCamera({
     modelCorrectionQuat: new Quaternion().setFromEuler(new Euler(0, Math.PI, 0, 'YXZ')),
     dummyEuler: new Euler(),
     mouseQuat: new Quaternion(),
+    offsetVec: new Vector3(), // Reuse for camera offset
   }), []);
 
   const config = useControls('FPV Settings', {
@@ -173,9 +174,10 @@ export function useFPVCamera({
       mouseQuat.setFromEuler(dummyEuler);
       quat.multiply(mouseQuat);
 
-      const offset = new Vector3(config.offsetX, config.offsetY, config.offsetZ);
-      offset.applyQuaternion(quat);
-      vec3.add(offset);
+      // Reuse offsetVec instead of creating new Vector3
+      offsetVec.set(config.offsetX, config.offsetY, config.offsetZ);
+      offsetVec.applyQuaternion(quat);
+      vec3.add(offsetVec);
 
       camera.position.copy(vec3);
       camera.quaternion.copy(quat);

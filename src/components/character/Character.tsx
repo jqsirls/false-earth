@@ -1,5 +1,5 @@
-import { useRef, useMemo, useEffect, useState, Suspense } from 'react';
-import { useFrame, useThree } from '@react-three/fiber';
+import { useRef, useMemo, useEffect, Suspense } from 'react';
+import { useFrame } from '@react-three/fiber';
 import { Group } from 'three';
 import * as THREE from 'three/webgpu';
 import { uniform } from 'three/tsl';
@@ -9,7 +9,7 @@ import { useCharacterPhysics } from './hooks/useCharacterPhysics';
 import { useGameStore, CameraMode } from '../../core/store/gameStore';
 import { CharacterAudio, CharacterAudioHandle } from './CharacterAudio';
 
-export const Character = ({ position = [0, 0, 0], scale = 1 }: CharacterProps) => {
+export const Character = ({ position = [0, 0, 0], scale = 1, visible = true }: CharacterProps) => {
   const groupRef = useRef<Group>(null);
   const audioRef = useRef<CharacterAudioHandle>(null);
 
@@ -70,7 +70,7 @@ export const Character = ({ position = [0, 0, 0], scale = 1 }: CharacterProps) =
   if (!scene) return null;
 
   return (
-    <group ref={groupRef} position={position} scale={scale} dispose={null}>
+    <group ref={groupRef} position={position} scale={scale} visible={visible} dispose={null}>
       {scene && <primitive object={scene} />}
 
       <Suspense fallback={null}>

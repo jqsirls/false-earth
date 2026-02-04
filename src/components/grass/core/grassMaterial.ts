@@ -283,8 +283,8 @@ export function createGrassMaterial(
     const noiseScale = float(2.0);
     const noisePos = worldPosFinal.mul(noiseScale);
     const movingNoisePos = vec3(noisePos.x, noisePos.y.sub(uTime.mul(2.0)), noisePos.z);
-    vCrackleNoise.assign(mx_noise_float(movingNoisePos));
 
+    vCrackleNoise.assign(mx_noise_float(movingNoisePos));
     vGeoNormal.assign(normalRotated);
     vHeight.assign(t);
     vToCenter.assign(toCenter);

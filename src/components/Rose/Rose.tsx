@@ -11,7 +11,7 @@ import { useFrame } from "@react-three/fiber";
 
 import { gameEvents } from "../../core/events";
 
-export default function Rose({ count }: { count: number }) {
+export default function Rose({ count, visible = true }: { count: number; visible?: boolean }) {
     const { scene, posTex, nrmTex, meta, isLoaded } = useVATPreloader('/vat/Rose_meta.json')
 
     const textures = useKTX2Texture(ROSE_TEXTURES)
@@ -82,5 +82,5 @@ export default function Rose({ count }: { count: number }) {
 
     if (!geometry || !material) return null
 
-    return <mesh geometry={geometry} material={material} count={count} frustumCulled={false} />
+    return <mesh geometry={geometry} material={material} count={count} frustumCulled={false} visible={visible} />
 }

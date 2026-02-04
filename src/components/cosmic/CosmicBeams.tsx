@@ -60,6 +60,7 @@ export interface CosmicBeamsRef {
 
 export const CosmicBeams = forwardRef<CosmicBeamsRef, {}>((_props, ref) => {
   const meshRef = useRef<THREE.InstancedMesh>(null);
+  const activeTimelinesRef = useRef<gsap.core.Timeline[]>([]);
 
   const beams = useMemo(
     () =>
@@ -92,8 +93,16 @@ export const CosmicBeams = forwardRef<CosmicBeamsRef, {}>((_props, ref) => {
       onComplete: () => {
         beam.isAnimating = false;
         beam.y = -5000;
+        // Remove from active timelines
+        const index = activeTimelinesRef.current.indexOf(tl);
+        if (index > -1) {
+          activeTimelinesRef.current.splice(index, 1);
+        }
       },
     });
+
+    // Track active timeline
+    activeTimelinesRef.current.push(tl);
 
     tl.to(beam, {
       y: position.y + BEAM_HEIGHT / 2,
@@ -127,6 +136,14 @@ export const CosmicBeams = forwardRef<CosmicBeamsRef, {}>((_props, ref) => {
     }
     meshRef.current.instanceMatrix.needsUpdate = true;
   }, [dummy]);
+
+  // Cleanup GSAP timelines on unmount
+  useEffect(() => {
+    return () => {
+      activeTimelinesRef.current.forEach((tl) => tl.kill());
+      activeTimelinesRef.current = [];
+    };
+  }, []);
 
   useFrame(() => {
     if (!meshRef.current) return;

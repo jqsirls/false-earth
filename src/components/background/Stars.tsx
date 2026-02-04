@@ -132,6 +132,9 @@ export function Stars({
     return s;
   }, [material, count, seedAttribute, positionAttribute]);
 
+  // Reuse rotation axis vector to avoid GC
+  const rotationAxis = useMemo(() => new THREE.Vector3(axis[0], axis[1], axis[2]), [axis]);
+
   useEffect(() => {
     uniforms.uIntensity.value =  cameraMode === CameraMode.FPV ? 10 : 1
   }, [cameraMode])
@@ -140,7 +143,7 @@ export function Stars({
     if (groupRef.current) {
       groupRef.current.position.copy(camera.position);
       const angle = clock.elapsedTime * -speed;
-      groupRef.current.setRotationFromAxisAngle(new THREE.Vector3(axis[0], axis[1], axis[2]), THREE.MathUtils.DEG2RAD * angle);
+      groupRef.current.setRotationFromAxisAngle(rotationAxis, THREE.MathUtils.DEG2RAD * angle);
     }
   });
 

@@ -41,6 +41,7 @@ export const DETAIL_TEXTURE_PATHS = {
 export interface CharacterProps {
   position?: [number, number, number];
   scale?: number;
+  visible?: boolean;
 }
 
 export interface CharacterState {

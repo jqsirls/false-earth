@@ -1,4 +1,4 @@
-import { Suspense, useEffect } from 'react';
+import { useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useControls } from 'leva';
 import * as THREE from 'three/webgpu';
@@ -74,13 +74,10 @@ export function WorldController() {
         uTerrainColor.value.set(c.r, c.g, c.b);
     }, [terrainParams]);
 
+    // Always compile all major components since they're now always mounted
     useEffect(() => {
-        const targets: string[] = [];
-        if (enableRose) targets.push('rose');
-        if (enableGrass) targets.push('grass');
-        if (enableCharacter) targets.push('character');
-        setActiveTargets(targets);
-    }, [enableRose, enableGrass, enableCharacter, setActiveTargets]);
+        setActiveTargets(['rose', 'grass', 'character']);
+    }, [setActiveTargets]);
 
     useFrame((_state, rawDelta) => {
         const delta = Math.min(rawDelta, 0.1);
@@ -91,31 +88,24 @@ export function WorldController() {
     });
 
     return <>
-        {enableEnv && (
-            <>
-                <StarrySky />
-                <CosmicSystem />
-                <Terrain />
-            </>
-        )}
+        {/* Environment - use group visibility to avoid remounting */}
+        <group visible={enableEnv}>
+            <StarrySky />
+            <CosmicSystem />
+            <Terrain />
+        </group>
 
+        {/* Major components - toggle visibility instead of unmounting */}
+        <AsyncCompile id="rose">
+            <Rose count={2000} visible={enableRose} />
+        </AsyncCompile>
 
-        {enableRose && (
-            <AsyncCompile id="rose">
-                <Rose count={2000} />
-            </AsyncCompile>
-        )}
+        <AsyncCompile id="grass">
+            <GrassWebGPU visible={enableGrass} />
+        </AsyncCompile>
 
-        {enableGrass && (
-            <AsyncCompile id="grass">
-                <GrassWebGPU />
-            </AsyncCompile>
-        )}
-
-        {enableCharacter && (
-            <AsyncCompile id="character">
-                <Character position={[0, 0, 0]} scale={1} />
-            </AsyncCompile>
-        )}
+        <AsyncCompile id="character">
+            <Character position={[0, 0, 0]} scale={1} visible={enableCharacter} />
+        </AsyncCompile>
     </>
 }

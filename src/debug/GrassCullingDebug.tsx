@@ -1,9 +1,8 @@
-import { useRef, useState, useEffect } from 'react'
+import { useRef, useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { CameraControls } from '@react-three/drei'
 import * as THREE from 'three/webgpu'
-import GrassWebGPU from '../grass/GrassWebGPU'
-import { Terrain } from '../terrain/Terrain'
+import GrassWebGPU from '../components/grass/GrassWebGPU'
 
 /**
  * Debug component for testing grass culling
@@ -17,13 +16,6 @@ import { Terrain } from '../terrain/Terrain'
  * Replace <GrassWebGPU /> in your scene with <GrassCullingDebug />
  */
 export function GrassCullingDebug() {
-  const [terrainUniforms, setTerrainUniforms] = useState<{
-    uTerrainAmp: any
-    uTerrainFreq: any
-    uTerrainSeed: any
-    uColor: any
-  } | undefined>(undefined)
-
   // Player camera (used for culling calculation)
   const playerCameraRef = useRef<THREE.PerspectiveCamera>(null!)
   const helperRef = useRef<THREE.CameraHelper | null>(null)

@@ -2,7 +2,7 @@ import { useGameStore, CameraMode } from '../../core/store/gameStore';
 import { CameraControls } from '@react-three/drei';
 import { useFPVCamera } from './hooks/useFPVCamera';
 import { useFollowCamera } from './hooks/useFollowCamera';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import * as THREE from 'three/webgpu';
 
 type Props = {
@@ -59,10 +59,19 @@ export function CameraViewControl({ boneName = 'head' }: Props) {
     if (isGameLoaded && !isControlEnabled) {
       document.body.style.cursor = 'wait';
 
+      let isMounted = true;
+
       resetCamera(true).then(() => {
-        setControlEnabled(true);
-        document.body.style.cursor = 'default';
+        if (isMounted) {
+          setControlEnabled(true);
+          document.body.style.cursor = 'default';
+        }
       });
+
+      return () => {
+        isMounted = false;
+        document.body.style.cursor = 'default';
+      };
     }
   }, [isGameLoaded, isControlEnabled, resetCamera, setControlEnabled]);
 
