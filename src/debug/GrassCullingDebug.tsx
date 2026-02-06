@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { CameraControls } from '@react-three/drei'
 import * as THREE from 'three/webgpu'
@@ -17,48 +17,46 @@ import GrassWebGPU from '../components/grass/GrassWebGPU'
  */
 export function GrassCullingDebug() {
   // Player camera (used for culling calculation)
-  const playerCameraRef = useRef<THREE.PerspectiveCamera>(null!)
-  const helperRef = useRef<THREE.CameraHelper | null>(null)
+  const [playerCamera, setPlayerCamera] = useState<THREE.PerspectiveCamera | null>(null)
+  const [helper, setHelper] = useState<THREE.CameraHelper | null>(null)
 
   // Initialize player camera
   useEffect(() => {
-    if (!playerCameraRef.current) {
-      playerCameraRef.current = new THREE.PerspectiveCamera(50, 1, 0.1, 50)
-      playerCameraRef.current.position.set(0, 5, 20)
-      playerCameraRef.current.lookAt(0, 0, 0)
-    }
+    const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 50)
+    camera.position.set(0, 5, 20)
+    camera.lookAt(0, 0, 0)
+    setPlayerCamera(camera)
 
     // Create camera helper
-    if (playerCameraRef.current && !helperRef.current) {
-      helperRef.current = new THREE.CameraHelper(playerCameraRef.current)
-    }
+    const cameraHelper = new THREE.CameraHelper(camera)
+    setHelper(cameraHelper)
 
     return () => {
-      helperRef.current?.dispose()
+      cameraHelper.dispose()
     }
   }, [])
 
   // Animate player camera to simulate player movement
   useFrame(({ clock, viewport }) => {
-    if (playerCameraRef.current) {
+    if (playerCamera) {
       const t = clock.getElapsedTime() * 0.5
       // Make player camera orbit around the scene
       const radius = 20
       const height = 5
-      playerCameraRef.current.position.set(
+      playerCamera.position.set(
         Math.sin(t) * radius,
         height,
         Math.cos(t) * radius
       )
-      playerCameraRef.current.lookAt(0, 0, 0)
+      playerCamera.lookAt(0, 0, 0)
       // Update aspect ratio based on viewport
-      playerCameraRef.current.aspect = viewport.width / viewport.height
-      playerCameraRef.current.updateProjectionMatrix()
-      playerCameraRef.current.updateMatrixWorld()
+      playerCamera.aspect = viewport.width / viewport.height
+      playerCamera.updateProjectionMatrix()
+      playerCamera.updateMatrixWorld()
 
       // Update helper
-      if (helperRef.current) {
-        helperRef.current.update()
+      if (helper) {
+        helper.update()
       }
     }
   })
@@ -69,12 +67,12 @@ export function GrassCullingDebug() {
       <CameraControls makeDefault dollySpeed={0.5} />
 
       {/* Visualize player camera frustum (yellow wireframe) */}
-      {helperRef.current && <primitive object={helperRef.current} />}
+      {helper && <primitive object={helper} />}
 
 
       {/* Grass system uses player camera for culling */}
       <GrassWebGPU 
-        cullCamera={playerCameraRef.current}
+        cullCamera={playerCamera ?? undefined}
       />
 
       {/* Grid helper for reference */}

@@ -24,19 +24,20 @@ import { AsyncCompile } from '../core/utils/AsyncCompile';
 import Rose from './Rose/Rose';
 import GrassWebGPU from './grass/GrassWebGPU';
 import { Character } from './character';
-
+import { GrassCullingDebug } from '../debug/GrassCullingDebug';
 
 export function WorldController() {
     const setActiveTargets = useGameStore((state) => state.setActiveTargets);
     const setComponentReady = useGameStore((state) => state.setComponentReady);
-    
+
     const debugMode = new URLSearchParams(window.location.search).get('debug') === 'true';
 
-    const { enableEnv, enableRose, enableGrass, enableCharacter } = useControls('Game.Content', {
+    const { enableEnv, enableRose, enableGrass, enableCharacter, enableGrassDebug } = useControls('Game.Content', {
         enableEnv: { value: true, label: 'Environment' },
+        enableCharacter: { value: true, label: '👤 Character' },
         enableRose: { value: true, label: '🌹 Rose Field' },
         enableGrass: { value: true, label: '🌿 Grass Field' },
-        enableCharacter: { value: true, label: '👤 Character' },
+        enableGrassDebug: { value: false, label: '🌿 Grass Culling Debug' },
     }, { collapsed: true });
 
 
@@ -108,8 +109,10 @@ export function WorldController() {
             </AsyncCompile>
 
             <AsyncCompile id="grass" onReady={setComponentReady} debug={debugMode}>
-                <GrassWebGPU visible={enableGrass} />
+                {enableGrassDebug && <GrassCullingDebug />}
+                {!enableGrassDebug && <GrassWebGPU visible={enableGrass} />}
             </AsyncCompile>
+
 
             <AsyncCompile id="character" onReady={setComponentReady} debug={debugMode}>
                 <Character position={[0, 0, 0]} scale={1} visible={enableCharacter} />
