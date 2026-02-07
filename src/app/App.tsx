@@ -1,4 +1,4 @@
-import { Environment, StatsGl, useGLTF } from "@react-three/drei";
+import { Environment, PerformanceMonitor, useGLTF } from "@react-three/drei";
 import LevaWrapper from "../debug/LevaWrapper";
 import { Canvas } from "@react-three/fiber";
 import { useEffect, Suspense, useMemo, useState } from "react";
@@ -13,11 +13,9 @@ import { UI } from "../ui/UI";
 import { useKeyboard } from "../core/input/useKeyboard";
 import { preloadVATAssets } from "../components/Rose/core";
 import { WorldController } from "../components/WorldController";
-import { WebGpuPerf } from "../debug/WebGPUPerf";
 import { Inspector } from 'three/addons/inspector/Inspector.js';
 import { createContext } from "react";
 import * as THREE from "three/webgpu";
-
 
 useGLTF.preload('/models/Astronaut.glb');
 useGLTF.preload('/models/Idle.glb');
@@ -28,14 +26,15 @@ useGLTF.preload('/models/WalkingBack.glb');
 preloadVATAssets('/vat/Rose_meta.json');
 preloadVATAssets('/vat/RoseLowPoly_meta.json');
 
-
 export const BeamSceneContext = createContext<THREE.Scene | null>(null);
 
 export default function App() {
     const beamScene = useMemo(() => new THREE.Scene(), []);
+    const [dpr, setDpr] = useState(1.5);
 
     const toggleCameraMode = useGameStore((state) => state.toggleCameraMode);
     const setGpuError = useGameStore((state) => state.setGpuError);
+    const gpuError = useGameStore((state) => state.gpuError);
 
     // Check WebGPU support on mount
     useEffect(() => {
@@ -78,47 +77,56 @@ export default function App() {
         <DeviceDetector />
         <UI />
 
-        {!gpuError && <Canvas
-            camera={{
-                fov: 45,
-                near: 0.1,
-                far: 200,
-                position: [20, 20, 30]
-            }}
-            gl={(canvas) => {
-                const renderer = new WebGPURenderer({
-                    ...canvas as any,
-                    powerPreference: "high-performance",
-                    antialias: true,
-                    alpha: true,
-                });
-                renderer.setClearColor('#000000');
-                renderer.autoClear = true;
-                // renderer.inspector = new Inspector();
+        {!gpuError && (
+            <Canvas
+                camera={{
+                    fov: 45,
+                    near: 0.1,
+                    far: 200,
+                    position: [20, 20, 30]
+                }}
+                gl={(canvas) => {
+                    const renderer = new WebGPURenderer({
+                        ...canvas as any,
+                        powerPreference: "high-performance",
+                        antialias: true,
+                        alpha: true,
+                    });
+                    renderer.setClearColor('#000000');
+                    renderer.autoClear = true;
+                    // renderer.inspector = new Inspector();
+                    renderer.sortObjects = false;
 
-                return renderer.init().then(() => renderer);
-            }}
-            dpr={[1, 1.5]}
-            performance={{ min: 0.5, max: 1 }}
-        >
-            <AudioManager />
-            {/* <WebGpuPerf /> */}
-            {/* <StatsGl /> */}
+                    return renderer.init().then(() => renderer);
+                }}
+                dpr={dpr}
+            >
+                <AudioManager />
 
-            <BeamSceneContext.Provider value={beamScene}>
-                <WorldController />
+                <PerformanceMonitor
+                    bounds={() => [28, 32]}
+                    onFallback={() => setDpr(1)}
+                    onChange={({ factor }) => {
+                        setDpr(1 + 1 * factor);
+                        // console.log("factor", factor, "dpr", 1 + 1 * factor);
+                    }}
+                />
 
-                <Suspense fallback={null}>
-                    <color attach="background" args={['#000000']} />
-                    <CameraViewControl />
-                    <Environment
-                        files="/textures/potsdamer_platz_1k_nb.hdr"
-                        environmentIntensity={0.5}
-                    />
-                    <DirectionalLight />
-                    <Effects />
-                </Suspense>
-            </BeamSceneContext.Provider>
-        </Canvas>}
+                <BeamSceneContext.Provider value={beamScene}>
+                    <WorldController />
+
+                    <Suspense fallback={null}>
+                        <color attach="background" args={['#000000']} />
+                        <CameraViewControl />
+                        <Environment
+                            files="/textures/potsdamer_platz_1k_nb.hdr"
+                            environmentIntensity={0.5}
+                        />
+                        <DirectionalLight />
+                        <Effects />
+                    </Suspense>
+                </BeamSceneContext.Provider>
+            </Canvas>
+        )}
     </>
 }

@@ -17,13 +17,13 @@ export const DEFAULT_LOD_SEGMENTS_CONFIG = [
     debugColor: [1, 0, 0] as [number, number, number],
   },
   {
-    segments: 3,
+    segments: 5,
     minDistance: 5,
     maxDistance: 20,
     debugColor: [0, 1, 0] as [number, number, number],
   },
   {
-    segments: 1,
+    segments: 2,
     minDistance: 20,
     maxDistance: Infinity,
     debugColor: [0, 0, 1] as [number, number, number],
