@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, useMemo } from "react";
 import { useGameStore } from "../core/store/gameStore";
 import gsap from "gsap";
 
+// --- Sub Components ---
 const Key = ({ children }: { children: React.ReactNode }) => (
     <span style={{
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
@@ -50,8 +51,20 @@ export function LoadingScreen() {
     // Local State
     const [isReadyToStart, setIsReadyToStart] = useState(false);
     const [isVisible, setIsVisible] = useState(true);
+    const [isLandscape, setIsLandscape] = useState(false); // New State for Landscape detection
+
     const containerRef = useRef<HTMLDivElement>(null);
     const animationRef = useRef<gsap.core.Tween | null>(null);
+
+    // Orientation detection hook
+    useEffect(() => {
+        const checkOrientation = () => {
+            setIsLandscape(window.innerWidth > window.innerHeight);
+        };
+        checkOrientation();
+        window.addEventListener('resize', checkOrientation);
+        return () => window.removeEventListener('resize', checkOrientation);
+    }, []);
 
     const total = activeTargets.length;
     const loaded = activeTargets.filter((id) => readyStatus[id]).length;
@@ -70,12 +83,8 @@ export function LoadingScreen() {
     }, [active, loaded, total]);
 
     const handleStart = () => {
-        // Prevent starting if GPU error exists
         if (!isReadyToStart || gpuError) return;
-
         setIsGameStarted(true);
-
-        // Animate out
         if (containerRef.current) {
             animationRef.current = gsap.to(containerRef.current, {
                 opacity: 0,
@@ -86,26 +95,43 @@ export function LoadingScreen() {
         }
     };
 
-    // Cleanup GSAP animation on unmount
     useEffect(() => {
         return () => {
-            if (animationRef.current) {
-                animationRef.current.kill();
-            }
+            if (animationRef.current) animationRef.current.kill();
         };
     }, []);
 
     if (!isVisible) return null;
 
-    // --- Styles ---
+    // --- Dynamic Styles ---
+    const isMobileLandscape = isMobile && isLandscape;
+
     const containerStyle: React.CSSProperties = {
-        position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
+        position: 'fixed', top: 0, left: 0,
+        width: '100vw', height: '100dvh',
         background: '#000', zIndex: 9999,
         display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
         color: 'white', fontFamily: 'Cousine',
-        pointerEvents: 'auto', // Blocks clicks to 3D scene
+        pointerEvents: 'auto',
         fontSize: isMobile ? '0.8rem' : '0.9rem',
-        opacity: 0.99, // Prevent culling
+        opacity: 0.99,
+        // In landscape, we want strict overflow handling
+        overflow: 'hidden',
+        padding: 'env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)'
+    };
+
+    const entryContainerStyle: React.CSSProperties = {
+        opacity: 1,
+        maxWidth: isMobileLandscape ? '80%' : (isMobile ? '100%' : '600px'),
+        padding: isMobileLandscape ? '20px' : '40px',
+        animation: 'fadeIn 2s ease',
+        display: 'flex',
+        // SWITCH LAYOUT: Row for landscape, Column for portrait
+        flexDirection: isMobileLandscape ? 'row' : 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: isMobileLandscape ? '40px' : '0px',
+        height: isMobileLandscape ? '100%' : 'auto'
     };
 
     const playButtonStyle: React.CSSProperties = {
@@ -115,103 +141,120 @@ export function LoadingScreen() {
         letterSpacing: '3px',
         transition: 'all 0.5s ease',
         transform: 'scale(1)',
+        cursor: gpuError ? 'default' : (isReadyToStart ? 'pointer' : 'wait'),
+        opacity: gpuError ? 0.8 : 1,
+        whiteSpace: 'nowrap',
+        animation: isReadyToStart ? 'breathe 2s infinite ease-in-out' : 'none',
     };
 
     return (
         <div ref={containerRef} style={containerStyle}>
-            <div className='entry' style={{
-                opacity: 1, textAlign: 'center', maxWidth: isMobile ? '100%' : '600px',
-                padding: '40px', animation: 'fadeIn 2s ease'
-            }}>
+            <div className='entry' style={entryContainerStyle}>
 
-                {/* Title */}
+                {/* Left Side: Content Text */}
                 <div style={{
-                    fontSize: '1rem', fontWeight: 'bold',
-                    letterSpacing: isMobile ? '0.3rem' : '0.5rem', marginBottom: '2rem',
+                    flex: isMobileLandscape ? '1' : 'auto',
+                    textAlign: isMobileLandscape ? 'left' : 'center',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: isMobileLandscape ? 'center' : 'flex-start'
                 }}>
-                    FALSE EARTH
-                </div>
-
-                {/* Intro Text */}
-                <div style={{ lineHeight: '1.5', color: '#ccc', marginBottom: '3rem', textAlign: 'left' }}>
-                    <p>
-                        Continue the journey after the long drift through space, arriving on a surface that stretches without end.
-                        What was once motion in the void becomes movement across an unfamiliar field, where distance replaces direction.
-                    </p>
-
-                    {!gpuError && (
-                        <p>
-                            As you travel forward, the ground begins to change beneath you, leaving visible traces of passage behind.
-                            This experience is not about reaching a destination, but about crossing a world shaped by movement itself.
-                        </p>
-                    )}
-                </div>
-
-                {/* Play Button & Progress Bar */}
-                <div className='play'>
-                    <button
-                        onClick={handleStart}
-                        disabled={!isReadyToStart || !!gpuError}
-                        style={{
-                            ...playButtonStyle,
-                            cursor: gpuError ? 'default' : (isReadyToStart ? 'pointer' : 'wait'),
-                            opacity: gpuError ? 0.8 : 1
-                        }}
-                        onMouseEnter={(e) => (isReadyToStart && !gpuError) && (e.currentTarget.style.transform = 'scale(1.02)')}
-                        onMouseLeave={(e) => (isReadyToStart && !gpuError) && (e.currentTarget.style.transform = 'scale(1)')}
-                    >
-                        {gpuError ? (
-                            <span style={{ letterSpacing: '2px' }}>SYSTEM INCOMPATIBLE</span>
-                        ) : isReadyToStart ? (
-                            "START"
-                        ) : (
-                            <span>
-                                {active ? "ESTABLISHING UPLINK" : "CALIBRATING SENSORS"}... {displayProgress}%
-                            </span>
-                        )}
-                    </button>
-
+                    {/* Title */}
                     <div style={{
-                        width: '250px', height: '1px', background: '#222', margin: '10px auto',
-                        opacity: (isReadyToStart || gpuError) ? 0 : 1, transition: 'opacity 0.5s'
+                        fontSize: '1rem', fontWeight: 'bold',
+                        letterSpacing: isMobile ? '0.3rem' : '0.5rem',
+                        marginBottom: isMobileLandscape ? '1rem' : '2rem',
                     }}>
-                        <div style={{ width: `${displayProgress}%`, height: '100%', background: '#666', transition: 'width 0.2s' }} />
+                        FALSE EARTH
+                    </div>
+
+                    {/* Intro Text */}
+                    <div style={{
+                        textAlign: 'left',
+                        display: 'inline-block',
+                        lineHeight: '1.5', color: '#ccc',
+                        marginBottom: isMobileLandscape ? '0' : '3rem',
+                        fontSize: isMobileLandscape ? '0.75rem' : 'inherit',
+                    }}>
+                        <p style={{ marginTop: 0 }}>
+                            Continue the journey after the long drift through space, arriving on a surface that stretches without end.
+                        </p>
+
+                        {!gpuError && (
+                            <p>
+                                As you travel forward, the ground begins to change beneath you, leaving visible traces of passage behind.
+                            </p>
+                        )}
                     </div>
                 </div>
 
-                {/* Bottom Area: Error message or Controls instruction */}
+                {/* Right Side: Interaction Area */}
                 <div style={{
-                    marginTop: '40px', color: '#ccc', opacity: 0.8, animation: 'fadeIn 3s ease',
-                    userSelect: 'none', display: 'flex', justifyContent: 'center', gap: '24px',
-                    flexDirection: 'row',
+                    flex: isMobileLandscape ? '0.8' : 'auto',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    minWidth: isMobileLandscape ? '200px' : 'auto'
                 }}>
-                    {gpuError ? (
-                        /* Error State: Show specific error code and solution */
-                        <div style={{ fontSize: '0.8rem', maxWidth: '400px', lineHeight: '1.4' }}>
-                            <p style={{ margin: 0, fontWeight: 'bold', fontSize: '0.7rem' }}>
-                                ERROR CODE: {gpuError}
-                            </p>
-                            <p style={{ margin: '8px 0 0 0', fontSize: '0.7rem', color: '#666' }}>
-                                GPU acceleration unavailable.<br />
-                                Please access via a desktop workstation.
-                            </p>
+                    {/* Play Button & Progress Bar */}
+                    <div className='play'>
+                        <button
+                            onClick={handleStart}
+                            disabled={!isReadyToStart || !!gpuError}
+                            style={playButtonStyle}
+                            onMouseEnter={(e) => (isReadyToStart && !gpuError) && (e.currentTarget.style.transform = 'scale(1.02)')}
+                            onMouseLeave={(e) => (isReadyToStart && !gpuError) && (e.currentTarget.style.transform = 'scale(1)')}
+                        >
+                            {gpuError ? (
+                                <span style={{ letterSpacing: '2px' }}>SYSTEM INCOMPATIBLE</span>
+                            ) : isReadyToStart ? (
+                                "[ START ]"
+                            ) : (
+                                <span>
+                                    {active ? "LOADING" : "CALIBRATING"}... {displayProgress}%
+                                </span>
+                            )}
+                        </button>
+
+                        <div style={{
+                            width: '100%', maxWidth: '250px', height: '1px', background: '#222', margin: '10px auto',
+                            opacity: (isReadyToStart || gpuError) ? 0 : 1, transition: 'opacity 0.5s'
+                        }}>
+                            <div style={{ width: `${displayProgress}%`, height: '100%', background: '#666', transition: 'width 0.2s' }} />
                         </div>
-                    ) : (
-                        isMobile ? (
-                            <>
-                                <InstructionRow input={<Key>L-STICK</Key>} label="MOVE" />
-                                <InstructionRow input={<Key>TOUCH</Key>} label="LOOK" />
-                            </>
+                    </div>
+
+                    {/* Bottom Area: Controls */}
+                    <div style={{
+                        marginTop: isMobileLandscape ? '15px' : '40px',
+                        color: '#ccc', opacity: 0.8, animation: 'fadeIn 3s ease',
+                        userSelect: 'none', display: 'flex', justifyContent: 'center', gap: '24px',
+                        flexDirection: 'row',
+                    }}>
+                        {gpuError ? (
+                            <div style={{ fontSize: '0.8rem', maxWidth: '400px', lineHeight: '1.4', textAlign: 'center' }}>
+                                <p style={{ margin: 0, fontWeight: 'bold', fontSize: '0.7rem' }}>ERROR CODE: {gpuError}</p>
+                            </div>
                         ) : (
-                            <>
-                                <InstructionRow input={<><Key>W</Key><Key>A</Key><Key>S</Key><Key>D</Key></>} label="MOVE" />
-                                <InstructionRow input={<Key>SHIFT</Key>} label="RUN" />
-                                <InstructionRow input={<Key>C</Key>} label="CAMERA" />
-                                <InstructionRow input={<MouseIcon />} label="LOOK" />
-                            </>
-                        )
-                    )}
+                            isMobile ? (
+                                <>
+                                    <InstructionRow input={<Key>L-STICK</Key>} label="MOVE" />
+                                    {/* Hide 'Touch' instruction on very small landscape screens if crowded */}
+                                    <InstructionRow input={<Key>TOUCH</Key>} label="LOOK" />
+                                </>
+                            ) : (
+                                <>
+                                    <InstructionRow input={<><Key>W</Key><Key>A</Key><Key>S</Key><Key>D</Key></>} label="MOVE" />
+                                    <InstructionRow input={<Key>SHIFT</Key>} label="RUN" />
+                                    <InstructionRow input={<Key>C</Key>} label="CAM" />
+                                    <InstructionRow input={<MouseIcon />} label="LOOK" />
+                                </>
+                            )
+                        )}
+                    </div>
                 </div>
+
             </div>
         </div>
     );
