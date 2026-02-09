@@ -89,6 +89,12 @@ export function createVATMaterial(
   const material = new THREE.MeshStandardNodeMaterial();
   material.side = THREE.DoubleSide;
 
+   const uLodDebugColor = uniform(
+    lodDebugColor
+      ? vec3(lodDebugColor.r, lodDebugColor.g, lodDebugColor.b)
+      : vec3(1.0, 1.0, 1.0) // Default white if not provided
+  );
+
   // context & data
   const trueIndex = visibleIndicesBuffer.element(instanceIndex);
   const data = vatData.element(trueIndex);
@@ -217,6 +223,7 @@ export function createVATMaterial(
       .add(stemColor.mul(isLeaf));
 
     const hueShifted = shiftHSV(finalColor, vec3(uGlobalHueShift, float(0.0), float(0.0)));
+    // hueShifted.assign(uLodDebugColor);
     return vec4(hueShifted.mul(smoothstep(0.95, 0.8, progress)), 1.0);
   })();
 
