@@ -176,15 +176,22 @@ export function LoadingScreen() {
                         marginBottom: isMobileLandscape ? '0' : '3rem',
                         fontSize: isMobileLandscape ? '0.75rem' : 'inherit',
                     }}>
-                        <p style={{ marginTop: 0 }}>
-                            Continue the journey after the long drift through space, arriving on a surface that stretches without end.
+                        <p>
+                            After drifting beyond the edge of space, the journey reaches ground again.
+                            A surface extends in every direction, without a visible boundary.
+                            No matter how far it continues, the horizon does not draw closer.
                         </p>
 
+                        <p>
+                            With each step, something descends and alters the surface, leaving traces behind.
+                            The drift does not end here; it continues in another form.
+                        </p>
+{/* 
                         {!gpuError && (
                             <p>
                                 As you travel forward, the ground begins to change beneath you, leaving visible traces of passage behind.
                             </p>
-                        )}
+                        )} */}
                     </div>
                 </div>
 
