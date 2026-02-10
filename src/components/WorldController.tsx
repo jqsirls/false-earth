@@ -32,6 +32,30 @@ export function WorldController() {
 
     const debugMode = new URLSearchParams(window.location.search).get('debug') === 'true';
 
+    // Enable eruda console only in debug mode (?debug=true)
+    useEffect(() => {
+        if (!debugMode) return;
+
+        let cancelled = false;
+
+        (async () => {
+            try {
+                const mod = await import('eruda');
+                if (cancelled) return;
+                const eruda: any = (mod as any).default ?? mod;
+                if (typeof eruda.init === 'function') {
+                    eruda.init();
+                }
+            } catch (e) {
+                console.error('Failed to initialize eruda', e);
+            }
+        })();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [debugMode]);
+
     const { enableEnv, enableRose, enableGrass, enableCharacter, enableGrassDebug } = useControls('Game.Content', {
         enableEnv: { value: true, label: 'Environment' },
         enableCharacter: { value: true, label: '👤 Character' },
