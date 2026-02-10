@@ -7,6 +7,7 @@ import { createResetCountCompute, createResetInstanceCompute, createSpawnCompute
 import { useFrame } from "@react-three/fiber";
 import { WebGPURenderer } from "three/webgpu";
 import { useThree } from "@react-three/fiber";
+import { useShortcut } from "@core/hooks/useShortcut";
 
 const BATCH_SIZE = 1024;
 
@@ -58,17 +59,12 @@ export function useRoseCompute(
         }
     }, [lodBuffers, uniforms, vatData, spawnStorage, spawnUniforms, count])
 
-    useEffect(() => {
-        const handleKeyDown = (event: KeyboardEvent) => {
-            if (event.key.toLowerCase() === 'x') {
-                const renderer = gl as unknown as WebGPURenderer
-                if (!computeRefs.current) return
-                renderer.compute(computeRefs.current.resetInstance)
-            }
-        };
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [computeRefs.current])
+
+    useShortcut('x', () => {
+        const renderer = gl as unknown as WebGPURenderer
+        if (!computeRefs.current) return
+        renderer.compute(computeRefs.current.resetInstance)
+    });
 
     const spawn = useCallback((pos: THREE.Vector3, amount: number = 1, radius: number = 0.5) => {
         spawnUniforms.uSpawnPos.value.copy(pos);

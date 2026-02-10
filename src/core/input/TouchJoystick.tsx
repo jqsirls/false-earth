@@ -1,21 +1,32 @@
-// src/ui/controls/TouchControls.tsx
 import { useRef } from 'react';
-import { inputState } from '../../core/input/InputManager';
+import { InputSystem } from '@core';
 
-export function TouchControls() {
-  // Use refs instead of state to avoid re-renders on every touch move
+interface TouchJoystickProps<T extends string> {
+  input: InputSystem<T>;
+  // Map directions to your Game Action names
+  actions: {
+    forward: T;
+    backward: T;
+    left: T; // RotateLeft or StrafeLeft
+    right: T; // RotateRight or StrafeRight
+    run: T;
+  };
+}
+
+export function TouchJoystick<T extends string>({ input, actions }: TouchJoystickProps<T>) {
   const knobRef = useRef<HTMLDivElement>(null);
-  const joystickContainerRef = useRef<HTMLDivElement>(null);
-  
-  // Config
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Config (Kept from your original file)
   const MAX_RADIUS = 50; 
   const DEAD_ZONE = 10;      
   const RUN_THRESHOLD = 0.8; 
 
-  // Update knob position directly via DOM manipulation (no React re-render)
+  // --- Visual Logic (Identical to your original) ---
   const updateKnobPosition = (x: number, y: number) => {
     if (knobRef.current) {
       knobRef.current.style.transform = `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`;
+      
       // Apply smooth transition only when resetting to center
       if (x === 0 && y === 0) {
         knobRef.current.style.transition = 'transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
@@ -26,9 +37,9 @@ export function TouchControls() {
   };
 
   const handleJoystickMove = (clientX: number, clientY: number) => {
-    if (!joystickContainerRef.current) return;
+    if (!containerRef.current) return;
 
-    const rect = joystickContainerRef.current.getBoundingClientRect();
+    const rect = containerRef.current.getBoundingClientRect();
     const centerX = rect.left + rect.width / 2;
     const centerY = rect.top + rect.height / 2;
 
@@ -37,7 +48,7 @@ export function TouchControls() {
 
     const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
     let clampedDistance = distance;
-    
+
     if (distance > MAX_RADIUS) {
       const angle = Math.atan2(deltaY, deltaX);
       deltaX = Math.cos(angle) * MAX_RADIUS;
@@ -45,36 +56,40 @@ export function TouchControls() {
       clampedDistance = MAX_RADIUS;
     }
 
-    // Update DOM directly instead of setting state
+    // 1. Update Visuals
     updateKnobPosition(deltaX, deltaY);
 
+    // 2. Calculate Normalized Values (-1 to 1)
     let normX = 0;
     let normY = 0;
 
     if (clampedDistance > DEAD_ZONE) {
-       normX = deltaX / MAX_RADIUS;
-       normY = -(deltaY / MAX_RADIUS); 
+      normX = deltaX / MAX_RADIUS;
+      // Invert Y because Screen Y goes DOWN, but 3D World Y goes UP (Forward)
+      normY = -(deltaY / MAX_RADIUS); 
     }
 
-    inputState.joystickInput.x = normX;
-    inputState.joystickInput.y = normY;
+    // 3. Update Engine: Axes (Analog)
+    input.setAxis('horizontal', normX);
+    input.setAxis('vertical', normY);
 
+    // 4. Update Engine: Buttons (Digital) - Based on your original thresholds
     if (clampedDistance > DEAD_ZONE) {
-        inputState.moveForward = normY > 0.5;
-        inputState.moveBackward = normY < -0.5;
-        inputState.rotateLeft = normX < -0.5;
-        inputState.rotateRight = normX > 0.5;
+      // Your original logic: Only trigger digital button if > 0.5 in that direction
+      input.setButton(actions.forward, normY > 0.5);
+      input.setButton(actions.backward, normY < -0.5);
+      input.setButton(actions.left, normX < -0.5);
+      input.setButton(actions.right, normX > 0.5);
     } else {
-        inputState.moveForward = false;
-        inputState.moveBackward = false;
-        inputState.rotateLeft = false;
-        inputState.rotateRight = false;
+      input.setButton(actions.forward, false);
+      input.setButton(actions.backward, false);
+      input.setButton(actions.left, false);
+      input.setButton(actions.right, false);
     }
 
+    // 5. Run Logic
     const pullRatio = clampedDistance / MAX_RADIUS;
-    const shouldRun = pullRatio > RUN_THRESHOLD;
-    
-    inputState.run = shouldRun;
+    input.setButton(actions.run, pullRatio > RUN_THRESHOLD);
   };
 
   const handlePointerDown = (e: React.PointerEvent) => {
@@ -91,22 +106,22 @@ export function TouchControls() {
   const handlePointerUp = (e: React.PointerEvent) => {
     e.currentTarget.releasePointerCapture(e.pointerId);
     
-    // Reset visual position directly
+    // Reset Visuals
     updateKnobPosition(0, 0);
     
-    // Reset inputs
-    inputState.joystickInput.x = 0;
-    inputState.joystickInput.y = 0;
-    inputState.moveForward = false;
-    inputState.moveBackward = false;
-    inputState.rotateLeft = false;
-    inputState.rotateRight = false;
-    inputState.run = false;
+    // Reset Engine State
+    input.setAxis('horizontal', 0);
+    input.setAxis('vertical', 0);
+    input.setButton(actions.forward, false);
+    input.setButton(actions.backward, false);
+    input.setButton(actions.left, false);
+    input.setButton(actions.right, false);
+    input.setButton(actions.run, false);
   };
 
   return (
     <div 
-      ref={joystickContainerRef}
+      ref={containerRef}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
@@ -145,7 +160,7 @@ export function TouchControls() {
           top: '50%', 
           left: '50%',
           transform: 'translate(-50%, -50%)',
-          pointerEvents: 'none', // Let clicks pass through to container
+          pointerEvents: 'none',
         }} 
       />
     </div>

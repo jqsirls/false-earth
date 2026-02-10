@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useOneShotAudio } from '../audio/useOneShotAudio';
+import { useOneShotAudio } from '@core/hooks/useOneShotAudio';
 import { useGameStore } from '../../core/store/gameStore';
 import { AudioListener } from 'three/webgpu';
 import { gameEvents } from '../../core/events';

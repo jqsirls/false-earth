@@ -1,20 +1,14 @@
 import { useEffect } from 'react';
+import { useDeviceDetection } from '@core';
 import { useGameStore } from '../store/gameStore';
 
 export function DeviceDetector() {
   const setIsMobile = useGameStore((state) => state.setIsMobile);
+  const isMobile = useDeviceDetection();
 
   useEffect(() => {
-    const checkMobile = () => {
-      const isMobileDevice = window.matchMedia("(pointer: coarse)").matches || window.innerWidth < 768;
-      setIsMobile(isMobileDevice);
-    };
-
-    checkMobile();
-
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, [setIsMobile]);
+    setIsMobile(isMobile);
+  }, [isMobile, setIsMobile]);
 
   return null;
 }

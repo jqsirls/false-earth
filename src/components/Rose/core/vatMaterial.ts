@@ -53,7 +53,7 @@ import { VATMeta } from "./config";
 import { getTerrainHeight, getTerrainNormal, rotateAxis } from "../../../core/shaders/terrainHelpers";
 import { calculateWindStrength, safeNormalize } from "../../../core/shaders/windHelpers";
 import { uWindDir, uWindScale, uWindSpeed, uWindStrength, uTerrainAmp, uTerrainFreq, uTerrainSeed, uTime, uGlobalHueShift } from "../../../core/shaders/uniforms";
-import { shiftHSV } from "../../../core/shaders/colorHelper";
+import { shiftHSV } from "../../../../packages/three-core/src/utils/tsl/color";
 
 const decodeVatNormal = (texel: any, isCompressed: boolean) => {
   if (isCompressed) {

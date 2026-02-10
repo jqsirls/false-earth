@@ -17,8 +17,8 @@
     /* Path mapping */
     "baseUrl": ".",
     "paths": {
-      "@core": ["../packages/three-core/src/index.ts"],
-      "@core/*": ["../packages/three-core/src/*"]
+      "@core": ["packages/three-core/src/index.ts"],
+      "@core/*": ["packages/three-core/src/*"]
     },
 
     /* Linting */

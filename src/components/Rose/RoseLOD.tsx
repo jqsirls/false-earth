@@ -2,7 +2,7 @@ import { useEffect, useMemo } from "react";
 import * as THREE from "three/webgpu";
 import { createVATMaterial } from "./core/vatMaterial";
 import type { RoseLODBufferConfig } from "./core/config";
-import { useKTX2Texture } from "../../core/utils/useKTX2Texture";
+import { useKTX2Texture } from "@core";
 import { ROSE_TEXTURES } from "./core/config";
 
 interface RoseLODProps {

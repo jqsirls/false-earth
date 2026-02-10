@@ -1,5 +1,5 @@
 import { Environment, PerformanceMonitor, useGLTF } from "@react-three/drei";
-import LevaWrapper from "../debug/LevaWrapper";
+import { LevaWrapper } from "@core";
 import { Canvas } from "@react-three/fiber";
 import { useEffect, Suspense, useMemo, useState } from "react";
 import { DirectionalLight } from "../components/DirectionalLight";
@@ -7,15 +7,16 @@ import { WebGPURenderer } from "three/webgpu";
 import Effects from "../components/Effects/Effects";
 import { useGameStore } from "../core/store/gameStore";
 import { CameraViewControl } from "../components/camera/CameraViewControl";
-import { AudioManager } from "../components/audio/AudioManager";
+import { AudioManager } from "@core";
 import { DeviceDetector } from "../core/utils/DeviceDetector";
 import { UI } from "../ui/UI";
-import { useKeyboard } from "../core/input/useKeyboard";
 import { preloadVATAssets } from "../components/Rose/core";
 import { WorldController } from "../components/WorldController";
-import { Inspector } from 'three/addons/inspector/Inspector.js';
 import { createContext } from "react";
 import * as THREE from "three/webgpu";
+import { KeyboardMapper } from "@core";
+import { input, keyBindings } from "../core/input/controls";
+import { useShortcut } from "@core/hooks/useShortcut";
 
 useGLTF.preload('/models/Astronaut.glb');
 useGLTF.preload('/models/Idle.glb');
@@ -34,6 +35,7 @@ export default function App() {
 
     const toggleCameraMode = useGameStore((state) => state.toggleCameraMode);
     const setGpuError = useGameStore((state) => state.setGpuError);
+    const setAudioListener = useGameStore((state) => state.setAudioListener);
     const gpuError = useGameStore((state) => state.gpuError);
 
     // Check WebGPU support on mount
@@ -61,21 +63,15 @@ export default function App() {
         checkWebGPU();
     }, [setGpuError]);
 
-    useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key.toLowerCase() === 'c') {
-                toggleCameraMode();
-            }
-        };
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [toggleCameraMode]);
-    useKeyboard();
+    useShortcut('c', () => {
+        toggleCameraMode();
+    });
 
     return <>
         <LevaWrapper collapsed={true} initialHidden={true} />
         <DeviceDetector />
         <UI />
+        <KeyboardMapper input={input} keyMap={keyBindings} />
 
         {!gpuError && (
             <Canvas
@@ -101,7 +97,7 @@ export default function App() {
                 }}
                 dpr={dpr}
             >
-                <AudioManager />
+                <AudioManager onListenerCreated={setAudioListener} />
 
                 <PerformanceMonitor
                     bounds={() => [28, 32]}

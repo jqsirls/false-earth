@@ -1,7 +1,7 @@
 import * as THREE from 'three/webgpu';
 import { Group } from 'three';
-import { inputState } from '../../../core/input/InputManager';
 import { PhysicsState } from '../config';
+import { input } from '../../../core/input/controls';
 
 /**
  * SOLVER: TANK MODE (Tank Control)
@@ -16,7 +16,11 @@ export const solveTank = (
   delta: number,
   isMobile: boolean
 ) => {
-  const { moveForward, rotateLeft, rotateRight, moveBackward, run } = inputState;
+  const moveForward = input.isPressed('MoveForward')
+  const moveBackward = input.isPressed('MoveBackward')
+  const rotateLeft = input.isPressed('RotateLeft')
+  const rotateRight = input.isPressed('RotateRight')
+  const run = input.isPressed('Run')
 
   // 1. Rotation (Velocity Based with Lerp)
   let targetRotationVelocity = 0;

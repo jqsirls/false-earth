@@ -43,7 +43,7 @@ import {
 import {
   bezier3,
   bezier3Tangent,
-} from "../../../core/shaders/mathHelpers";
+} from "../../../../packages/three-core/src/utils/tsl/math";
 import {
   getBezierControlPoints,
   getWindDirection,
@@ -55,7 +55,7 @@ import {
 } from "./shaderHelpers";
 import { waveStructure } from "../../cosmic/hooks/useCosmicWaves";
 import { uTime, uWindDir, uActiveWaveCount, GlobalWaveState, uGlobalHueShift } from "../../../core/shaders/uniforms";
-import { shiftHSV } from "../../../core/shaders/colorHelper";
+import { shiftHSV } from "../../../../packages/three-core/src/utils/tsl/color";
 
 /**
  * Creates a grass material with vertex shader that scales blade geometry

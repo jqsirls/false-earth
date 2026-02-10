@@ -2,7 +2,7 @@ import * as THREE from 'three'
 import { useMemo, useEffect, memo } from 'react'
 import { useThree } from '@react-three/fiber'
 import { texture, equirectUV, uniform, mx_rotate3d, vec3, positionWorld } from 'three/tsl'
-import { useKTX2Texture } from '../../core/utils/useKTX2Texture'
+import { useKTX2Texture } from '@core'
 import { CameraMode, useGameStore } from '../../core/store/gameStore'
 import { uTime } from '../../core/shaders/uniforms';
 

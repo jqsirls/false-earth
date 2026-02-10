@@ -17,7 +17,7 @@ import {
   abs,
 } from "three/tsl";
 import { uGlobalHueShift } from "../../core/shaders/uniforms";
-import { shiftHSV } from "../../core/shaders/colorHelper";
+import { shiftHSV } from "../../../packages/three-core/src/utils/tsl/color";
 import { BeamSceneContext } from "../../app/App";
 function createCosmicBeamMaterial() {
   const material = new THREE.MeshBasicNodeMaterial();

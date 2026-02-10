@@ -5,11 +5,11 @@ import * as THREE from 'three/webgpu';
 import { Group, Object3D, AnimationClip } from 'three';
 
 import { calculateBlendWeights } from '../utils/calculateBlendWeights';
-import { inputState } from '../../../core/input/InputManager';
 import { CameraMode, useGameStore } from '../../../core/store/gameStore';
 import { INITIAL_PHYSICS_STATE, PhysicsState } from '../config';
 import { solveTank } from '../utils/solveTank';
 import { solveCam } from '../utils/solveCam';
+import { input } from '../../../core/input/controls';
 
 export type StepType = 'walk' | 'run' | 'back';
 export interface StepEvent {
@@ -86,7 +86,8 @@ export function useCharacterPhysics(
     }
 
     // Animation blending
-    const { rotateLeft, rotateRight } = inputState;
+    const rotateLeft = input.isPressed('RotateLeft') || input.getAxis('horizontal') < -0.1;
+    const rotateRight = input.isPressed('RotateRight') || input.getAxis('horizontal') > 0.1;
     const isRotating = (cameraMode === CameraMode.FPV) && (rotateLeft || rotateRight);
     const targetWeights = calculateBlendWeights(
       Math.abs(s.speed),

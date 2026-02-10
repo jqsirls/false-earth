@@ -1,7 +1,7 @@
 import * as THREE from 'three/webgpu';
 import { Group, Camera, Euler } from 'three';
-import { inputState } from '../../../core/input/InputManager';
 import { PhysicsState } from '../config';
+import { input } from '../../../core/input/controls';
 
 const getShortestAngleDifference = (from: number, to: number) => {
   const delta = to - from;
@@ -21,16 +21,23 @@ export const solveCam = (
   s: PhysicsState,
   delta: number
 ) => {
-  const { moveForward, moveBackward, rotateLeft, rotateRight, run, joystickInput } = inputState;
+
+  const moveForward = input.isPressed('MoveForward')
+  const moveBackward = input.isPressed('MoveBackward')
+  const rotateLeft = input.isPressed('RotateLeft')
+  const rotateRight = input.isPressed('RotateRight')
+  const run = input.isPressed('Run')
+  const joyX = input.getAxis('horizontal');
+  const joyY = input.getAxis('vertical');
 
   // 1. Calculate Input Vector (ix, iy)
   let ix = 0;
   let iy = 0;
 
   // Priority: Joystick > Keyboard
-  if (Math.abs(joystickInput.x) > 0.01 || Math.abs(joystickInput.y) > 0.01) {
-    ix = joystickInput.x;
-    iy = joystickInput.y;
+  if (Math.abs(joyX) > 0.01 || Math.abs(joyY) > 0.01) {
+    ix = joyX;
+    iy = joyY;
   } else {
     // Map WASD to Vector
     if (rotateLeft) ix -= 1;

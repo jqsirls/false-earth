@@ -1,5 +1,5 @@
 import { forwardRef, useImperativeHandle } from 'react';
-import { useOneShotAudio } from '../audio/useOneShotAudio';
+import { useOneShotAudio } from '@core/hooks/useOneShotAudio';
 import { StepType } from './hooks/useCharacterPhysics';
 import { useGameStore } from '../../core/store/gameStore';
 import { AudioListener } from 'three/webgpu';

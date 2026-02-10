@@ -6,6 +6,7 @@ import { useCosmicWaves } from './hooks/useCosmicWaves';
 import { CosmicBeams, CosmicBeamsRef } from './CosmicBeams';
 import { BeamAudio } from './BeamAudio';
 import { gameEvents } from '../../core/events';
+import { useShortcut } from '@core/hooks/useShortcut';
 
 export function CosmicSystem() {
   const beamsRef = useRef<CosmicBeamsRef>(null);
@@ -36,15 +37,9 @@ export function CosmicSystem() {
     },
   });
 
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key.toLowerCase() === 'z') {
-        spawnBeam();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [spawnBeam]);
+  useShortcut('z', () => {
+    spawnBeam();
+  });
 
   return (
     <>

@@ -22,15 +22,14 @@ import {
   oneMinus,
   struct,
   Loop,
-  distance,
-  step,
   fract,
   select,
   dot,
 } from "three/tsl";
 import { rotateAxis } from "../../../core/shaders/terrainHelpers";
 import { DEFAULT_GRASS_AREA_SIZE } from "./config";
-import { safeNormalize2D, bezier3, bezier3Tangent, easeOutCubic, easeOutExpo } from "../../../core/shaders/mathHelpers";
+import { safeNormalize2D, } from "../../../../packages/three-core/src/utils/tsl/math";
+import { easeOutCubic, easeOutExpo  } from "@core";
 
 // PCG Hash: no sin, no mod — stable and non-repeating (integer in -> random 0..1 out)
 const PCG_MUL = 747796405;

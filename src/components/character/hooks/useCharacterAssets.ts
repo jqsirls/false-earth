@@ -6,7 +6,7 @@ import { Fn, vec3, vec4, float, positionLocal, modelWorldMatrix, cameraViewMatri
 import { getTerrainHeight } from '../../../core/shaders/terrainHelpers';
 import { uTerrainAmp, uTerrainFreq, uTerrainSeed } from '../../../core/shaders/uniforms';
 import { BODY_MESH_NAMES, BODY_TEXTURE_PATHS, DETAIL_TEXTURE_PATHS } from '../config';
-import { useKTX2Texture } from '../../../core/utils/useKTX2Texture';
+import { useKTX2Texture } from '@core';
 
 const configureTextures = (textures: any) => {
   if (textures.map) textures.map.colorSpace = THREE.SRGBColorSpace;
