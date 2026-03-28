@@ -4,6 +4,7 @@ import * as THREE from 'three/webgpu'
 import { useGridSnapping } from '../../core/utils/gridSnapping'
 import { GrassLOD } from './GrassLOD'
 import type { GrassProps } from './core/config'
+import { DEFAULT_BLADE_STEPS_PER_CELL } from './core/config'
 import { useGameStore } from '../../core/store/gameStore'
 import { useGrassUniforms } from './hooks/useGrassUniforms'
 import { useGrassCompute } from './hooks/useGrassCompute'
@@ -34,7 +35,12 @@ export default function GrassWebGPU({ cullCamera, visible = true }: GrassProps =
         uniforms.compute.uGroupOffset.value.setFromMatrixPosition(groupRef.current.matrixWorld)
         uniforms.material.uGroupOffset.value.copy(uniforms.compute.uGroupOffset.value)
         if (uniforms.compute.uGridIndex) {
-          uniforms.compute.uGridIndex.value.set(currentCellX, currentCellZ)
+          // Convert snap-cell index to blade-level index so the PCG seed
+          // stays aligned with the world position (snappedX = cellX * bladeStepsPerCell * BLADE_SPACING)
+          uniforms.compute.uGridIndex.value.set(
+            currentCellX * DEFAULT_BLADE_STEPS_PER_CELL,
+            currentCellZ * DEFAULT_BLADE_STEPS_PER_CELL,
+          )
         }
       }
     },

@@ -7,6 +7,8 @@ import * as THREE from 'three/webgpu'
 
 export const DEFAULT_BLADES_PER_AXIS = 1024;
 export const DEFAULT_GRASS_AREA_SIZE = 80;
+/** Number of blade spacings per grid snap step. gridCellSize = BLADE_SPACING * this. */
+export const DEFAULT_BLADE_STEPS_PER_CELL = 1;
 
 // Default LOD segments configuration
 export const DEFAULT_LOD_SEGMENTS_CONFIG = [
