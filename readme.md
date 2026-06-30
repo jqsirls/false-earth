@@ -23,6 +23,11 @@ If you use this project in your own work, please provide credit to the author.
 **Source:** [https://mingjyunhung.com/](https://mingjyunhung.com/)
 
 
+The Astronaut model was purchased from [CGTrader](https://www.cgtrader.com/3d-models/character/sci-fi-character/astronaut-pilot).
+
+Please do not use this asset unless you have purchased an appropriate license.
+
+
 ---
 
 Built with React Three Fiber and Three.js WebGPU (TSL): GPU-computed grass, procedural terrain, VAT roses, and a playable character.
