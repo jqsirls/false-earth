@@ -12,18 +12,14 @@ import {
   vec3,
   step,
   abs,
-  sign,
   normalize,
   transformNormalToView,
   mix,
   varying,
   instanceIndex,
   instancedArray,
-  mx_rotate2d,
   fract,
   smoothstep,
-  mx_hsvtorgb,
-  mx_rgbtohsv,
   mx_noise_float,
   remapClamp,
   cross,
@@ -34,45 +30,27 @@ import {
   If,
   positionWorld,
   cameraPosition,
-  oneMinus,
   materialNormal,
-  normalMap,
-  TBNViewMatrix,
   mat3,
   faceDirection,
-  materialRoughness,
-  distance,
-  atan,
-  cos,
   sin,
-  degrees,
-  sqrt,
+  cos,
 } from "three/tsl";
 
-import { VATMeta } from "./config";
+import {
+  type VATMeta,
+  createVATSampleUV,
+  sampleVATPosition,
+  sampleVATNormal,
+  shiftHSV,
+} from "@core";
 import { getTerrainHeight, getTerrainNormal, rotateAxis } from "../../../core/shaders/terrainHelpers";
 import { calculateWindStrength, safeNormalize } from "../../../core/shaders/windHelpers";
 import { uWindDir, uWindScale, uWindSpeed, uWindStrength, uTerrainAmp, uTerrainFreq, uTerrainSeed, uTime, uGlobalHueShift } from "../../../core/shaders/uniforms";
-import { shiftHSV } from "../../../../packages/three-core/src/utils/tsl/color";
-
-const decodeVatNormal = (texel: any, isCompressed: boolean) => {
-  if (isCompressed) {
-    const encoded = texel.xy.mul(2.0).sub(1.0);
-    const vZ = float(1.0).sub(abs(encoded.x)).sub(abs(encoded.y));
-    const v = vec3(encoded.x, encoded.y, vZ);
-    const s = sign(v.xy);
-    const adj = float(1.0).sub(abs(v.yx)).mul(s);
-    const finalXY = mix(adj, v.xy, step(0.0, v.z));
-    return normalize(vec3(finalXY.x, finalXY.y, v.z));
-  }
-  return normalize(texel.rgb.mul(2.0).sub(1.0));
-};
-
 
 /**
- * Simple VAT node material based on GLSL shader
- * Samples position and normal textures using uv1 coordinates
- * Consumes an external uFrame uniform so callers can drive animation
+ * Rose-specific VAT material.
+ * Uses shared VAT sampling helpers from @core for position/normal textures.
  */
 export function createVATMaterial(
   posTex: THREE.Texture,
@@ -89,20 +67,19 @@ export function createVATMaterial(
   const material = new THREE.MeshStandardNodeMaterial();
   material.side = THREE.DoubleSide;
 
-   const uLodDebugColor = uniform(
+  const uLodDebugColor = uniform(
     lodDebugColor
       ? vec3(lodDebugColor.r, lodDebugColor.g, lodDebugColor.b)
-      : vec3(1.0, 1.0, 1.0) // Default white if not provided
+      : vec3(1.0, 1.0, 1.0)
   );
+  void uLodDebugColor;
 
-  // context & data
   const trueIndex = visibleIndicesBuffer.element(instanceIndex);
   const data = vatData.element(trueIndex);
   const seed = data.get("seed");
   const progress = data.get("progress");
   const instancePos = data.get("position");
 
-  // mask
   const vColor = vertexColor(0).r;
   const isPetal = step(abs(vColor.sub(0.7)), 0.05);
   const isStem = step(abs(vColor.sub(0.0)), 0.05);
@@ -110,13 +87,9 @@ export function createVATMaterial(
   const outline = texture(outlineTex, uv());
   const uvCord = vec2(uv().x.sub(0.5).mul(0.8).add(0.5), uv().y);
 
-  // vat frame
   const frame = data.get("frame");
-  const uFrames = uniform(meta.frameCount);
-  const frameIndex = uFrames.sub(float(1.0)).mul(frame);
-  const sampleUV = vec2(uv(1).x.add(frameIndex.mul(1.0 / meta.textureWidth)), uv(1).y);
+  const sampleUV = createVATSampleUV(frame, meta);
 
-  // terrain (from core/shaders/uniforms)
   const terrainHeightFn = getTerrainHeight(uTerrainAmp, uTerrainFreq, uTerrainSeed);
   const terrainNormalFn = getTerrainNormal(terrainHeightFn);
 
@@ -159,9 +132,8 @@ export function createVATMaterial(
     return result;
   });
 
-
   material.positionNode = Fn(() => {
-    const vatPos = texture(posTex, sampleUV).rgb;
+    const vatPos = sampleVATPosition(posTex, sampleUV);
 
     const scale = mix(uniforms.uScaleMin, uniforms.uScaleMax, seed);
     const localPos = applyRotation(vatPos.mul(scale));
@@ -171,7 +143,7 @@ export function createVATMaterial(
     const heightFactor = smoothstep(float(0.0), float(0.08), vatPos.y.abs()).mul(0.2);
 
     const windDirNorm = safeNormalize(uWindDir);
-    const windStrength = calculateWindStrength(instancePos.xz, 
+    const windStrength = calculateWindStrength(instancePos.xz,
       uWindDir,
       uWindScale,
       uTime,
@@ -180,7 +152,6 @@ export function createVATMaterial(
     );
     const sway = vec3(windDirNorm.x, 0.0, windDirNorm.y).mul(windStrength.mul(heightFactor));
     worldPos = worldPos.add(sway);
-
 
     const charPos = uniforms.uCharacterWorldPos;
     const dirToFlower = instancePos.xz.sub(charPos.xz);
@@ -223,15 +194,11 @@ export function createVATMaterial(
       .add(stemColor.mul(isLeaf));
 
     const hueShifted = shiftHSV(finalColor, vec3(uGlobalHueShift, float(0.0), float(0.0)));
-    // hueShifted.assign(uLodDebugColor);
     return vec4(hueShifted.mul(smoothstep(0.95, 0.8, progress)), 1.0);
   })();
 
-
-  // Calculate VAT normal with rotation matching the position
   const calculateVatNormalView = Fn(() => {
-    const rawNormal = texture(nrmTex, sampleUV);
-    const vatNormalLocal = decodeVatNormal(rawNormal, meta.compressNormal ?? true);
+    const vatNormalLocal = sampleVATNormal(nrmTex, sampleUV, meta.compressNormal ?? true);
     const rotatedNormalLocal = applyRotation(vatNormalLocal);
     return transformNormalToView(rotatedNormalLocal);
   });
@@ -255,14 +222,12 @@ export function createVATMaterial(
     return normalize(tbn.mul(scaledMapN)).mul(faceDirection);
   })();
 
-  // Fresnel emissive effect
   material.emissiveNode = Fn(() => {
     const viewDir = normalize(cameraPosition.sub(positionWorld));
     const fresnel = float(1.0).sub(abs(dot(materialNormal, viewDir)))
       .pow(uniforms.uFresnelPower)
       .mul(uniforms.uFresnelIntensity);
 
-    // Apply fresnel to emissive
     const u = mix(uv(0).x, uv(0).y, isPetal);
     const animSpeed = mix(-0.2, -0.7, fract(seed.mul(35.8)));
     const t = uTime.add(seed.mul(123.0)).mul(animSpeed);
@@ -271,12 +236,6 @@ export function createVATMaterial(
 
     return uniforms.uEmissiveColor.mul(glow.add(fresnel));
   })();
-
-  // material.fragmentNode = Fn(() => {
-  //   return vec4(lodDebugColor?.r ?? 1, lodDebugColor?.g ?? 1, lodDebugColor?.b ?? 1, 1);
-  //   const distToCharacter = distance(instancePos, uniforms.uCharacterWorldPos);
-  //   return step(distToCharacter, 1);
-  // })();
 
   return material;
 }

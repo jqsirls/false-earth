@@ -1,10 +1,14 @@
 import { useEffect, useState } from "react";
 import { storage } from "three/tsl";
 import * as THREE from "three/webgpu";
-import { extractGeometryFromScene, setupVATGeometry, preloadVATAssets } from "../core";
+import {
+  extractGeometryFromScene,
+  setupVATGeometry,
+  preloadVATAssets,
+  drawIndirectStructure,
+  createVisibleIndicesBuffer,
+} from "@core";
 import type { RoseLODConfig, RoseLODBufferConfig, VATMeta } from "../core/config";
-import { drawIndirectStructure } from "../../grass/core/config";
-import { createVisibleIndicesBuffer } from "../core/vatCompute";
 
 /**
  * Hook to load and setup multiple LOD levels for Rose VAT
@@ -21,14 +25,12 @@ export function useRoseLODLoader(count: number, lodConfigs: RoseLODConfig[]) {
             const buffers: RoseLODBufferConfig[] = [];
 
             try {
-                // Load all VAT data in parallel
                 const loaders = await Promise.all(
                     lodConfigs.map(config => preloadVATAssets(config.metaPath))
                 );
 
                 if (cancelled) return;
 
-                // Create LOD buffer configurations
                 for (let i = 0; i < lodConfigs.length; i++) {
                     const config = lodConfigs[i];
                     const loader = loaders[i];
@@ -38,7 +40,6 @@ export function useRoseLODLoader(count: number, lodConfigs: RoseLODConfig[]) {
                         continue;
                     }
 
-                    // Extract and setup geometry
                     const geometry = extractGeometryFromScene(loader.scene);
                     if (!geometry) {
                         console.warn(`Failed to extract geometry for LOD ${i}`);
@@ -47,16 +48,14 @@ export function useRoseLODLoader(count: number, lodConfigs: RoseLODConfig[]) {
 
                     setupVATGeometry(geometry as any, loader.meta as VATMeta);
 
-                    // Setup indirect draw buffer
-                    const indexCount = geometry.index 
-                        ? geometry.index.count 
+                    const indexCount = geometry.index
+                        ? geometry.index.count
                         : geometry.attributes.position.count;
 
                     const drawBuffer = new THREE.IndirectStorageBufferAttribute(new Uint32Array(5), 5);
                     const drawStorage = storage(drawBuffer, drawIndirectStructure, 1);
                     geometry.setIndirect(drawBuffer);
 
-                    // Create visible indices buffer for this LOD
                     const indices = createVisibleIndicesBuffer(count);
 
                     buffers.push({
@@ -88,7 +87,6 @@ export function useRoseLODLoader(count: number, lodConfigs: RoseLODConfig[]) {
 
         return () => {
             cancelled = true;
-            // Cleanup geometries
             lodBuffers.forEach(buffer => {
                 buffer.geometry.dispose();
             });

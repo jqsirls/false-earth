@@ -1,9 +1,14 @@
-import { instancedArray, storage, struct, vec3, uniform } from "three/tsl";
+import { storage, struct, vec3, uniform } from "three/tsl";
 import * as THREE from "three/webgpu";
-import { vatStructure } from "../core/config";
 import type { RoseLODBufferConfig } from "../core/config";
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import { createResetCountCompute, createResetInstanceCompute, createSpawnCompute, createUpdateCompute } from "../core/vatCompute";
+import {
+  createRoseInstanceData,
+  createResetCountCompute,
+  createResetInstanceCompute,
+  createSpawnCompute,
+  createUpdateCompute,
+} from "../core/vatCompute";
 import { useFrame } from "@react-three/fiber";
 import { WebGPURenderer } from "three/webgpu";
 import { useThree } from "@react-three/fiber";
@@ -21,8 +26,8 @@ export function useRoseCompute(
 
     const spawnUniforms = useMemo(() => ({
         uSpawnPos: uniform(vec3(0)),
-        uSpawnCount: uniform(0),    // Number of instances to spawn (0-64)
-        uSpawnRadius: uniform(0.5), // Scatter radius around spawn position
+        uSpawnCount: uniform(0),
+        uSpawnRadius: uniform(0.5),
     }), [])
 
     const spawnStorage = useMemo(() => {
@@ -33,17 +38,11 @@ export function useRoseCompute(
         return storage(buffer, spawnStateStruct, 1)
     }, [])
 
-    const { vatData } = useMemo(() => {
-        // VAT Instance Data
-        const vatDataArr = new Float32Array(count * 8); // 8 floats per instance (stride)
-        const vatData = instancedArray(vatDataArr, vatStructure);
-        return { vatData }
-    }, [count]);
+    const vatData = useMemo(() => createRoseInstanceData(count), [count]);
 
     useEffect(() => {
         if (!lodBuffers.length || !uniforms) return;
 
-        // Compute Shaders - one reset per LOD, shared spawn/update
         const resetCountComputes = lodBuffers.map((lodBuffer, index) => {
             return createResetCountCompute(lodBuffer.drawStorage, lodBuffer.vertexCount).setName(`RoseReset_LOD${index}`)
         })
@@ -82,7 +81,6 @@ export function useRoseCompute(
         )
         uniforms.uCameraPosition.value.copy(camera.position)
 
-        // Reset all LOD buffers
         computeRefs.current.resetCount.forEach(resetCountCompute => {
             renderer.compute(resetCountCompute)
         })

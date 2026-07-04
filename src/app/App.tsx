@@ -1,5 +1,5 @@
 import { Environment, PerformanceMonitor, useGLTF } from "@react-three/drei";
-import { LevaWrapper } from "@core";
+import { LevaWrapper, AudioManager, KeyboardMapper, KTX2Preloader, preloadVATAssets } from "@core";
 import { Canvas, useLoader } from "@react-three/fiber";
 import { useEffect, Suspense, useMemo, useState } from "react";
 import { DirectionalLight } from "../components/DirectionalLight";
@@ -7,18 +7,14 @@ import { WebGPURenderer } from "three/webgpu";
 import Effects from "../components/Effects/Effects";
 import { useGameStore } from "../core/store/gameStore";
 import { CameraViewControl } from "../components/camera/CameraViewControl";
-import { AudioManager } from "@core";
 import { DeviceDetector } from "../core/utils/DeviceDetector";
 import { UI } from "../ui/UI";
-import { preloadVATAssets } from "../components/Rose/core";
 import { WorldController } from "../components/WorldController";
 import { createContext } from "react";
 import * as THREE from "three/webgpu";
-import { KeyboardMapper } from "@core";
 import { input, keyBindings } from "../core/input/controls";
 import { useShortcut } from "@core/hooks/useShortcut";
 import { AudioLoader } from 'three';
-import { KTX2Preloader } from "@core";
 import { ROSE_TEXTURES } from "../components/Rose/core/config";
 import { BODY_TEXTURE_PATHS, DETAIL_TEXTURE_PATHS, MODEL_PATHS } from '../components/character/config';
 
