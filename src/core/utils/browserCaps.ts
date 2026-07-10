@@ -17,35 +17,44 @@ export function isIosDevice(): boolean {
   return navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
 }
 
-/**
- * Touch / narrow-viewport devices. Sync-safe at runtime (not during SSR).
- * Matches DeviceDetector coarse-pointer + narrow width heuristics, plus mobile UA.
- */
-export function isMobileDevice(): boolean {
+/** Phone / tablet UA — excludes touch laptops and narrow desktop windows. */
+export function isPhoneLikeDevice(): boolean {
   if (typeof window === 'undefined') return false;
   const ua = navigator.userAgent;
   if (/iPhone|iPad|iPod|Android|Mobile|webOS|BlackBerry|IEMobile|Opera Mini/i.test(ua)) {
     return true;
   }
+  return isIosDevice();
+}
+
+/**
+ * Touch UI target (joystick, mobile chrome). Includes phone-like devices plus coarse-pointer /
+ * narrow viewports — but NOT used for mobile-lite scene caps (see shouldUseMobileLiteScene).
+ */
+export function isMobileDevice(): boolean {
+  if (typeof window === 'undefined') return false;
+  if (isPhoneLikeDevice()) return true;
   const isTouch = window.matchMedia('(pointer: coarse)').matches;
   const isNarrow = window.innerWidth < 768;
   return isTouch || isNarrow;
 }
 
-/** Safari + all mobile WebGPU targets (incl. Chrome on iPhone). */
+/**
+ * Mobile WebGPU targets (incl. Chrome on iPhone). Does NOT include desktop Safari.
+ */
 export function isMemoryConstrainedGpu(): boolean {
-  return isSafari() || isMobileDevice() || isIosDevice();
+  return isMobileDevice() || isIosDevice();
 }
 
 export function getInitialDpr(): number {
   if (typeof window === 'undefined') return 1.5;
-  if (isMemoryConstrainedGpu()) return 1;
+  if (isMemoryConstrainedGpu() || isSafari()) return 1;
   return Math.min(window.devicePixelRatio || 1, 1.5);
 }
 
-/** Hard ceiling for PerformanceMonitor upscale — mobile must stay at 1. */
+/** Hard ceiling for PerformanceMonitor upscale — mobile and Safari stay at 1. */
 export function getMaxDpr(): number {
-  if (isMemoryConstrainedGpu()) return 1;
+  if (isMemoryConstrainedGpu() || isSafari()) return 1;
   return 1.5;
 }
 
@@ -68,49 +77,43 @@ function readSearchParam(key: string): string | null {
 }
 
 /**
- * Auto on touch devices unless ?mobile-lite=0.
- * Opt-in on desktop via ?mobile-lite=1.
+ * Emergency OOM escape hatch ONLY — ?mobile-lite=1 disables grass compute and
+ * renders SafariGround (static plane). Never auto-enabled on touch devices.
  */
 export function shouldUseMobileLiteScene(): boolean {
-  const flag = readSearchParam('mobile-lite');
-  if (flag === '1') return true;
-  if (flag === '0') return false;
-  return isMobileDevice();
+  return readSearchParam('mobile-lite') === '1';
 }
 
 /**
  * Opt-in via ?safari-lite=1 — disables grass compute and uses a simple ground plane.
  */
 export function shouldUseSafariMinimalScene(): boolean {
-  if (!isSafari()) return false;
+  if (!isSafari() || typeof window === 'undefined') return false;
   return readSearchParam('safari-lite') === '1';
 }
 
-/** Grass compute off — static ground plane (mobile-lite default on touch, or safari-lite). */
+/** Grass compute off — static ground plane (mobile-lite or safari-lite opt-in only). */
 export function shouldUseMinimalScene(): boolean {
   return shouldUseMobileLiteScene() || shouldUseSafariMinimalScene();
 }
 
-/** VAT rose field is heavy on mobile GPU RAM — off unless ?roses=1. Desktop keeps roses (incl. Safari). */
+/** Roses on by default; opt out with ?no-roses=1. Disabled in minimal/lite scenes. */
 export function shouldEnableRoses(): boolean {
   if (shouldUseMinimalScene()) return false;
-  if (isMobileDevice() || isIosDevice()) {
-    return readSearchParam('roses') === '1';
-  }
+  if (readSearchParam('no-roses') === '1') return false;
   return true;
 }
 
 export function getRoseInstanceCount(defaultCount: number): number {
   if (!shouldEnableRoses()) return 0;
-  if (isMobileDevice()) return Math.min(defaultCount, 200);
+  if (isMemoryConstrainedGpu()) return Math.min(defaultCount, 500);
   if (isSafari()) return Math.min(defaultCount, 500);
   return defaultCount;
 }
 
 export function getGrassBladesPerAxis(defaultBlades: number): number {
   if (shouldUseMinimalScene()) return 0;
-  if (isMobileDevice()) return Math.min(defaultBlades, 256);
-  if (isSafari()) return Math.min(defaultBlades, 512);
+  if (isMemoryConstrainedGpu() || isSafari()) return Math.min(defaultBlades, 512);
   return defaultBlades;
 }
 
@@ -125,25 +128,24 @@ export function getEffectiveGrassBladeCount(): number {
   return axis * axis;
 }
 
-/** Mobile / Safari load 2K jq-lite textures instead of 4K PNG atlases. */
+/** Mobile / iOS load 2K jq-lite textures instead of 4K PNG atlases. Desktop uses full jq. */
 export function getJqTextureRoot(): string {
   return resolveMeadowAsset(isMemoryConstrainedGpu() ? '/textures/jq-lite' : '/textures/jq');
 }
 
-/** Bloom + DoF + SMAA are too heavy for mobile WebGPU memory budgets. */
+/** Only disable heavy post in explicit lite escape-hatch scenes. */
 export function shouldDisableHeavyPostProcessing(): boolean {
-  return isMemoryConstrainedGpu();
+  return shouldUseMinimalScene();
 }
 
-/** Directional shadows — off on memory-constrained / lite scenes. */
+/** Directional shadows — off only in lite escape-hatch scenes. */
 export function shouldEnableDirectionalShadows(): boolean {
-  if (shouldUseMinimalScene()) return false;
-  return !isMemoryConstrainedGpu();
+  return !shouldUseMinimalScene();
 }
 
 export function getShadowMapSize(quality: 'low' | 'high'): number {
   if (!shouldEnableDirectionalShadows()) return 0;
-  if (isMobileDevice()) return quality === 'high' ? 1024 : 512;
+  if (isMemoryConstrainedGpu()) return quality === 'high' ? 1024 : 512;
   if (isSafari()) return quality === 'high' ? 1024 : 768;
   return quality === 'high' ? 2048 : 1024;
 }

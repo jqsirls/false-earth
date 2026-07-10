@@ -175,6 +175,7 @@ npm run dev
 | Empty `#root`, no UI | Circular import between `meadow.ts` ↔ `storytailor.ts` (TDZ crash in bundle) | Keep `resolveMeadowAsset` in `meadowAssets.ts` only; `storytailor.ts` must not import `meadow.ts` |
 | Splash visible, scene never ready | CDN 403 on `textures/jq*` wrong key layout | Upload `public/textures/jq/` preserving part subfolders |
 | WebGPU message on splash | Browser/GPU unsupported | Expected — user sees error copy, not a black void |
+| Grey static ground on mobile | Stale deploy with auto `mobile-lite` on touch | Redeploy; full scene is default. Emergency only: `?mobile-lite=1` |
 
 ---
 
