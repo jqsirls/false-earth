@@ -77,16 +77,16 @@ s3://storytailor-assets-production-326181217496/meadow/
 │   ├── cosmic-lullaby-4.mp3
 │   └── cosmic-lullaby-5.mp3
 ├── booster-meadow-logo.png
-└── storytailor-splash.jpg
+├── storytailor-splash.webp          # preferred; .jpg fallback
+├── vat/                             # Rose VAT (required on Chrome — roses on by default)
+│   └── Rose_meta.json, Rose.glb, …
+└── textures/Rose/*.ktx2             # Rose_Petal_Normal, Rose_Petal_Diff, Rose_Outline (required)
 ```
 
-### Optional (upstream False Earth scene — if not stripped)
+### Optional extras
 
 ```
-meadow/vat/…
-meadow/textures/Rose/…
-meadow/textures/starmap_2020_4k.ktx2
-```
+meadow/textures/starmap_2020_4k.ktx2   # only if starmap path enabled in code
 
 ### Example sync (adjust bucket/profile)
 
@@ -105,6 +105,10 @@ aws s3 sync public/audio/ s3://storytailor-assets-production-326181217496/meadow
 aws s3 cp public/booster-meadow-logo.png s3://storytailor-assets-production-326181217496/meadow/booster-meadow-logo.png
 aws s3 cp public/storytailor-splash.jpg s3://storytailor-assets-production-326181217496/meadow/storytailor-splash.jpg
 aws s3 cp public/textures/potsdamer_platz_1k_nb.hdr s3://storytailor-assets-production-326181217496/meadow/textures/potsdamer_platz_1k_nb.hdr
+
+aws s3 sync public/vat/ s3://storytailor-assets-production-326181217496/meadow/vat/ --cache-control "$CACHE"
+aws s3 sync public/textures/Rose/ s3://storytailor-assets-production-326181217496/meadow/textures/Rose/ \
+  --exclude "*" --include "*.ktx2" --cache-control "$CACHE"
 ```
 
 Public URLs resolve as:
@@ -174,6 +178,7 @@ npm run dev
 
 ## 5. Related docs
 
-- `docs/MEADOW_BACKEND_ASK_P2.md` — auth edge function (approved)
+- `docs/MEADOW_IDENTITY_BACKEND_ASK.md` — Supabase OTP + Memberstack enrichment (pending approval)
+- `docs/MEADOW_BACKEND_ASK_P2.md` — **superseded** password bridge
 - `docs/MEADOW_MODALS_REVIEW.md` — legal footer/modal PRD review
 - `STORYTAILOR_README.md` — JQ pipeline, local dev, upstream attribution

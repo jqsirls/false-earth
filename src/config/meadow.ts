@@ -13,9 +13,17 @@ export const MEADOW_LOGO_ALT = "Booster's Meadow from Storytailor";
 export const MEADOW_ANALYTICS_URL =
   (import.meta.env.VITE_MEADOW_ANALYTICS_URL as string | undefined) ?? '';
 
-/** Edge Function URL for meadow-auth (Memberstack + Supabase shadow). Empty until P2 backend ships. */
+/** Edge Function URL for meadow-auth OTP proxy. Empty until backend ships. */
 export const MEADOW_AUTH_URL =
   (import.meta.env.VITE_MEADOW_AUTH_URL as string | undefined) ?? '';
+
+/** Supabase project URL for direct client OTP (future). Never ship service role here. */
+export const MEADOW_SUPABASE_URL =
+  (import.meta.env.VITE_SUPABASE_URL as string | undefined) ?? '';
+
+/** Supabase anon key for direct client OTP (future). Service role must stay server-only. */
+export const MEADOW_SUPABASE_ANON_KEY =
+  (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined) ?? '';
 
 export const MEADOW_PLAYLIST_TRACKS = [
   { id: 'cosmic_lullaby_1', url: resolveMeadowAsset('/audio/cosmic-lullaby-1.mp3'), volume: 1 },
