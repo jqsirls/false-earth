@@ -3,10 +3,10 @@
 import { useGameStore } from '../core/store/gameStore';
 import { WebGPUCanvas } from '@core';
 import { DistortedCircle } from '@core';
-import { Bgm } from '@core';
 import { useShortcut } from '@core/hooks/useShortcut';
-import { meadowPlaylistTracks } from '../config/meadowPlaylist';
 import { resumeMeadowAudioContext } from '../config/meadowAudio';
+import { setMeadowBgmMuted } from '../audio/meadowBgmPlayer';
+import { useEffect } from 'react';
 
 export default function AudioButton() {
     const listener = useGameStore(s => s.audioListener);
@@ -23,6 +23,10 @@ export default function AudioButton() {
     };
 
     useShortcut('m', toggleBgm);
+
+    useEffect(() => {
+        setMeadowBgmMuted(!isSoundOn);
+    }, [isSoundOn]);
 
     // Defer WebGPU mini-canvas until controls are live — useLoader throws on failure and would unmount the whole app.
     if (!isControlEnabled) return null;
@@ -47,13 +51,6 @@ export default function AudioButton() {
                 <circleGeometry args={[radius * 1.2, 32]} />
                 <meshBasicMaterial />
             </mesh>
-
-            <Bgm
-                listener={listener}
-                active={isSoundOn}
-                tracks={meadowPlaylistTracks}
-                mode="sequential"
-            />
 
             {/* Visual Layer */}
             <group>

@@ -112,7 +112,7 @@ export function ControlsHint() {
             color: 'rgba(255,255,255,0.72)',
           }}
         >
-          Move with the joystick on the left. Drag on the right to look around.
+          Move with the joystick on the left. Drag on the right to look around. Double-tap to fly.
         </p>
       ) : (
         <>
@@ -139,6 +139,7 @@ export function ControlsHint() {
             />
             <InstructionRow input={<Key>SHIFT</Key>} label="RUN" />
             <InstructionRow input={<MouseIcon />} label="LOOK" />
+            <InstructionRow input={<span style={{ fontSize: '0.65rem', letterSpacing: '0.08em' }}>2× TAP</span>} label="FLY" />
           </div>
           <p
             style={{

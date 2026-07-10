@@ -1,6 +1,7 @@
 import { AudioLoader } from 'three'
+import { AudioContext as ThreeAudioContext } from 'three'
 
-/** Cross-origin anonymous — required when BGM loads from CDN or `/meadow-assets` rewrite. */
+/** Cross-origin anonymous — required when audio loads from CDN or `/meadow-assets` rewrite. */
 export function configureCdnAudioLoader(loader: AudioLoader): AudioLoader {
   loader.setCrossOrigin('anonymous')
   return loader
@@ -15,9 +16,9 @@ export const MEADOW_FOOTSTEP_PATHS = [
   '/audio/fs_grass5.mp3',
 ] as const
 
-/** Resume Web Audio on a user gesture — required before BGM can play in production. */
-export function resumeMeadowAudioContext(listener: { context: AudioContext } | null | undefined): void {
-  const ctx = listener?.context
+/** Resume Web Audio on a user gesture — required before footsteps can play. */
+export function resumeMeadowAudioContext(listener?: { context: AudioContext } | null): void {
+  const ctx = listener?.context ?? ThreeAudioContext.getContext()
   if (!ctx || ctx.state !== 'suspended') return
   void ctx.resume().catch(() => {})
 }
