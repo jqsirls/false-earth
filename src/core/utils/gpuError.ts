@@ -75,8 +75,10 @@ export function getGpuErrorHint(error: MeadowGpuError): string | null {
       return 'Check your connection and reload. If this keeps happening, try again in a few minutes.';
     case 'SHADER_COMPILE_FAILED':
       return 'Try Chrome or Edge on desktop, or reload once.';
+    case 'GPU_LOST':
+      return 'The GPU ran out of memory. Close other tabs, then reload this page.';
     case 'GPU_MEMORY_EXCEEDED':
-      return 'Close other tabs, use a smaller window, or switch to Chrome.';
+      return 'Close other tabs, use one browser window, then reload.';
     default:
       return null;
   }

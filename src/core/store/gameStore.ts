@@ -40,7 +40,15 @@ interface GameState {
   setIsMobile: (isMobile: boolean) => void;
 
   quality: 'low' | 'high';
+  setQuality: (quality: 'low' | 'high') => void;
   toggleQuality: () => void;
+
+  /** Shader flight lift (meters). Group Y stays on ground; camera/effects read this. */
+  characterFlightLiftRef: { current: number };
+
+  isFlying: boolean;
+  toggleFlight: () => void;
+  setIsFlying: (flying: boolean) => void;
 
   isControlEnabled: boolean; 
   setControlEnabled: (enabled: boolean) => void;
@@ -89,7 +97,14 @@ export const useGameStore = create<GameState>((set, get) => ({
   setIsMobile: (isMobile) => set({ isMobile: isMobile }),
 
   quality: 'high',
+  setQuality: (quality) => set({ quality }),
   toggleQuality: () => set((state) => ({ quality: state.quality === 'high' ? 'low' : 'high' })),
+
+  characterFlightLiftRef: { current: 0 },
+
+  isFlying: false,
+  toggleFlight: () => set((state) => ({ isFlying: !state.isFlying })),
+  setIsFlying: (flying) => set({ isFlying: flying }),
 
   isControlEnabled: false,
   setControlEnabled: (enabled) => set({ isControlEnabled: enabled }),

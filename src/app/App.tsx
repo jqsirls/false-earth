@@ -18,8 +18,9 @@ import { ROSE_TEXTURES } from "../components/Rose/core/config";
 import { BODY_TEXTURE_PATHS, DETAIL_TEXTURE_PATHS, MODEL_PATHS } from '../components/character/config';
 import { JQ_LOCOMOTION_ANIM_PATHS, getJqPartTexturePaths } from '../components/character/jqConfig';
 import { STORYTAILOR } from '../config/storytailor';
+import { CINEMATIC_LIGHTING } from '../config/cinematicLighting';
 import { CanvasErrorBoundary } from './CanvasErrorBoundary';
-import { getInitialDpr, shouldPreloadVatRoses } from '../core/utils/browserCaps';
+import { getInitialDpr, getMaxDpr, isMemoryConstrainedGpu, shouldPreloadVatRoses } from '../core/utils/browserCaps';
 import { MEADOW_FOOTSTEP_PATHS } from '../config/meadowAudio';
 import { resolveMeadowAsset } from '../config/meadow';
 import { configureCdnTextureLoader } from '../core/utils/cdnTextureLoader';
@@ -124,19 +125,26 @@ export default function App() {
                 gl={(canvas) => {
                     const renderer = new WebGPURenderer({
                         ...canvas as any,
-                        powerPreference: 'high-performance',
-                        antialias: true,
+                        powerPreference: isMemoryConstrainedGpu() ? 'low-power' : 'high-performance',
+                        antialias: !isMemoryConstrainedGpu(),
                         alpha: true,
                     });
                     renderer.setClearColor('#000000');
                     renderer.autoClear = true;
+                    renderer.outputColorSpace = THREE.SRGBColorSpace;
+                    renderer.toneMapping = THREE.NoToneMapping;
+                    renderer.shadowMap.enabled = true;
+                    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
                     // renderer.inspector = new Inspector();
                     renderer.sortObjects = false;
 
                     const canvasEl = renderer.domElement;
                     const onContextLost = (event: Event) => {
                         event.preventDefault();
-                        setGpuError('GPU MEMORY EXCEEDED — reload on a smaller display or use Chrome');
+                        const hint = isMemoryConstrainedGpu()
+                            ? 'GPU memory exceeded — close other tabs and reload'
+                            : 'GPU memory exceeded — reload on a smaller display or use Chrome';
+                        setGpuError(hint);
                     };
                     canvasEl.addEventListener('webglcontextlost', onContextLost);
 
@@ -170,8 +178,8 @@ export default function App() {
                     bounds={() => [28, 32]}
                     onFallback={() => setDpr(1)}
                     onChange={({ factor }) => {
-                        const targetDpr = 1 + factor;
-                        setDpr(targetDpr);
+                        const maxDpr = getMaxDpr();
+                        setDpr(Math.min(1 + factor, maxDpr));
                     }}
                 />
 
@@ -183,7 +191,7 @@ export default function App() {
                         <CameraViewControl />
                         <Environment
                             files={resolveMeadowAsset('/textures/potsdamer_platz_1k_nb.hdr')}
-                            environmentIntensity={0.5}
+                            environmentIntensity={CINEMATIC_LIGHTING.environmentIntensity}
                         />
                         <DirectionalLight />
                         <Effects />

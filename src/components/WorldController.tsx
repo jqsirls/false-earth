@@ -29,10 +29,9 @@ import { GrassCullingDebug } from '../debug/GrassCullingDebug';
 import {
     getDefaultCompileTimeoutMs,
     getRoseInstanceCount,
-    getSafariCompileTimeoutMs,
-    isSafari,
+    isMemoryConstrainedGpu,
     shouldEnableRoses,
-    shouldUseSafariMinimalScene,
+    shouldUseMinimalScene,
 } from '../core/utils/browserCaps';
 import { SafariGround } from './SafariGround';
 import { usePrefersReducedMotion } from '../core/utils/reducedMotion';
@@ -43,15 +42,15 @@ export function WorldController() {
     const setComponentReady = useGameStore((state) => state.setComponentReady);
 
     const debugMode = new URLSearchParams(window.location.search).get('debug') === 'true';
-    const compileTimeout = isSafari() ? getSafariCompileTimeoutMs() : getDefaultCompileTimeoutMs();
+    const compileTimeout = getDefaultCompileTimeoutMs();
     const roseCount = getRoseInstanceCount(2000);
     const rosesEnabled = shouldEnableRoses();
-    const safariMinimal = shouldUseSafariMinimalScene();
+    const minimalScene = shouldUseMinimalScene();
     const [grassCompileFailed, setGrassCompileFailed] = useState(false);
 
     const handleGrassCompileFailed = useCallback((id: string) => {
-        if (id === 'grass' && isSafari()) {
-            console.warn('[grass] Shader compile failed on Safari — using static ground fallback');
+        if (id === 'grass' && isMemoryConstrainedGpu()) {
+            console.warn('[grass] Shader compile failed on memory-constrained GPU — using static ground fallback');
             setGrassCompileFailed(true);
         }
     }, []);
@@ -130,10 +129,10 @@ export function WorldController() {
     const activeTargetIds = useMemo(() => {
         const targets: string[] = [];
         if (enableRose) targets.push('rose');
-        if (enableGrass && !safariMinimal && !grassCompileFailed) targets.push('grass');
+        if (enableGrass && !minimalScene && !grassCompileFailed) targets.push('grass');
         if (enableCharacter) targets.push('character');
         return targets;
-    }, [enableRose, enableGrass, enableCharacter, safariMinimal, grassCompileFailed]);
+    }, [enableRose, enableGrass, enableCharacter, minimalScene, grassCompileFailed]);
 
     useEffect(() => {
         setActiveTargets(activeTargetIds);
@@ -154,7 +153,7 @@ export function WorldController() {
             <group visible={enableEnv}>
                 <StarrySky />
                 <CosmicSystem />
-                {safariMinimal || grassCompileFailed ? <SafariGround /> : <Terrain />}
+                {minimalScene || grassCompileFailed ? <SafariGround /> : <Terrain />}
             </group>
 
             {/* Major components - toggle visibility instead of unmounting */}
@@ -167,7 +166,7 @@ export function WorldController() {
                 />
             )}
 
-            {!safariMinimal && !grassCompileFailed && (
+            {!minimalScene && !grassCompileFailed && (
                 <AsyncCompile
                     id="grass"
                     onReady={setComponentReady}

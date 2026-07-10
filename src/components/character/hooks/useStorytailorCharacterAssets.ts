@@ -17,7 +17,7 @@ import {
 import { getTerrainHeight } from '../../../core/shaders/terrainHelpers';
 import { uTerrainAmp, uTerrainFreq, uTerrainSeed } from '../../../core/shaders/uniforms';
 import { STORYTAILOR } from '../../../config/storytailor';
-import { isSafari, shouldUseSafariMinimalScene } from '../../../core/utils/browserCaps';
+import { isMemoryConstrainedGpu, shouldUseMinimalScene } from '../../../core/utils/browserCaps';
 import { configureCdnTextureLoader } from '../../../core/utils/cdnTextureLoader';
 import {
   JQ_HELMET_MESH,
@@ -268,9 +268,9 @@ export function useStorytailorCharacterAssets(
     const helmetMaterialsAcc: THREE.Material[] = [];
     const clonedScene = SkeletonUtils.clone(meshData.scene as THREE.Object3D);
 
-    const safariMinimal = shouldUseSafariMinimalScene();
+    const minimalScene = shouldUseMinimalScene();
 
-    const vertexNode = safariMinimal
+    const vertexNode = minimalScene
       ? undefined
       : Fn(() => {
           const terrainHeightFn = getTerrainHeight(uTerrainAmp, uTerrainFreq, uTerrainSeed);
@@ -287,7 +287,7 @@ export function useStorytailorCharacterAssets(
       applyMeshMaterials(child, jqTextures, vertexNode, helmetMaterialsAcc);
     });
 
-    console.info(`[JQ] Mixamo rig + runtime PNG textures from ${isSafari() ? '/textures/jq-lite/' : '/textures/jq/'}`);
+    console.info(`[JQ] Mixamo rig + runtime PNG textures from ${isMemoryConstrainedGpu() ? '/textures/jq-lite/' : '/textures/jq/'}`);
 
     alignJqSceneToGround(clonedScene);
 
