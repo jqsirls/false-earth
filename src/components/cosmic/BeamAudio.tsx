@@ -7,12 +7,12 @@ import * as THREE from 'three/webgpu';
 
 export function BeamAudio() {
   const listener = useGameStore((state) => state.audioListener);
-  const isSoundOn = useGameStore((state) => state.isSoundOn);
+  const isGameStarted = useGameStore((state) => state.isGameStarted);
   const { play } = useOneShotAudio(listener as AudioListener, ['/audio/wave01.mp3']);
 
   useEffect(() => {
     const onHit = (payload: { position: THREE.Vector3; radius: number }) => {
-      if (!isSoundOn) return;
+      if (!isGameStarted) return;
 
       play({
         position: payload.position,
@@ -24,7 +24,7 @@ export function BeamAudio() {
     };
     gameEvents.on('beam:hit', onHit);
     return () => gameEvents.off('beam:hit', onHit);
-  }, [play, isSoundOn]);
+  }, [play, isGameStarted]);
 
   return null;
 }

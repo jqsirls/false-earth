@@ -12,13 +12,13 @@ export interface CharacterAudioHandle {
 export const CharacterAudio = forwardRef<CharacterAudioHandle>((_, ref) => {
   const listener = useGameStore((state) => state.audioListener);
   const characterRef = useGameStore((state) => state.characterRef);
-  const isSoundOn = useGameStore((state) => state.isSoundOn);
+  const isGameStarted = useGameStore((state) => state.isGameStarted);
 
   const { play } = useOneShotAudio(listener as AudioListener, [...MEADOW_FOOTSTEP_PATHS]);
 
   useImperativeHandle(ref, () => ({
     playStep: (type: StepType, volume: number) => {
-      if (!isSoundOn) return;
+      if (!isGameStarted) return;
 
       play({
         position: characterRef?.current?.position,

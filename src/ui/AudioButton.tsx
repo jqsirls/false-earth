@@ -38,6 +38,7 @@ export default function AudioButton() {
         setMeadowBgmMuted(!isSoundOn);
     }, [isSoundOn, isGameStarted]);
 
+    // Duck wind only while Cosmic Lullaby is audibly playing — not when BGM is toggled off.
     const windVolumeScale =
         isSoundOn && meadowBgmPlaying ? MEADOW_WIND_DUCK_MULTIPLIER : 1;
 
@@ -65,7 +66,7 @@ export default function AudioButton() {
 
             <Bgm
                 listener={listener}
-                active={isSoundOn}
+                active={isGameStarted}
                 tracks={[...MEADOW_AMBIENT_TRACKS]}
                 volumeScale={windVolumeScale}
             />

@@ -30,6 +30,7 @@ interface GameState {
   isGameStarted: boolean;
   setIsGameStarted: (loaded: boolean) => void;
 
+  /** Cosmic Lullaby BGM playlist — not a master mute; wind/SFX stay on after START. */
   isSoundOn: boolean;
   setIsSoundOn: (isSoundOn: boolean) => void;
 
