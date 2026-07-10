@@ -45,11 +45,15 @@ export function LoadingScreen() {
     const total = activeTargets.length;
     const loaded = activeTargets.filter((id) => readyStatus[id]).length;
     const compileProgress = total === 0 ? 0 : (loaded / total) * 100;
+    const characterReady = readyStatus.character === true;
 
     const displayProgress = useMemo(() => {
         if (active) return Math.round(downloadProgress * 0.5);
+        if (characterReady) {
+            return Math.min(Math.round(75 + compileProgress * 0.24), 99);
+        }
         return Math.min(Math.round(50 + compileProgress * 0.5), 99);
-    }, [active, downloadProgress, compileProgress]);
+    }, [active, downloadProgress, compileProgress, characterReady]);
 
     const reduceMotion = prefersReducedMotion();
 
@@ -67,13 +71,14 @@ export function LoadingScreen() {
             return;
         }
 
-        if (!active && loaded === total && total > 0 && bgmReady) {
+        // START when Booster + BGM are ready — roses/grass may still compile in the background.
+        if (characterReady && bgmReady) {
             const t = setTimeout(() => setIsReadyToStart(true), 200);
             return () => clearTimeout(t);
         }
 
         setIsReadyToStart(false);
-    }, [active, loaded, total, gpuError, bgmReady]);
+    }, [characterReady, gpuError, bgmReady]);
 
     const handleStart = () => {
         if (!isReadyToStart || gpuError || hasStartedRef.current) return;

@@ -113,6 +113,7 @@ export function getRoseInstanceCount(defaultCount: number): number {
 
 export function getGrassBladesPerAxis(defaultBlades: number): number {
   if (shouldUseMinimalScene()) return 0;
+  if (isPhoneLikeDevice()) return Math.min(defaultBlades, 256);
   if (isMemoryConstrainedGpu() || isSafari()) return Math.min(defaultBlades, 512);
   return defaultBlades;
 }

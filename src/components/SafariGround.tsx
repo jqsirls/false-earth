@@ -7,9 +7,9 @@ export function SafariGround({ size = DEFAULT_GRASS_AREA_SIZE }: { size?: number
   const material = useMemo(
     () =>
       new THREE.MeshStandardNodeMaterial({
-        color: new THREE.Color('#0a1a12'),
-        roughness: 0.92,
-        metalness: 0.02,
+        color: new THREE.Color('#0c1810'),
+        roughness: 0.88,
+        metalness: 0.04,
       }),
     [],
   );

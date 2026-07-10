@@ -152,7 +152,7 @@ export function WorldController() {
             <group visible={enableEnv}>
                 <StarrySky />
                 <CosmicSystem />
-                {minimalScene || grassCompileFailed ? <SafariGround /> : <Terrain />}
+                {grassCompileFailed ? <SafariGround /> : <Terrain />}
             </group>
 
             {/* Major components - toggle visibility instead of unmounting */}
