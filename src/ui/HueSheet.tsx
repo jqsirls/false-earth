@@ -9,6 +9,7 @@ import {
   meadowHudActionStyle,
   meadowHudLabelStyle,
   meadowHudQuietButtonStyle,
+  meadowOverlayRootStyle,
   meadowSheetBackdropStyle,
   meadowSheetPanelBase,
 } from './meadowUiStyles';
@@ -30,25 +31,24 @@ export function HueSheet() {
   const panelStyle: CSSProperties = isMobile
     ? {
         ...meadowSheetPanelBase,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        borderRadius: '16px 16px 0 0',
+        width: '100%',
+        borderRadius: '10px 10px 0 0',
+        maxHeight: '82vh',
         padding: '24px 20px max(24px, env(safe-area-inset-bottom))',
+        overflowY: 'auto',
         animation: reducedMotion ? 'meadowHueFadeIn 160ms ease' : 'meadowHueSlideUp 220ms ease-out',
       }
     : {
         ...meadowSheetPanelBase,
-        top: 'max(20px, env(safe-area-inset-top))',
-        right: 'max(20px, env(safe-area-inset-right))',
-        width: 'min(360px, calc(100vw - 40px))',
-        borderRadius: '12px',
-        padding: '22px',
+        width: 'min(360px, calc(100vw - 32px))',
+        maxHeight: '72vh',
+        padding: '24px',
+        overflowY: 'auto',
         animation: reducedMotion ? 'meadowHueFadeIn 160ms ease' : 'meadowHueSlideIn 220ms ease-out',
       };
 
   return (
-    <>
+    <div style={meadowOverlayRootStyle(isMobile)}>
       <style>{`
         ${meadowFocusCss}
         ${meadowCrtCss}
@@ -72,12 +72,7 @@ export function HueSheet() {
       <button
         type="button"
         aria-label="Close lights settings"
-        style={{
-          ...meadowSheetBackdropStyle,
-          border: 'none',
-          padding: 0,
-          cursor: 'default',
-        }}
+        style={meadowSheetBackdropStyle}
         onClick={closeHueSheet}
       />
 
@@ -191,6 +186,6 @@ export function HueSheet() {
           Close
         </button>
       </section>
-    </>
+    </div>
   );
 }

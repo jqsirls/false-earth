@@ -11,6 +11,7 @@ import AudioButton from "./AudioButton";
 import { MeadowFooter } from "./MeadowFooter";
 import { LegalModal } from "./LegalModal";
 import { useMeadowOverlayEsc } from "../core/hooks/useMeadowOverlayEsc";
+import { useIsMeadowOverlayOpen } from "../core/hooks/useIsMeadowOverlayOpen";
 import { TouchJoystick } from "../core/input/TouchJoystick";
 import { useDoubleTapFlight } from "../core/input/useDoubleTapFlight";
 import { input } from "../core/input/controls";
@@ -18,6 +19,7 @@ import { input } from "../core/input/controls";
 export function UI() {
     const isMobile = useGameStore((state) => state.isMobile);
     const isControlEnabled = useGameStore((state) => state.isControlEnabled);
+    const isOverlayOpen = useIsMeadowOverlayOpen();
     const hydrateSession = useMeadowAuthStore((state) => state.hydrateSession);
 
     useDoubleTapFlight();
@@ -58,7 +60,7 @@ export function UI() {
             }}>
                 <AudioButton />
 
-                {isMobile &&
+                {isMobile && !isOverlayOpen &&
                     <TouchJoystick
                         input={input}
                         actions={{

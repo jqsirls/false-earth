@@ -139,7 +139,15 @@ export function ControlsHint() {
             />
             <InstructionRow input={<Key>SHIFT</Key>} label="RUN" />
             <InstructionRow input={<MouseIcon />} label="LOOK" />
-            <InstructionRow input={<span style={{ fontSize: '0.65rem', letterSpacing: '0.08em' }}>2× TAP</span>} label="FLY" />
+            <InstructionRow
+              input={
+                <>
+                  <Key>DBL</Key>
+                  <Key>TAP</Key>
+                </>
+              }
+              label="FLY"
+            />
           </div>
           <p
             style={{

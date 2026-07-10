@@ -3,7 +3,7 @@ import { useEffect, useRef, useState, useMemo } from "react";
 import { useGameStore } from "../core/store/gameStore";
 import { MEADOW_LOGO_ALT, MEADOW_LOGO_PATH, MEADOW_PLAYLIST_TRACKS, resolveMeadowAsset } from "../config/meadow";
 import { resumeMeadowAudioContext } from "../config/meadowAudio";
-import { startMeadowBgm } from "../audio/meadowBgmPlayer";
+import { startMeadowBgm, setMeadowBgmMuted } from "../audio/meadowBgmPlayer";
 import { prefersReducedMotion } from "../core/utils/reducedMotion";
 import { formatGpuError, getGpuErrorHeadline, getGpuErrorHint } from "../core/utils/gpuError";
 import gsap from "gsap";
@@ -78,6 +78,7 @@ export function LoadingScreen() {
         // User gesture — unlock Web Audio (footsteps) and start HTML5 BGM immediately.
         resumeMeadowAudioContext(audioListener);
         startMeadowBgm();
+        setMeadowBgmMuted(false);
         setIsSoundOn(true);
         setIsGameStarted(true);
 

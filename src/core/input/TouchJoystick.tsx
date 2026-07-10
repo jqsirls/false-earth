@@ -130,7 +130,7 @@ export function TouchJoystick<T extends string>({ input, actions }: TouchJoystic
         position: 'absolute', 
         left: '20px', 
         bottom: '20px', 
-        zIndex: 100,
+        zIndex: 40,
 
         width: '100px', 
         height: '100px',

@@ -11,6 +11,7 @@ import {
   meadowLegalPanelDesktop,
   meadowLegalPanelMobile,
   meadowModalTokens,
+  meadowOverlayRootStyle,
   meadowSheetBackdropStyle,
 } from './meadowUiStyles';
 
@@ -120,7 +121,7 @@ export function LegalModal() {
       : 'meadowLegalRiseIn 220ms ease-out forwards';
 
   return (
-    <>
+    <div style={meadowOverlayRootStyle(isMobile)}>
       <style>{`${meadowFocusCss}${meadowCrtCss}`}</style>
 
       <button
@@ -128,9 +129,6 @@ export function LegalModal() {
         aria-label="Close dialog"
         style={{
           ...meadowSheetBackdropStyle,
-          border: 'none',
-          padding: 0,
-          cursor: 'default',
           animation: 'meadowLegalFadeIn 160ms ease forwards',
         }}
         onClick={closeLegalModal}
@@ -138,7 +136,7 @@ export function LegalModal() {
 
       <section
         ref={panelRef}
-        className={`meadow-crt-panel meadow-crt-warmup meadow-focusable ${isMobile ? '' : ''}`}
+        className="meadow-crt-panel meadow-crt-warmup meadow-focusable"
         role="dialog"
         aria-modal="true"
         aria-labelledby="meadow-legal-title"
@@ -146,6 +144,7 @@ export function LegalModal() {
         style={{
           ...panelStyle,
           animation: enterAnimation,
+          minHeight: 0,
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', marginBottom: '16px' }}>
@@ -217,7 +216,10 @@ export function LegalModal() {
           </p>
         ) : null}
 
-        <div className={`meadow-modal-scroll ${isMobile ? 'meadow-modal-scroll-mobile' : ''}`}>
+        <div
+          className={`meadow-modal-scroll ${isMobile ? 'meadow-modal-scroll-mobile' : ''}`}
+          style={{ flex: '1 1 auto', minHeight: 0 }}
+        >
           {content.sections.map((section, sectionIndex) => (
             <div key={`${content.id}-section-${sectionIndex}`} style={{ marginBottom: '18px' }}>
               {section.heading ? (
@@ -245,6 +247,7 @@ export function LegalModal() {
                     lineHeight: 1.75,
                     maxWidth: '62ch',
                     fontFamily: meadowHudFontFamily,
+                    overflowWrap: 'anywhere',
                   }}
                 >
                   {renderParagraph(paragraph)}
@@ -261,7 +264,7 @@ export function LegalModal() {
           50%, 100% { opacity: 0; }
         }
       `}</style>
-    </>
+    </div>
   );
 }
 

@@ -21,6 +21,7 @@ import { STORYTAILOR } from '../config/storytailor';
 import { CanvasErrorBoundary } from './CanvasErrorBoundary';
 import { getInitialDpr, shouldPreloadVatRoses } from '../core/utils/browserCaps';
 import { MEADOW_FOOTSTEP_PATHS } from '../config/meadowAudio';
+import { resolveMeadowAsset } from '../config/meadow';
 import { configureCdnTextureLoader } from '../core/utils/cdnTextureLoader';
 
 function attachGpuDeviceLostHandler(
