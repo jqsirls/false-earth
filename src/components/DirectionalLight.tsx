@@ -67,8 +67,6 @@ export function DirectionalLight() {
     light.color.set(color)
     light.intensity = intensity
     light.position.copy(keyPosition)
-    light.target.position.set(0, 0, 0)
-    light.target.updateMatrixWorld()
 
     light.castShadow = shadowsEnabled
     if (shadowsEnabled) {
@@ -94,8 +92,6 @@ export function DirectionalLight() {
     rim.color.set(CINEMATIC_LIGHTING.rimColor)
     rim.intensity = rimIntensity
     rim.position.copy(rimPosition)
-    rim.target.position.set(0, 1.2, 0)
-    rim.target.updateMatrixWorld()
   }, [rimIntensity, rimPosition])
 
   return (
@@ -107,8 +103,12 @@ export function DirectionalLight() {
           CINEMATIC_LIGHTING.hemisphereIntensity,
         ]}
       />
-      <directionalLight ref={directionalLightRef} />
-      <directionalLight ref={rimLightRef} castShadow={false} />
+      <directionalLight ref={directionalLightRef} castShadow={shadowsEnabled}>
+        <object3D attach="target" position={[0, 0, 0]} />
+      </directionalLight>
+      <directionalLight ref={rimLightRef} castShadow={false}>
+        <object3D attach="target" position={[0, 1.2, 0]} />
+      </directionalLight>
     </>
   )
 }

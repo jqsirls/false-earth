@@ -21,7 +21,6 @@ import {
   dot,
   length,
   oneMinus,
-  smoothstep,
   step,
   sqrt,
   max,
@@ -52,10 +51,12 @@ import {
   applySlopeAlignment,
   applyViewDependentTilt,
   createWaveLogic,
+  applyGrassPatchColors,
 } from "./shaderHelpers";
 import { waveStructure } from "../../cosmic/hooks/useCosmicWaves";
 import { uTime, uWindDir, uActiveWaveCount, GlobalWaveState, uGlobalHueShift } from "../../../core/shaders/uniforms";
 import { shiftHSV } from "../../../../packages/three-core/src/utils/tsl/color";
+import { wgslSmoothstep } from "../../../core/shaders/wgslSmoothstep";
 
 /**
  * Creates a grass material with vertex shader that scales blade geometry
@@ -92,6 +93,14 @@ export function createGrassMaterial(
   );
 
   const uGroupOffset = uniforms.uGroupOffset ?? uniform(new THREE.Vector3(0, 0, 0));
+
+  const applyPatchColors = applyGrassPatchColors(
+    uniforms.uPatchScale ?? uniform(0.07),
+    uniforms.uPatchStrength ?? uniform(0.55),
+    uniforms.uTealAccent ?? uniform(vec3(0.23, 0.36, 0.32)),
+    uniforms.uPurpleAccent ?? uniform(vec3(0.36, 0.31, 0.43)),
+    uniforms.uAmberAccent ?? uniform(vec3(0.54, 0.41, 0.25)),
+  );
 
   // Wave
   const waveBuffer = GlobalWaveState.buffer
@@ -138,7 +147,7 @@ export function createGrassMaterial(
     const windDistanceFalloff = select(
       uniforms.uWindDistanceEnd.greaterThan(float(0.0)),
       oneMinus(
-        smoothstep(uniforms.uWindDistanceStart, uniforms.uWindDistanceEnd, dist)
+        wgslSmoothstep(uniforms.uWindDistanceStart, uniforms.uWindDistanceEnd, dist)
       ),
       float(1.0)
     );
@@ -248,7 +257,7 @@ export function createGrassMaterial(
     vCrackleNoise.assign(mx_noise_float(movingNoisePos));
     vGeoNormal.assign(normalRotated);
     vHeight.assign(t);
-    vDistFade.assign(smoothstep(float(near), float(far), dist));
+    vDistFade.assign(wgslSmoothstep(float(near), float(far), dist));
     vWorldPos.assign(worldPosFinal);
     vSide.assign(sideRotated);
     vClumpSeed.assign(clumpSeed01);
@@ -268,8 +277,8 @@ export function createGrassMaterial(
     const u = uvCoords.x.sub(0.5);
     const au = abs(u);
 
-    const mid01 = smoothstep(uniforms.uMidSoft.negate(), uniforms.uMidSoft, u);
-    const rimMask = smoothstep(
+    const mid01 = wgslSmoothstep(uniforms.uMidSoft.negate(), uniforms.uMidSoft, u);
+    const rimMask = wgslSmoothstep(
       uniforms.uRimPos,
       uniforms.uRimPos.add(uniforms.uRimSoft),
       au
@@ -308,6 +317,9 @@ export function createGrassMaterial(
     const clumpSeedFactor = mix(uniforms.uClumpSeedRange.x, uniforms.uClumpSeedRange.y, vClumpSeed);
     const bladeSeedFactor = mix(uniforms.uBladeSeedRange.x, uniforms.uBladeSeedRange.y, vBladeSeed);
     let finalColor = color.mul(clumpSeedFactor).mul(bladeSeedFactor);
+
+    const worldXZ = vec2(vWorldPos.x, vWorldPos.z);
+    finalColor = applyPatchColors(finalColor, worldXZ);
 
     // Height-based AO (reuse calculateAO)
     finalColor = finalColor.mul(calculateAO());
@@ -354,7 +366,7 @@ export function createGrassMaterial(
     const isActive = step(float(0.001), baseStrength);
 
     // Height Gradient
-    const heightFactor = smoothstep(float(0.0), float(1.0), vHeight);
+    const heightFactor = wgslSmoothstep(float(0.0), float(1.0), vHeight);
     const tipGlow = heightFactor.mul(heightFactor);
 
     const electricCrackle = vCrackleNoise.mul(0.5).add(1.0);

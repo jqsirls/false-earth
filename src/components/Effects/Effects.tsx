@@ -1,8 +1,9 @@
-import { useRef, useEffect, useMemo } from "react";
+import { useRef, useEffect, useMemo, useContext } from "react";
 import { useThree, useFrame } from "@react-three/fiber";
 import * as THREE from "three/webgpu";
 import { WebGPURenderer } from "three/webgpu";
-import { clamp, float, Fn, If, length, mix, pass, pow, smoothstep, uniform, uv, vec4 } from "three/tsl";
+import { clamp, float, Fn, If, length, mix, pass, pow, renderOutput, uniform, uv, vec4 } from "three/tsl";
+import { wgslSmoothstep } from "../../core/shaders/wgslSmoothstep";
 import { bloom } from "three/addons/tsl/display/BloomNode.js";
 import { dof } from "three/addons/tsl/display/DepthOfFieldNode.js";
 import { smaa } from "three/addons/tsl/display/SMAANode.js";
@@ -10,12 +11,12 @@ import { smaa } from "three/addons/tsl/display/SMAANode.js";
 import { useGameStore, CameraMode } from "../../core/store/gameStore";
 import { useEffectsControls } from "./useEffectsControls";
 import { BeamSceneContext } from "../../app/App";
-import { useContext } from "react";
 
 export default function Effects() {
   const { isHighQuality, cameraMode, bloom: bloomCfg, dof: dofCfg, toneMapping: tmCfg, smaa: smaaEnabled } = useEffectsControls();
 
   const characterRef = useGameStore((state) => state.characterRef);
+  const characterFlightLiftRef = useGameStore((state) => state.characterFlightLiftRef);
   const { gl, scene, camera } = useThree();
   const beamScene = useContext(BeamSceneContext);
 
@@ -57,6 +58,7 @@ export default function Effects() {
 
     const renderer = gl as WebGPURenderer;
     const pp = new THREE.PostProcessing(renderer);
+    pp.outputColorTransform = false;
     postProcessingRef.current = pp;
 
     const scenePass = pass(scene, camera);
@@ -89,7 +91,7 @@ export default function Effects() {
       return outputColor;
     });
 
-    let finalNode: any = getBaseColor();
+    let finalNode: ReturnType<typeof getBaseColor> = getBaseColor();
 
     const toCenter = uvNode.sub(0.5);
     const dist = length(toCenter);
@@ -105,10 +107,10 @@ export default function Effects() {
     }
 
     const depthDiff = beamDepth.sub(sceneDepth);
-    const beamOcclusion = smoothstep(float(0), float(10), depthDiff);
+    const beamOcclusion = wgslSmoothstep(float(0), float(10), depthDiff);
     finalNode = finalNode.add(beamColor.mul(beamOcclusion));
 
-    const vignette = smoothstep(0.2, 0.8, dist);
+    const vignette = wgslSmoothstep(0.2, 0.8, dist);
     const mask = clamp(float(1.0).sub(vignette), 0.0, 1.0);
     const helmetOverlay = finalNode.mul(vec4(mask, mask, mask, 1.0)).mul(vec4(0.6, 0.65, 0.7, 1.0));
     finalNode = mix(finalNode, helmetOverlay, uParams.current.helmetStr);
@@ -121,13 +123,17 @@ export default function Effects() {
       finalNode = finalNode.add(bloomNode);
     }
 
+    const toneMappingMode = tmCfg.enabled ? THREE.AgXToneMapping : THREE.NoToneMapping;
+    finalNode = renderOutput(finalNode, toneMappingMode, THREE.SRGBColorSpace);
+
     if (isHighQuality && smaaEnabled) {
       finalNode = smaa(finalNode);
     }
 
     pp.outputNode = finalNode;
 
-    renderer.toneMapping = tmCfg.enabled ? THREE.ReinhardToneMapping : THREE.NoToneMapping;
+    renderer.toneMapping = THREE.NoToneMapping;
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
 
     return () => {
       postProcessingRef.current = null;
@@ -142,6 +148,7 @@ export default function Effects() {
     bloomCfg.enabled,
     smaaEnabled,
     tmCfg.enabled,
+    beamScene,
   ]);
 
   useFrame(() => {
@@ -150,11 +157,11 @@ export default function Effects() {
     if (isHighQuality && dofCfg.enabled && dofCfg.autofocus && characterRef?.current) {
       camera.getWorldPosition(vecCache.cam);
       characterRef.current.getWorldPosition(vecCache.char);
+      vecCache.char.y += characterFlightLiftRef.current;
       uParams.current.focusDist.value = vecCache.cam.distanceTo(vecCache.char);
     }
 
     postProcessingRef.current.render();
-
   }, 1);
 
   return null;

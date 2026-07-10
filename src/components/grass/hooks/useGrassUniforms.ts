@@ -71,7 +71,13 @@ export function useGrassUniforms() {
                 uCharacterPushRadius: uniform(0.8),
                 uCharacterPushAmount: uniform(0.3),
                 uCharacterFlattenAmount: uniform(0.5),
-                uActiveWaveCount: uniform(0.0)
+                uActiveWaveCount: uniform(0.0),
+
+                uPatchScale: uniform(0.07),
+                uPatchStrength: uniform(0.55),
+        uTealAccent: uniform(vec3(0.23, 0.36, 0.32)),
+        uPurpleAccent: uniform(vec3(0.36, 0.31, 0.43)),
+        uAmberAccent: uniform(vec3(0.54, 0.41, 0.25)),
             }
         }), [])
 
@@ -137,8 +143,19 @@ export function useGrassUniforms() {
         uniforms.material.uCharacterPushRadius.value = params.pushRadius 
         uniforms.material.uCharacterPushAmount.value = params.pushAmount 
         uniforms.material.uCharacterFlattenAmount.value = params.flattenAmount
-    }, [params, uniforms.material])
 
+        uniforms.material.uPatchScale.value = params.patchScale
+        uniforms.material.uPatchStrength.value = params.patchStrength
+
+        const tealAccent = new THREE.Color(params.tealAccent)
+        uniforms.material.uTealAccent.value.set(tealAccent.r, tealAccent.g, tealAccent.b)
+
+        const purpleAccent = new THREE.Color(params.purpleAccent)
+        uniforms.material.uPurpleAccent.value.set(purpleAccent.r, purpleAccent.g, purpleAccent.b)
+
+        const amberAccent = new THREE.Color(params.amberAccent)
+        uniforms.material.uAmberAccent.value.set(amberAccent.r, amberAccent.g, amberAccent.b)
+    }, [params, uniforms.material])
 
     return {
         uniforms,

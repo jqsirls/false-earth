@@ -69,7 +69,7 @@ export function Terrain({
 
     return (
         // High segment count is needed for smooth FBM terrain to match grass density
-        <mesh ref={meshRef} rotation={[-Math.PI / 2, 0, 0]}>
+        <mesh ref={meshRef} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
             <planeGeometry args={[grassAreaSize, grassAreaSize, 128, 128]} />
             <primitive object={material} />
         </mesh>
