@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three/webgpu";
 import { useGameStore } from "../../core/store/gameStore";
 import { useRoseUniforms } from "./hooks/useRoseUniforms";
@@ -11,6 +11,17 @@ import type { RoseLODConfig } from "./core/config";
 
 import { gameEvents } from "../../core/events";
 
+const INITIAL_SPAWN_GRID: Array<[number, number]> = [
+  [0, 0],
+  [6, 4],
+  [-5, 7],
+  [8, -6],
+  [-7, -5],
+  [12, 0],
+  [-10, 3],
+  [4, -11],
+];
+
 export default function Rose({ 
     count, 
     visible = true,
@@ -22,6 +33,7 @@ export default function Rose({
 }) {
     const characterRef = useGameStore((state) => state.characterRef)
     const characterPos = useMemo(() => new THREE.Vector3(), [])
+    const hasSeededField = useRef(false)
 
     const { uniforms, config } = useRoseUniforms()
     const { lodBuffers, isLoading } = useRoseLODLoader(count, lodConfig)
@@ -42,6 +54,25 @@ export default function Rose({
         gameEvents.on('beam:hit', onHit);
         return () => gameEvents.off('beam:hit', onHit);
     }, [spawn]);
+
+    useEffect(() => {
+        if (hasSeededField.current || isLoading || !lodBuffers.length || !vatData) return;
+
+        hasSeededField.current = true;
+        let index = 0;
+
+        const seedInterval = window.setInterval(() => {
+            const [x, z] = INITIAL_SPAWN_GRID[index];
+            spawn(new THREE.Vector3(x, 0, z), 256, 14);
+            index += 1;
+
+            if (index >= INITIAL_SPAWN_GRID.length) {
+                window.clearInterval(seedInterval);
+            }
+        }, 120);
+
+        return () => window.clearInterval(seedInterval);
+    }, [isLoading, lodBuffers.length, vatData, spawn]);
 
     if (isLoading || !lodBuffers.length || !vatData) return null
 

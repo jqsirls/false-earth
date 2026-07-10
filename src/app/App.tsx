@@ -21,6 +21,7 @@ import { STORYTAILOR } from '../config/storytailor';
 import { CanvasErrorBoundary } from './CanvasErrorBoundary';
 import { getInitialDpr, shouldPreloadVatRoses } from '../core/utils/browserCaps';
 import { MEADOW_PLAYLIST_TRACKS, resolveMeadowAsset } from '../config/meadow';
+import { MEADOW_FOOTSTEP_PATHS } from '../config/meadowAudio';
 import { configureCdnTextureLoader } from '../core/utils/cdnTextureLoader';
 
 function attachGpuDeviceLostHandler(
@@ -53,6 +54,7 @@ function collectJqTexturePaths(): string[] {
 }
 
 useLoader.preload(AudioLoader, MEADOW_PLAYLIST_TRACKS.map((track) => track.url));
+useLoader.preload(AudioLoader, [...MEADOW_FOOTSTEP_PATHS]);
 
 useGLTF.preload(
   STORYTAILOR.useJqCharacter

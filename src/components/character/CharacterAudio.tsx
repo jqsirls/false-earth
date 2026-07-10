@@ -3,6 +3,7 @@ import { useOneShotAudio } from '@core/hooks/useOneShotAudio';
 import { StepType } from './hooks/useCharacterPhysics';
 import { useGameStore } from '../../core/store/gameStore';
 import { AudioListener } from 'three/webgpu';
+import { MEADOW_FOOTSTEP_PATHS } from '../../config/meadowAudio';
 
 export interface CharacterAudioHandle {
   playStep: (type: StepType, volume: number) => void;
@@ -12,16 +13,10 @@ export const CharacterAudio = forwardRef<CharacterAudioHandle>((_, ref) => {
   const listener = useGameStore((state) => state.audioListener);
   const characterRef = useGameStore((state) => state.characterRef);
 
-  const { play } = useOneShotAudio(listener as AudioListener, [
-    '/audio/fs_grass1.mp3',
-    '/audio/fs_grass2.mp3',
-    '/audio/fs_grass3.mp3',
-    '/audio/fs_grass4.mp3',
-    '/audio/fs_grass5.mp3',
-  ]);
+  const { play } = useOneShotAudio(listener as AudioListener, [...MEADOW_FOOTSTEP_PATHS]);
 
   useImperativeHandle(ref, () => ({
-    playStep: (type: StepType, volume: number) => {
+    playStep: (_type: StepType, volume: number) => {
       play({
         position: characterRef?.current?.position,
         volume,

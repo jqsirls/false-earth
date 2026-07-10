@@ -1,4 +1,4 @@
-import { Suspense, useEffect } from 'react';
+import { Suspense, useEffect, useMemo, useState, useCallback } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useControls } from 'leva';
 import * as THREE from 'three/webgpu';
@@ -24,13 +24,38 @@ import { AsyncCompile } from '@core';
 import Rose from './Rose/Rose';
 import GrassWebGPU from './grass/GrassWebGPU';
 import { Character } from './character';
+import { STORYTAILOR } from '../config/storytailor';
 import { GrassCullingDebug } from '../debug/GrassCullingDebug';
+import {
+    getDefaultCompileTimeoutMs,
+    getRoseCompileTimeoutMs,
+    getRoseInstanceCount,
+    getSafariCompileTimeoutMs,
+    isSafari,
+    shouldEnableRoses,
+    shouldUseSafariMinimalScene,
+} from '../core/utils/browserCaps';
+import { SafariGround } from './SafariGround';
+import { usePrefersReducedMotion } from '../core/utils/reducedMotion';
 
 export function WorldController() {
+    const prefersReducedMotion = usePrefersReducedMotion();
     const setActiveTargets = useGameStore((state) => state.setActiveTargets);
     const setComponentReady = useGameStore((state) => state.setComponentReady);
 
     const debugMode = new URLSearchParams(window.location.search).get('debug') === 'true';
+    const compileTimeout = isSafari() ? getSafariCompileTimeoutMs() : getDefaultCompileTimeoutMs();
+    const roseCount = getRoseInstanceCount(2000);
+    const rosesEnabled = shouldEnableRoses();
+    const safariMinimal = shouldUseSafariMinimalScene();
+    const [grassCompileFailed, setGrassCompileFailed] = useState(false);
+
+    const handleGrassCompileFailed = useCallback((id: string) => {
+        if (id === 'grass' && isSafari()) {
+            console.warn('[grass] Shader compile failed on Safari — using static ground fallback');
+            setGrassCompileFailed(true);
+        }
+    }, []);
 
     // Enable eruda console only in debug mode (?debug=true)
     useEffect(() => {
@@ -59,7 +84,7 @@ export function WorldController() {
     const { enableEnv, enableRose, enableGrass, enableCharacter, enableGrassDebug } = useControls('Game.Content', {
         enableEnv: { value: true, label: 'Environment' },
         enableCharacter: { value: true, label: '👤 Character' },
-        enableRose: { value: true, label: '🌹 Rose Field' },
+        enableRose: { value: rosesEnabled, label: '🌹 Rose Field' },
         enableGrass: { value: true, label: '🌿 Grass Field' },
         enableGrassDebug: { value: false, label: '🌿 Grass Culling Debug' },
     }, { collapsed: true });
@@ -87,12 +112,13 @@ export function WorldController() {
     }), { collapsed: true });
 
     useEffect(() => {
+        const windScale = prefersReducedMotion ? 0.35 : 1;
         uWindDir.value.set(windParams.windDirX, windParams.windDirZ);
         uWindScale.value = windParams.windScale;
-        uWindSpeed.value = windParams.windSpeed;
-        uWindStrength.value = windParams.windStrength;
+        uWindSpeed.value = windParams.windSpeed * windScale;
+        uWindStrength.value = windParams.windStrength * windScale;
         uWindFacing.value = windParams.windFacing;
-    }, [windParams]);
+    }, [windParams, prefersReducedMotion]);
 
     useEffect(() => {
         uTerrainAmp.value = terrainParams.amplitude;
@@ -102,20 +128,25 @@ export function WorldController() {
         uTerrainColor.value.set(c.r, c.g, c.b);
     }, [terrainParams]);
 
-    useEffect(() => {
+    const activeTargetIds = useMemo(() => {
         const targets: string[] = [];
         if (enableRose) targets.push('rose');
-        if (enableGrass) targets.push('grass');
+        if (enableGrass && !safariMinimal && !grassCompileFailed) targets.push('grass');
         if (enableCharacter) targets.push('character');
-        setActiveTargets(targets);
-    }, [enableRose, enableGrass, enableCharacter, setActiveTargets]);
+        return targets;
+    }, [enableRose, enableGrass, enableCharacter, safariMinimal, grassCompileFailed]);
+
+    useEffect(() => {
+        setActiveTargets(activeTargetIds);
+    }, [activeTargetIds, setActiveTargets]);
 
     useFrame((_state, rawDelta) => {
         const delta = Math.min(rawDelta, 0.1);
-        uGlobalHueShift.value = globalHue;
+        uGlobalHueShift.value = prefersReducedMotion ? 0 : globalHue;
 
-        uTime.value += delta * timeScale;
-        uDeltaTime.value = delta * timeScale;
+        const effectiveTimeScale = prefersReducedMotion ? Math.min(timeScale, 0.35) : timeScale;
+        uTime.value += delta * effectiveTimeScale;
+        uDeltaTime.value = delta * effectiveTimeScale;
     });
 
     return <>
@@ -124,22 +155,47 @@ export function WorldController() {
             <group visible={enableEnv}>
                 <StarrySky />
                 <CosmicSystem />
-                <Terrain />
+                {safariMinimal || grassCompileFailed ? <SafariGround /> : <Terrain />}
             </group>
 
             {/* Major components - toggle visibility instead of unmounting */}
-            <AsyncCompile id="rose" onReady={setComponentReady} debug={debugMode}>
-                <Rose count={2000} visible={enableRose} />
-            </AsyncCompile>
+            {enableRose && (
+                <AsyncCompile
+                    id="rose"
+                    onReady={setComponentReady}
+                    debug={debugMode}
+                    timeout={getRoseCompileTimeoutMs()}
+                >
+                    <Rose count={roseCount} visible={enableRose} />
+                </AsyncCompile>
+            )}
 
-            <AsyncCompile id="grass" onReady={setComponentReady} debug={debugMode}>
-                {enableGrassDebug && <GrassCullingDebug />}
-                {!enableGrassDebug && <GrassWebGPU visible={enableGrass} />}
-            </AsyncCompile>
+            {!safariMinimal && !grassCompileFailed && (
+                <AsyncCompile
+                    id="grass"
+                    onReady={setComponentReady}
+                    onCompileFailed={handleGrassCompileFailed}
+                    debug={debugMode}
+                    timeout={compileTimeout}
+                >
+                    {enableGrassDebug && <GrassCullingDebug />}
+                    {!enableGrassDebug && <GrassWebGPU visible={enableGrass} />}
+                </AsyncCompile>
+            )}
 
-
-            <AsyncCompile id="character" onReady={setComponentReady} debug={debugMode}>
-                <Character position={[0, 0, 0]} scale={1} visible={enableCharacter} />
+            <AsyncCompile
+                id="character"
+                onReady={setComponentReady}
+                debug={debugMode}
+                timeout={compileTimeout}
+            >
+                <Suspense fallback={null}>
+                    <Character
+                        position={[0, 0, 0]}
+                        scale={STORYTAILOR.useJqCharacter ? STORYTAILOR.characterScale : 1}
+                        visible={enableCharacter}
+                    />
+                </Suspense>
             </AsyncCompile>
         </Suspense>
     </>

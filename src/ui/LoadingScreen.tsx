@@ -2,6 +2,7 @@ import { useProgress } from "@react-three/drei";
 import { useEffect, useRef, useState, useMemo } from "react";
 import { useGameStore } from "../core/store/gameStore";
 import { MEADOW_LOGO_ALT, MEADOW_LOGO_PATH, resolveMeadowAsset } from "../config/meadow";
+import { resumeMeadowAudioContext } from "../config/meadowAudio";
 import { prefersReducedMotion } from "../core/utils/reducedMotion";
 import { formatGpuError, getGpuErrorHeadline, getGpuErrorHint } from "../core/utils/gpuError";
 import gsap from "gsap";
@@ -28,6 +29,8 @@ export function LoadingScreen() {
     const activeTargets = useGameStore((state) => state.activeTargets);
     const readyStatus = useGameStore((state) => state.readyStatus);
     const setIsGameStarted = useGameStore((state) => state.setIsGameStarted);
+    const setIsSoundOn = useGameStore((state) => state.setIsSoundOn);
+    const audioListener = useGameStore((state) => state.audioListener);
     const gpuError = useGameStore((state) => state.gpuError);
     const gpuErrorInfo = useMemo(() => formatGpuError(gpuError), [gpuError]);
 
@@ -66,6 +69,10 @@ export function LoadingScreen() {
 
     const handleStart = () => {
         if (!isReadyToStart || gpuError) return;
+
+        // User gesture — unlock AudioContext before BGM mounts after camera intro.
+        resumeMeadowAudioContext(audioListener);
+        setIsSoundOn(true);
         setIsGameStarted(true);
 
         if (containerRef.current) {
