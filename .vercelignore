@@ -1,0 +1,8 @@
+# Heavy meadow assets served from CDN (VITE_MEADOW_ASSET_BASE)
+public/models/*.glb
+public/textures/jq/
+public/textures/jq-lite/
+public/audio/cosmic-lullaby-*.mp3
+public/storytailor-splash.jpg
+public/textures/potsdamer_platz_1k_nb.hdr
+public/vat/
