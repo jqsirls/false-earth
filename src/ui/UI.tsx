@@ -1,13 +1,32 @@
+import { useEffect } from "react";
 import { useGameStore } from "../core/store/gameStore";
+import { useMeadowAuthStore } from "../core/store/meadowAuthStore";
 import { LoadingScreen } from "./LoadingScreen";
+import { MeadowCta } from "./MeadowCta";
+import { LampButton } from "./LampButton";
+import { AuthSheet } from "./AuthSheet";
+import { HueSheet } from "./HueSheet";
+import { ControlsHint } from "./ControlsHint";
 import AudioButton from "./AudioButton";
-import { SideBar } from "./SideBar";
+import { MeadowFooter } from "./MeadowFooter";
+import { LegalModal } from "./LegalModal";
+import { useMeadowOverlayEsc } from "../core/hooks/useMeadowOverlayEsc";
 import { TouchJoystick } from "../core/input/TouchJoystick";
+import { useDoubleTapFlight } from "../core/input/useDoubleTapFlight";
 import { input } from "../core/input/controls";
 
 export function UI() {
     const isMobile = useGameStore((state) => state.isMobile);
     const isControlEnabled = useGameStore((state) => state.isControlEnabled);
+    const hydrateSession = useMeadowAuthStore((state) => state.hydrateSession);
+
+    useDoubleTapFlight();
+
+    useMeadowOverlayEsc();
+
+    useEffect(() => {
+        void hydrateSession();
+    }, [hydrateSession]);
 
     return (
         <div style={{
@@ -20,6 +39,13 @@ export function UI() {
             zIndex: 10 // Ensure UI is above Canvas
         }}>
             <LoadingScreen />
+            <MeadowCta />
+            <LampButton />
+            <AuthSheet />
+            <HueSheet />
+            <ControlsHint />
+            <MeadowFooter />
+            <LegalModal />
 
             <div style={{
                 position: 'absolute',
@@ -31,7 +57,6 @@ export function UI() {
                 transition: `opacity 0.5s ease, visibility 0s linear ${isControlEnabled ? '0s' : '0.5s'}`
             }}>
                 <AudioButton />
-                <SideBar />
 
                 {isMobile &&
                     <TouchJoystick

@@ -1,0 +1,272 @@
+import { useEffect, useRef } from 'react';
+import { useGameStore } from '../core/store/gameStore';
+import { useMeadowUiStore } from '../core/store/meadowUiStore';
+import { useFocusTrap } from '../core/hooks/useFocusTrap';
+import { usePrefersReducedMotion } from '../core/utils/reducedMotion';
+import { LEGAL_MODAL_CONTENT, type LegalModalId } from './legalModalContent';
+import {
+  meadowCrtCss,
+  meadowFocusCss,
+  meadowHudFontFamily,
+  meadowLegalPanelDesktop,
+  meadowLegalPanelMobile,
+  meadowModalTokens,
+  meadowSheetBackdropStyle,
+} from './meadowUiStyles';
+
+function renderParagraph(text: string) {
+  const termsMatch = text.match(/storytailor\.com\/terms/);
+  const privacyMatch = text.match(/storytailor\.com\/privacy/);
+  const mingMatch = text.match(/mingjyunhung\.com/);
+
+  if (termsMatch) {
+    const [before, after] = text.split('storytailor.com/terms');
+    return (
+      <>
+        {before}
+        <a
+          href="https://storytailor.com/terms"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ color: meadowModalTokens.accent, textDecoration: 'underline', textUnderlineOffset: '3px' }}
+        >
+          storytailor.com/terms
+        </a>
+        {after}
+      </>
+    );
+  }
+
+  if (privacyMatch) {
+    const [before, after] = text.split('storytailor.com/privacy');
+    return (
+      <>
+        {before}
+        <a
+          href="https://storytailor.com/privacy"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ color: meadowModalTokens.accent, textDecoration: 'underline', textUnderlineOffset: '3px' }}
+        >
+          storytailor.com/privacy
+        </a>
+        {after}
+      </>
+    );
+  }
+
+  if (mingMatch) {
+    const [before, after] = text.split('mingjyunhung.com');
+    return (
+      <>
+        {before}
+        <a
+          href="https://mingjyunhung.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ color: meadowModalTokens.accent, textDecoration: 'underline', textUnderlineOffset: '3px' }}
+        >
+          mingjyunhung.com
+        </a>
+        {after}
+      </>
+    );
+  }
+
+  if (text.includes('@')) {
+    return (
+      <a
+        href={`mailto:${text}`}
+        style={{ color: meadowModalTokens.accent, textDecoration: 'underline', textUnderlineOffset: '3px' }}
+      >
+        {text}
+      </a>
+    );
+  }
+
+  return text;
+}
+
+export function LegalModal() {
+  const isMobile = useGameStore((state) => state.isMobile);
+  const reducedMotion = usePrefersReducedMotion();
+  const legalModal = useMeadowUiStore((state) => state.legalModal);
+  const closeLegalModal = useMeadowUiStore((state) => state.closeLegalModal);
+  const panelRef = useRef<HTMLElement>(null);
+  const triggerRef = useRef<HTMLElement | null>(null);
+
+  useFocusTrap(Boolean(legalModal), panelRef);
+
+  useEffect(() => {
+    if (legalModal) {
+      triggerRef.current = document.activeElement as HTMLElement | null;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = '';
+        triggerRef.current?.focus?.();
+      };
+    }
+    return undefined;
+  }, [legalModal]);
+
+  if (!legalModal) return null;
+
+  const content = LEGAL_MODAL_CONTENT[legalModal];
+  const panelStyle = isMobile ? meadowLegalPanelMobile : meadowLegalPanelDesktop;
+  const enterAnimation = reducedMotion
+    ? 'meadowLegalFadeIn 160ms ease forwards'
+    : isMobile
+      ? 'meadowLegalSlideUp 220ms ease-out forwards'
+      : 'meadowLegalRiseIn 220ms ease-out forwards';
+
+  return (
+    <>
+      <style>{`${meadowFocusCss}${meadowCrtCss}`}</style>
+
+      <button
+        type="button"
+        aria-label="Close dialog"
+        style={{
+          ...meadowSheetBackdropStyle,
+          border: 'none',
+          padding: 0,
+          cursor: 'default',
+          animation: 'meadowLegalFadeIn 160ms ease forwards',
+        }}
+        onClick={closeLegalModal}
+      />
+
+      <section
+        ref={panelRef}
+        className={`meadow-crt-panel meadow-crt-warmup meadow-focusable ${isMobile ? '' : ''}`}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="meadow-legal-title"
+        tabIndex={-1}
+        style={{
+          ...panelStyle,
+          animation: enterAnimation,
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', marginBottom: '16px' }}>
+          <h2
+            id="meadow-legal-title"
+            className="meadow-crt-title"
+            style={{
+              margin: 0,
+              fontSize: '13px',
+              fontWeight: 700,
+              letterSpacing: '0.14em',
+              textTransform: 'uppercase',
+              fontFamily: meadowHudFontFamily,
+            }}
+          >
+            {content.title}
+            {!reducedMotion && (
+              <span className="meadow-crt-cursor" aria-hidden style={{ marginLeft: '4px', animation: 'meadowBlink 1.2s step-end infinite' }}>
+                ▮
+              </span>
+            )}
+          </h2>
+
+          {isMobile ? (
+            <button
+              type="button"
+              className="meadow-focusable meadow-crt-keycap"
+              aria-label="Close"
+              onClick={closeLegalModal}
+              style={{
+                minWidth: '44px',
+                minHeight: '44px',
+                border: '1px solid rgba(255,255,255,0.22)',
+                borderRadius: '4px',
+                background: 'rgba(0,0,0,0.35)',
+                color: meadowModalTokens.accent,
+                fontFamily: meadowHudFontFamily,
+                fontSize: '0.85rem',
+                cursor: 'pointer',
+              }}
+            >
+              ×
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="meadow-focusable meadow-crt-keycap"
+              onClick={closeLegalModal}
+              style={{
+                border: '1px solid rgba(255,255,255,0.22)',
+                borderRadius: '4px',
+                background: 'rgba(0,0,0,0.35)',
+                color: meadowModalTokens.accent,
+                fontFamily: meadowHudFontFamily,
+                fontSize: '0.65rem',
+                letterSpacing: '0.12em',
+                padding: '6px 10px',
+                cursor: 'pointer',
+              }}
+            >
+              [ ESC ]
+            </button>
+          )}
+        </div>
+
+        {content.lastUpdated ? (
+          <p style={{ margin: '0 0 16px', fontSize: '11px', color: meadowModalTokens.muted, letterSpacing: '0.04em' }}>
+            Last updated: {content.lastUpdated}
+          </p>
+        ) : null}
+
+        <div className={`meadow-modal-scroll ${isMobile ? 'meadow-modal-scroll-mobile' : ''}`}>
+          {content.sections.map((section, sectionIndex) => (
+            <div key={`${content.id}-section-${sectionIndex}`} style={{ marginBottom: '18px' }}>
+              {section.heading ? (
+                <h3
+                  className="meadow-crt-section"
+                  style={{
+                    margin: '0 0 8px',
+                    fontSize: '12px',
+                    fontWeight: 700,
+                    letterSpacing: '0.12em',
+                    textTransform: 'uppercase',
+                    color: meadowModalTokens.muted,
+                    fontFamily: meadowHudFontFamily,
+                  }}
+                >
+                  {section.heading}
+                </h3>
+              ) : null}
+              {section.paragraphs.map((paragraph, paragraphIndex) => (
+                <p
+                  key={`${content.id}-p-${sectionIndex}-${paragraphIndex}`}
+                  style={{
+                    margin: paragraphIndex === section.paragraphs.length - 1 ? 0 : '0 0 12px',
+                    fontSize: '13.5px',
+                    lineHeight: 1.75,
+                    maxWidth: '62ch',
+                    fontFamily: meadowHudFontFamily,
+                  }}
+                >
+                  {renderParagraph(paragraph)}
+                </p>
+              ))}
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <style>{`
+        @keyframes meadowBlink {
+          0%, 49% { opacity: 1; }
+          50%, 100% { opacity: 0; }
+        }
+      `}</style>
+    </>
+  );
+}
+
+export function trackLegalModalOpen(_id: LegalModalId) {
+  if (import.meta.env.DEV) {
+    console.info('[meadow] legal modal open');
+  }
+}

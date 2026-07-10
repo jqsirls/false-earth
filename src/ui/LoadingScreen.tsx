@@ -1,7 +1,7 @@
 import { useProgress } from "@react-three/drei";
 import { useEffect, useRef, useState, useMemo } from "react";
 import { useGameStore } from "../core/store/gameStore";
-import { MEADOW_LOGO_ALT, MEADOW_LOGO_PATH, resolveMeadowAsset } from "../config/meadow";
+import { MEADOW_LOGO_ALT, MEADOW_LOGO_PATH, MEADOW_PLAYLIST_TRACKS, resolveMeadowAsset } from "../config/meadow";
 import { resumeMeadowAudioContext } from "../config/meadowAudio";
 import { prefersReducedMotion } from "../core/utils/reducedMotion";
 import { formatGpuError, getGpuErrorHeadline, getGpuErrorHint } from "../core/utils/gpuError";
@@ -69,6 +69,10 @@ export function LoadingScreen() {
 
     const handleStart = () => {
         if (!isReadyToStart || gpuError) return;
+
+        if (import.meta.env.DEV) {
+            console.info('[meadow] BGM tracks:', MEADOW_PLAYLIST_TRACKS.map((t) => t.url));
+        }
 
         // User gesture — unlock AudioContext before BGM mounts after camera intro.
         resumeMeadowAudioContext(audioListener);

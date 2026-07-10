@@ -1,3 +1,11 @@
+import { AudioLoader } from 'three'
+
+/** Cross-origin anonymous — required when BGM loads from CDN or `/meadow-assets` rewrite. */
+export function configureCdnAudioLoader(loader: AudioLoader): AudioLoader {
+  loader.setCrossOrigin('anonymous')
+  return loader
+}
+
 /** Footstep one-shots ship with the Vercel bundle (not CDN) — same-origin paths only. */
 export const MEADOW_FOOTSTEP_PATHS = [
   '/audio/fs_grass1.mp3',

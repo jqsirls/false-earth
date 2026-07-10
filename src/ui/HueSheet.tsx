@@ -1,7 +1,10 @@
+import { useRef } from 'react';
 import { useGameStore } from '../core/store/gameStore';
 import { useMeadowAuthStore } from '../core/store/meadowAuthStore';
 import { usePrefersReducedMotion } from '../core/utils/reducedMotion';
+import { useFocusTrap } from '../core/hooks/useFocusTrap';
 import {
+  meadowCrtCss,
   meadowFocusCss,
   meadowHudActionStyle,
   meadowHudLabelStyle,
@@ -18,6 +21,9 @@ export function HueSheet() {
   const reducedMotion = usePrefersReducedMotion();
   const isOpen = useMeadowAuthStore((state) => state.isHueSheetOpen);
   const closeHueSheet = useMeadowAuthStore((state) => state.closeHueSheet);
+  const panelRef = useRef<HTMLElement>(null);
+
+  useFocusTrap(isOpen, panelRef);
 
   if (!isOpen) return null;
 
@@ -45,6 +51,7 @@ export function HueSheet() {
     <>
       <style>{`
         ${meadowFocusCss}
+        ${meadowCrtCss}
         @keyframes meadowHueSlideUp {
           from { transform: translateY(8px); opacity: 0; }
           to { transform: translateY(0); opacity: 1; }
@@ -75,14 +82,59 @@ export function HueSheet() {
       />
 
       <section
-        className="meadow-hue-panel meadow-focusable"
+        ref={panelRef}
+        className="meadow-hue-panel meadow-crt-panel meadow-crt-warmup meadow-focusable"
         role="dialog"
         aria-modal="true"
         aria-labelledby="meadow-hue-title"
+        tabIndex={-1}
         style={panelStyle}
       >
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '8px' }}>
+          {!isMobile ? (
+            <button
+              type="button"
+              className="meadow-focusable meadow-crt-keycap"
+              onClick={closeHueSheet}
+              style={{
+                border: '1px solid rgba(255,255,255,0.22)',
+                borderRadius: '4px',
+                background: 'rgba(0,0,0,0.35)',
+                color: '#fff',
+                fontFamily: 'Cousine, monospace',
+                fontSize: '0.65rem',
+                letterSpacing: '0.12em',
+                padding: '6px 10px',
+                cursor: 'pointer',
+              }}
+            >
+              [ ESC ]
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="meadow-focusable"
+              aria-label="Close"
+              onClick={closeHueSheet}
+              style={{
+                minWidth: '44px',
+                minHeight: '44px',
+                border: '1px solid rgba(255,255,255,0.22)',
+                borderRadius: '4px',
+                background: 'rgba(0,0,0,0.35)',
+                color: '#fff',
+                fontFamily: 'Cousine, monospace',
+                cursor: 'pointer',
+              }}
+            >
+              ×
+            </button>
+          )}
+        </div>
+
         <h2
           id="meadow-hue-title"
+          className="meadow-crt-title"
           style={{
             margin: '0 0 6px',
             fontSize: '0.85rem',

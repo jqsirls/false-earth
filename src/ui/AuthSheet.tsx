@@ -1,9 +1,11 @@
-import { useEffect, useState, type CSSProperties, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type FormEvent } from 'react';
 import { useGameStore } from '../core/store/gameStore';
 import { useMeadowAuthStore } from '../core/store/meadowAuthStore';
 import { signIn, signUp } from '../api/meadowAuthApi';
 import { usePrefersReducedMotion } from '../core/utils/reducedMotion';
+import { useFocusTrap } from '../core/hooks/useFocusTrap';
 import {
+  meadowCrtCss,
   meadowFocusCss,
   meadowHudActionStyle,
   meadowHudInputStyle,
@@ -29,6 +31,9 @@ export function AuthSheet() {
   const [password, setPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const panelRef = useRef<HTMLElement>(null);
+
+  useFocusTrap(isOpen, panelRef);
 
   useEffect(() => {
     if (!isOpen) {
@@ -85,6 +90,7 @@ export function AuthSheet() {
     <>
       <style>{`
         ${meadowFocusCss}
+        ${meadowCrtCss}
         @keyframes meadowSlideUp {
           from { transform: translateY(8px); opacity: 0; }
           to { transform: translateY(0); opacity: 1; }
@@ -115,14 +121,59 @@ export function AuthSheet() {
       />
 
       <section
-        className="meadow-sheet-panel meadow-focusable"
+        ref={panelRef}
+        className="meadow-sheet-panel meadow-crt-panel meadow-crt-warmup meadow-focusable"
         role="dialog"
         aria-modal="true"
         aria-labelledby="meadow-auth-title"
+        tabIndex={-1}
         style={panelStyle}
       >
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '8px' }}>
+          {!isMobile ? (
+            <button
+              type="button"
+              className="meadow-focusable meadow-crt-keycap"
+              onClick={closeAuthSheet}
+              style={{
+                border: '1px solid rgba(255,255,255,0.22)',
+                borderRadius: '4px',
+                background: 'rgba(0,0,0,0.35)',
+                color: '#fff',
+                fontFamily: 'Cousine, monospace',
+                fontSize: '0.65rem',
+                letterSpacing: '0.12em',
+                padding: '6px 10px',
+                cursor: 'pointer',
+              }}
+            >
+              [ ESC ]
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="meadow-focusable"
+              aria-label="Close"
+              onClick={closeAuthSheet}
+              style={{
+                minWidth: '44px',
+                minHeight: '44px',
+                border: '1px solid rgba(255,255,255,0.22)',
+                borderRadius: '4px',
+                background: 'rgba(0,0,0,0.35)',
+                color: '#fff',
+                fontFamily: 'Cousine, monospace',
+                cursor: 'pointer',
+              }}
+            >
+              ×
+            </button>
+          )}
+        </div>
+
         <h2
           id="meadow-auth-title"
+          className="meadow-crt-title"
           style={{
             margin: '0 0 6px',
             fontSize: '0.85rem',
