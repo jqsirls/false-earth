@@ -1,7 +1,7 @@
 {
   "name": "Booster's Meadow",
   "short_name": "Meadow",
-  "description": "A calm meadow experience from Storytailor. Wander with Booster, then press start when you are ready.",
+  "description": "A quiet meadow refuge from Storytailor. Wander with Booster through a calm cosmic moment, then press start when you are ready.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0A0D14",
