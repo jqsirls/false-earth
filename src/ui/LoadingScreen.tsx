@@ -39,6 +39,7 @@ export function LoadingScreen() {
     const [isVisible, setIsVisible] = useState(true);
     const containerRef = useRef<HTMLDivElement>(null);
     const animationRef = useRef<gsap.core.Tween | null>(null);
+    const hasStartedRef = useRef(false);
 
     const total = activeTargets.length;
     const loaded = activeTargets.filter((id) => readyStatus[id]).length;
@@ -73,7 +74,8 @@ export function LoadingScreen() {
     }, [active, loaded, total, gpuError]);
 
     const handleStart = () => {
-        if (!isReadyToStart || gpuError) return;
+        if (!isReadyToStart || gpuError || hasStartedRef.current) return;
+        hasStartedRef.current = true;
 
         if (import.meta.env.DEV) {
             console.info('[meadow] BGM tracks:', MEADOW_PLAYLIST_TRACKS.map((t) => t.url));

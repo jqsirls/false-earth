@@ -13,6 +13,8 @@ class MeadowBgmPlayer {
   private started = false
   private muted = false
   private prepared = false
+  private pendingCanPlay: (() => void) | null = null
+  private playGeneration = 0
 
   constructor(urls: readonly string[]) {
     this.urls = urls
@@ -51,46 +53,86 @@ class MeadowBgmPlayer {
     this.playIndex(0)
   }
 
+  stop(): void {
+    this.started = false
+    this.clearPendingCanPlay()
+    this.playGeneration += 1
+    this.audio.pause()
+    this.audio.currentTime = 0
+    this.audio.removeAttribute('src')
+    this.audio.load()
+    this.prepared = false
+  }
+
   setMuted(muted: boolean): void {
     this.muted = muted
     this.audio.muted = muted
   }
 
-  private playIndex(nextIndex: number): void {
-    if (this.urls.length === 0) return
+  private resolveSrc(url: string): string {
+    return new URL(url, window.location.origin).href
+  }
 
-    this.index = ((nextIndex % this.urls.length) + this.urls.length) % this.urls.length
-    const url = this.urls[this.index]!
+  private clearPendingCanPlay(): void {
+    if (!this.pendingCanPlay) return
+    this.audio.removeEventListener('canplay', this.pendingCanPlay)
+    this.pendingCanPlay = null
+  }
+
+  private playIndex(nextIndex: number): void {
+    if (this.urls.length === 0 || !this.started) return
+
+    this.clearPendingCanPlay()
+    this.audio.pause()
+
+    const targetIndex = ((nextIndex % this.urls.length) + this.urls.length) % this.urls.length
+    const url = this.urls[targetIndex]!
+    const resolvedSrc = this.resolveSrc(url)
+    const needsLoad = this.audio.src !== resolvedSrc
+    const generation = ++this.playGeneration
+
+    this.index = targetIndex
 
     const beginPlay = () => {
+      if (!this.started || generation !== this.playGeneration || this.index !== targetIndex) {
+        return
+      }
+
       this.audio.muted = this.muted
       const playPromise = this.audio.play()
-      if (playPromise) {
-        void playPromise
-          .then(() => {
-            console.info(`${LOG_PREFIX} playing`, url)
-          })
-          .catch((err: unknown) => {
-            console.error(`${LOG_PREFIX} play() rejected for`, url, err)
-            if (this.started) this.playIndex(this.index + 1)
-          })
-      }
+      if (!playPromise) return
+
+      void playPromise
+        .then(() => {
+          if (generation !== this.playGeneration) return
+          console.info(`${LOG_PREFIX} playing`, url)
+        })
+        .catch((err: unknown) => {
+          console.error(`${LOG_PREFIX} play() rejected for`, url, err)
+          if (this.started && generation === this.playGeneration) {
+            this.playIndex(this.index + 1)
+          }
+        })
     }
 
-    if (this.audio.src !== new URL(url, window.location.origin).href) {
+    if (needsLoad) {
       this.audio.src = url
       this.audio.load()
     }
 
-    if (this.audio.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA) {
+    // Only trust readyState when we did not just call load() — load() is async and
+    // the previous track's readyState would otherwise trigger a duplicate play().
+    if (!needsLoad && this.audio.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA) {
       beginPlay()
       return
     }
 
     const onCanPlay = () => {
-      this.audio.removeEventListener('canplay', onCanPlay)
+      this.clearPendingCanPlay()
       beginPlay()
     }
+
+    this.pendingCanPlay = onCanPlay
     this.audio.addEventListener('canplay', onCanPlay)
   }
 }
@@ -110,6 +152,10 @@ export function prepareMeadowBgm(): void {
 
 export function startMeadowBgm(): void {
   getPlayer().start()
+}
+
+export function stopMeadowBgm(): void {
+  getPlayer().stop()
 }
 
 export function setMeadowBgmMuted(muted: boolean): void {

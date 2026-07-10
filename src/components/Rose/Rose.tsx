@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo } from "react";
 import * as THREE from "three/webgpu";
 import { AsyncCompile } from "@core";
 import { useGameStore } from "../../core/store/gameStore";
@@ -12,17 +12,6 @@ import type { RoseLODConfig } from "./core/config";
 import { getRoseCompileTimeoutMs } from "../../core/utils/browserCaps";
 
 import { gameEvents } from "../../core/events";
-
-const INITIAL_SPAWN_GRID: Array<[number, number]> = [
-  [0, 0],
-  [6, 4],
-  [-5, 7],
-  [8, -6],
-  [-7, -5],
-  [12, 0],
-  [-10, 3],
-  [4, -11],
-];
 
 export default function Rose({
     count,
@@ -39,7 +28,6 @@ export default function Rose({
 }) {
     const characterRef = useGameStore((state) => state.characterRef)
     const characterPos = useMemo(() => new THREE.Vector3(), [])
-    const hasSeededField = useRef(false)
 
     const { uniforms, config } = useRoseUniforms()
     const { lodBuffers, isLoading } = useRoseLODLoader(count, lodConfig)
@@ -66,29 +54,6 @@ export default function Rose({
         gameEvents.on('beam:hit', onHit);
         return () => gameEvents.off('beam:hit', onHit);
     }, [spawn]);
-
-    useEffect(() => {
-        if (hasSeededField.current || isLoading || !lodBuffers.length || !vatData) return;
-
-        hasSeededField.current = true;
-
-        const seedAt = (x: number, z: number) => {
-            spawn(new THREE.Vector3(x, 0, z), 256, 14);
-        };
-
-        const timers: number[] = [];
-        INITIAL_SPAWN_GRID.forEach(([x, z], index) => {
-            if (index === 0) {
-                seedAt(x, z);
-            } else {
-                timers.push(window.setTimeout(() => seedAt(x, z), index * 120));
-            }
-        });
-
-        return () => {
-            timers.forEach((timer) => window.clearTimeout(timer));
-        };
-    }, [isLoading, lodBuffers.length, vatData, spawn]);
 
     if (isLoading || !lodBuffers.length || !vatData) return null
 
