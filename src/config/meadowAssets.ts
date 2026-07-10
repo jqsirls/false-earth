@@ -3,15 +3,18 @@
  * to avoid circular-init crashes in production bundles.
  */
 
-const configuredBase =
-  (import.meta.env.VITE_MEADOW_ASSET_BASE as string | undefined)?.replace(/\/$/, '') ?? '';
+const rawBase = (import.meta.env.VITE_MEADOW_ASSET_BASE as string | undefined)?.trim() ?? '';
+const configuredBase = rawBase.replace(/\/$/, '');
+
+/** Direct CDN — `/meadow-assets` Vercel rewrite can serve corrupt edge-cached bodies for large MP3s. */
+const PRODUCTION_CDN_BASE = 'https://assets.storytailor.dev/meadow';
 
 /**
- * Production ships heavy assets via Vercel rewrite `/meadow-assets/*` → CDN.
+ * Production loads heavy assets from CDN (CORS-enabled for booster.storytailor.com).
  * Local dev leaves the base empty so `public/` is used on localhost.
  */
 export const MEADOW_ASSET_BASE =
-  configuredBase || (import.meta.env.PROD ? '/meadow-assets' : '');
+  configuredBase || (import.meta.env.PROD ? PRODUCTION_CDN_BASE : '');
 
 /** Resolve a `/public/…` path against MEADOW_ASSET_BASE when set. */
 export function resolveMeadowAsset(path: string): string {

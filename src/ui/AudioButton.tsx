@@ -12,6 +12,7 @@ import { MEADOW_AMBIENT_TRACKS, MEADOW_WIND_DUCK_MULTIPLIER } from '../config/me
 export default function AudioButton() {
     const listener = useGameStore(s => s.audioListener);
     const isControlEnabled = useGameStore((state) => state.isControlEnabled);
+    const isGameStarted = useGameStore((state) => state.isGameStarted);
     const isSoundOn = useGameStore((state) => state.isSoundOn);
     const setIsSoundOn = useGameStore((state) => state.setIsSoundOn);
     const meadowBgmPlaying = useGameStore((state) => state.meadowBgmPlaying);
@@ -33,8 +34,9 @@ export default function AudioButton() {
     }, [setMeadowBgmPlaying]);
 
     useEffect(() => {
+        if (!isGameStarted) return;
         setMeadowBgmMuted(!isSoundOn);
-    }, [isSoundOn]);
+    }, [isSoundOn, isGameStarted]);
 
     const windVolumeScale =
         isSoundOn && meadowBgmPlaying ? MEADOW_WIND_DUCK_MULTIPLIER : 1;

@@ -81,7 +81,11 @@ class MeadowBgmPlayer {
       'error',
       () => {
         console.error(`${LOG_PREFIX} prepare failed for`, url)
-        markReady()
+        if (!this.firstTrackReady) {
+          this.firstTrackReady = true
+          this.prepareResolve?.()
+          this.prepareResolve = null
+        }
       },
       { once: true },
     )
