@@ -1,5 +1,6 @@
 import { struct } from 'three/tsl'
 import type { VATLODConfig, VATLODBufferConfig } from '@core'
+import { resolveMeadowAsset } from '../../../config/meadow'
 
 // Rose-specific aliases over shared VAT LOD types
 export type RoseLODConfig = VATLODConfig
@@ -27,13 +28,13 @@ export const roseVatStructure = struct({
 
 export const DEFAULT_ROSE_LOD_CONFIG: RoseLODConfig[] = [
   {
-    metaPath: '/vat/Rose_meta.json',
+    metaPath: resolveMeadowAsset('/vat/Rose_meta.json'),
     minDistance: 0,
     maxDistance: 5,
     debugColor: [1, 0, 0],
   },
   {
-    metaPath: '/vat/RoseLowPoly_meta.json',
+    metaPath: resolveMeadowAsset('/vat/RoseLowPoly_meta.json'),
     minDistance: 5,
     maxDistance: Infinity,
     debugColor: [0, 1, 0],
@@ -41,7 +42,7 @@ export const DEFAULT_ROSE_LOD_CONFIG: RoseLODConfig[] = [
 ]
 
 export const ROSE_TEXTURES = {
-  petal: '/textures/Rose/Rose_Petal_Diff.ktx2',
-  outline: '/textures/Rose/Rose_Outline.ktx2',
-  normal: '/textures/Rose/Rose_Petal_Normal.ktx2',
+  petal: resolveMeadowAsset('/textures/Rose/Rose_Petal_Diff.ktx2'),
+  outline: resolveMeadowAsset('/textures/Rose/Rose_Outline.ktx2'),
+  normal: resolveMeadowAsset('/textures/Rose/Rose_Petal_Normal.ktx2'),
 }

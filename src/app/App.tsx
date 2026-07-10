@@ -13,36 +13,71 @@ import { WorldController } from "../components/WorldController";
 import { createContext } from "react";
 import * as THREE from "three/webgpu";
 import { input, keyBindings } from "../core/input/controls";
-import { useShortcut } from "@core/hooks/useShortcut";
-import { AudioLoader } from 'three';
+import { AudioLoader, TextureLoader } from 'three';
 import { ROSE_TEXTURES } from "../components/Rose/core/config";
 import { BODY_TEXTURE_PATHS, DETAIL_TEXTURE_PATHS, MODEL_PATHS } from '../components/character/config';
+import { JQ_LOCOMOTION_ANIM_PATHS, getJqPartTexturePaths } from '../components/character/jqConfig';
+import { STORYTAILOR } from '../config/storytailor';
+import { CanvasErrorBoundary } from './CanvasErrorBoundary';
+import { getInitialDpr, shouldPreloadVatRoses } from '../core/utils/browserCaps';
+import { MEADOW_PLAYLIST_TRACKS, resolveMeadowAsset } from '../config/meadow';
+import { configureCdnTextureLoader } from '../core/utils/cdnTextureLoader';
 
+function attachGpuDeviceLostHandler(
+    renderer: WebGPURenderer,
+    onLost: (message: string) => void,
+): void {
+    const backend = (renderer as unknown as { backend?: { device?: GPUDevice } }).backend;
+    const device = backend?.device;
+    if (!device?.lost) return;
 
-useLoader.preload(AudioLoader,
-    ['/audio/fs_grass1.mp3',
-        '/audio/fs_grass2.mp3',
-        '/audio/fs_grass3.mp3',
-        '/audio/fs_grass4.mp3',
-        '/audio/fs_grass5.mp3']);
+    void device.lost.then((info) => {
+        onLost(info.message || 'GPU device lost — reload this page');
+    });
+}
 
-useLoader.preload(AudioLoader, ['/audio/wave01.mp3']);
+function collectJqTexturePaths(): string[] {
+    const paths = new Set<string>();
 
-useGLTF.preload(MODEL_PATHS);
+    for (const part of ['astroboy_f', 'jumper', 'strap', 'glove', 'pack', 'boots'] as const) {
+        const tex = getJqPartTexturePaths(part);
+        paths.add(tex.map);
+        paths.add(tex.normalMap);
+        paths.add(tex.roughnessMap);
+        paths.add(tex.metalnessMap);
+        if (tex.emissiveMap) paths.add(tex.emissiveMap);
+        if (tex.alphaMap) paths.add(tex.alphaMap);
+    }
 
-preloadVATAssets('/vat/Rose_meta.json');
-preloadVATAssets('/vat/RoseLowPoly_meta.json');
+    return [...paths];
+}
+
+useLoader.preload(AudioLoader, MEADOW_PLAYLIST_TRACKS.map((track) => track.url));
+
+useGLTF.preload(
+  STORYTAILOR.useJqCharacter
+    ? [STORYTAILOR.characterModel, ...JQ_LOCOMOTION_ANIM_PATHS]
+    : MODEL_PATHS,
+);
+
+if (STORYTAILOR.useJqCharacter) {
+  useLoader.preload(TextureLoader, collectJqTexturePaths(), configureCdnTextureLoader);
+}
+
+if (shouldPreloadVatRoses()) {
+  preloadVATAssets(resolveMeadowAsset('/vat/Rose_meta.json'));
+  preloadVATAssets(resolveMeadowAsset('/vat/RoseLowPoly_meta.json'));
+}
 
 export const BeamSceneContext = createContext<THREE.Scene | null>(null);
 
 export default function App() {
     const beamScene = useMemo(() => new THREE.Scene(), []);
-    const [dpr, setDpr] = useState(1.5);
+    const [dpr, setDpr] = useState(getInitialDpr);
 
-    const toggleCameraMode = useGameStore((state) => state.toggleCameraMode);
-    const setGpuError = useGameStore((state) => state.setGpuError);
     const setAudioListener = useGameStore((state) => state.setAudioListener);
     const gpuError = useGameStore((state) => state.gpuError);
+    const setGpuError = useGameStore((state) => state.setGpuError);
 
     // Check WebGPU support on mount
     useEffect(() => {
@@ -69,10 +104,6 @@ export default function App() {
         checkWebGPU();
     }, [setGpuError]);
 
-    useShortcut('c', () => {
-        toggleCameraMode();
-    });
-
     return <>
         <LevaWrapper collapsed={true} initialHidden={true} />
         <DeviceDetector />
@@ -81,6 +112,7 @@ export default function App() {
 
 
         {!gpuError && (
+            <CanvasErrorBoundary>
             <Canvas
                 camera={{
                     fov: 45,
@@ -91,7 +123,7 @@ export default function App() {
                 gl={(canvas) => {
                     const renderer = new WebGPURenderer({
                         ...canvas as any,
-                        powerPreference: "high-performance",
+                        powerPreference: 'high-performance',
                         antialias: true,
                         alpha: true,
                     });
@@ -100,14 +132,35 @@ export default function App() {
                     // renderer.inspector = new Inspector();
                     renderer.sortObjects = false;
 
-                    return renderer.init().then(() => renderer);
+                    const canvasEl = renderer.domElement;
+                    const onContextLost = (event: Event) => {
+                        event.preventDefault();
+                        setGpuError('GPU MEMORY EXCEEDED — reload on a smaller display or use Chrome');
+                    };
+                    canvasEl.addEventListener('webglcontextlost', onContextLost);
+
+                    return renderer.init().then(() => {
+                        attachGpuDeviceLostHandler(renderer, (message) => {
+                            setGpuError(`GPU LOST — ${message}`);
+                        });
+                        return renderer;
+                    }).catch((err: unknown) => {
+                        const message = err instanceof Error ? err.message : String(err);
+                        console.error('WebGPU renderer init failed:', err);
+                        setGpuError(`GPU INIT FAILED — ${message}`);
+                        throw err;
+                    });
                 }}
                 dpr={dpr}
             >
                 <Suspense fallback={null}>
-                    <KTX2Preloader paths={ROSE_TEXTURES} />
-                    <KTX2Preloader paths={BODY_TEXTURE_PATHS} />
-                    <KTX2Preloader paths={DETAIL_TEXTURE_PATHS} />
+                    {shouldPreloadVatRoses() && <KTX2Preloader paths={ROSE_TEXTURES} />}
+                    {!STORYTAILOR.useJqCharacter && (
+                      <>
+                        <KTX2Preloader paths={BODY_TEXTURE_PATHS} />
+                        <KTX2Preloader paths={DETAIL_TEXTURE_PATHS} />
+                      </>
+                    )}
                 </Suspense>
 
                 <AudioManager onListenerCreated={setAudioListener} />
@@ -116,9 +169,8 @@ export default function App() {
                     bounds={() => [28, 32]}
                     onFallback={() => setDpr(1)}
                     onChange={({ factor }) => {
-                        const targetDpr = 1 + 1 * factor;
+                        const targetDpr = 1 + factor;
                         setDpr(targetDpr);
-                        // console.log("factor", factor, "target DPR", targetDpr);
                     }}
                 />
 
@@ -129,7 +181,7 @@ export default function App() {
                         <color attach="background" args={['#000000']} />
                         <CameraViewControl />
                         <Environment
-                            files="/textures/potsdamer_platz_1k_nb.hdr"
+                            files={resolveMeadowAsset('/textures/potsdamer_platz_1k_nb.hdr')}
                             environmentIntensity={0.5}
                         />
                         <DirectionalLight />
@@ -137,6 +189,7 @@ export default function App() {
                     </Suspense>
                 </BeamSceneContext.Provider>
             </Canvas>
+            </CanvasErrorBoundary>
         )}
     </>
 }
