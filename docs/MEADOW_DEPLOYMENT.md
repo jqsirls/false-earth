@@ -31,7 +31,9 @@ Large binaries should **not** ship inside the Vercel deployment if avoidable —
 |----------|-------|-------|
 | `VITE_BASE_PATH` | `/` | Absolute asset URLs for root-domain deploy |
 | `VITE_MEADOW_ASSET_BASE` | `https://assets.storytailor.dev/meadow` | No trailing slash |
-| `VITE_MEADOW_AUTH_URL` | `https://lendybmmnlqelrhkhdyc.supabase.co/functions/v1/meadow-auth` | After P2 backend ships |
+| `VITE_MEADOW_AUTH_URL` | `https://lendybmmnlqelrhkhdyc.supabase.co/functions/v1/meadow-auth` | Edge OTP proxy (live; `MEADOW_AUTH_ENABLED` must be `true` on Supabase) |
+| `VITE_SUPABASE_URL` | `https://lendybmmnlqelrhkhdyc.supabase.co` | Optional direct client OTP path (future) |
+| `VITE_SUPABASE_ANON_KEY` | Storytailor anon key | Optional direct client OTP — **never** service role |
 | `VITE_MEADOW_ANALYTICS_URL` | *(optional)* | Empty = console-only analytics |
 
 **Local dev** leaves `VITE_MEADOW_ASSET_BASE` unset so assets load from `public/` on `https://localhost:5173`.
@@ -178,7 +180,7 @@ npm run dev
 
 ## 5. Related docs
 
-- `docs/MEADOW_IDENTITY_BACKEND_ASK.md` — Supabase OTP + Memberstack enrichment (pending approval)
+- `docs/MEADOW_IDENTITY_BACKEND_ASK.md` — Supabase OTP + Memberstack enrichment (**approved**; edge functions deployed 2026-07-10)
 - `docs/MEADOW_BACKEND_ASK_P2.md` — **superseded** password bridge
 - `docs/MEADOW_MODALS_REVIEW.md` — legal footer/modal PRD review
 - `STORYTAILOR_README.md` — JQ pipeline, local dev, upstream attribution

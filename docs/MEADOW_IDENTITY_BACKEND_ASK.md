@@ -1,6 +1,6 @@
 # Meadow Backend Ask — Identity (Supabase OTP + Memberstack enrichment)
 
-**Status:** PENDING APPROVAL  
+**Status:** APPROVED — edge functions deployed 2026-07-10 (`MEADOW_AUTH_ENABLED` still `false` until inbox proof)  
 **Supersedes:** `docs/MEADOW_BACKEND_ASK_P2.md` (Memberstack password bridge — **SUPERSEDED**)  
 **Hosting:** Experience at `https://booster.storytailor.com`; assets at `https://assets.storytailor.dev/meadow/` (see `docs/MEADOW_DEPLOYMENT.md`).  
 **Authority:** `docs/MEADOW_IDENTITY_PRD.md`  
@@ -198,12 +198,82 @@ VITE_SUPABASE_ANON_KEY=<anon-key>
 
 ## Approval checklist
 
-- [ ] Product approves `docs/MEADOW_IDENTITY_PRD.md` architecture
+- [x] Product approves `docs/MEADOW_IDENTITY_PRD.md` architecture (2026-07-10)
 - [ ] Memberstack Admin secret + webhook secret provisioned (server only)
 - [ ] Supabase OTP email template branded (hello@ or booster@ — open question §8.2)
 - [ ] Day-one sandbox write-through test passed
 - [ ] `MEADOW_AUTH_ENABLED=true` only after staging curl + inbox proof (AC1)
 - [ ] Human sets `STORYTAILOR_ALLOW_BACKEND_CHANGE` for implementing commit
+
+---
+
+## Implementation status (2026-07-10)
+
+| Artifact | Location | Deployed |
+|----------|----------|----------|
+| `meadow-auth` | `supabase/functions/meadow-auth/` | ✅ `lendybmmnlqelrhkhdyc` (kill switch default OFF → **503**) |
+| `meadow-enrich` | `supabase/functions/meadow-enrich/` | ✅ JWT-gated; returns **401** without user session |
+| `meadow-memberstack-webhook` | `supabase/functions/meadow-memberstack-webhook/` | ✅ returns **503** until `MEMBERSTACK_WEBHOOK_SECRET` set |
+| Webhook idempotency table | `public.meadow_webhook_events` | ✅ applied to prod |
+
+**Live curl proof (2026-07-10):**
+
+```bash
+# Kill switch (deployed, default OFF)
+curl -s -o /dev/null -w "%{http_code}" -X POST \
+  "https://lendybmmnlqelrhkhdyc.supabase.co/functions/v1/meadow-auth" \
+  -H 'Content-Type: application/json' \
+  -d '{"action":"sendOtp","email":"test@example.com"}'
+# → 503
+
+# CORS preflight for booster origin
+curl -s -o /dev/null -w "%{http_code}" -X OPTIONS \
+  "https://lendybmmnlqelrhkhdyc.supabase.co/functions/v1/meadow-auth" \
+  -H 'Origin: https://booster.storytailor.com' \
+  -H 'Access-Control-Request-Method: POST'
+# → 204
+```
+
+### Supabase edge secrets (set via Dashboard → Edge Functions → Secrets or `supabase secrets set`)
+
+| Secret | Required for | Notes |
+|--------|--------------|-------|
+| `SUPABASE_URL` | all | Auto-injected by Supabase |
+| `SUPABASE_ANON_KEY` | `meadow-auth` | Auto-injected |
+| `SUPABASE_SERVICE_ROLE_KEY` | enrich + webhook | Auto-injected |
+| `MEMBERSTACK_SECRET_KEY` | enrich write-through | **Owner must set** — never client-side |
+| `MEMBERSTACK_WEBHOOK_SECRET` | webhook | **Owner must set** — Svix signing secret from Memberstack dashboard |
+| `MEADOW_AUTH_ENABLED` | auth proxy | Default `false`; set `true` after AC1 inbox proof |
+| `ENRICHMENT_ENABLED` | enrich | Default `true` |
+| `WRITETHROUGH_ENABLED` | enrich | Default `true`; disable if day-one sandbox test fails |
+
+```bash
+supabase secrets set \
+  MEMBERSTACK_SECRET_KEY="sk_..." \
+  MEMBERSTACK_WEBHOOK_SECRET="whsec_..." \
+  MEADOW_AUTH_ENABLED="false" \
+  ENRICHMENT_ENABLED="true" \
+  WRITETHROUGH_ENABLED="true" \
+  --project-ref lendybmmnlqelrhkhdyc
+```
+
+### Vercel env (`booster-meadow` project)
+
+| Variable | Production value |
+|----------|------------------|
+| `VITE_MEADOW_AUTH_URL` | `https://lendybmmnlqelrhkhdyc.supabase.co/functions/v1/meadow-auth` |
+| `VITE_SUPABASE_URL` | `https://lendybmmnlqelrhkhdyc.supabase.co` |
+| `VITE_SUPABASE_ANON_KEY` | Storytailor anon key (publishable; never service role) |
+
+Keep `?meadow-auth-mock=1` for local UI work until `MEADOW_AUTH_ENABLED=true`.
+
+### Memberstack dashboard (owner)
+
+1. **Admin secret** → Supabase secret `MEMBERSTACK_SECRET_KEY`
+2. **Webhook endpoint** → `https://lendybmmnlqelrhkhdyc.supabase.co/functions/v1/meadow-memberstack-webhook`
+3. **Events:** `member.updated`, `member.deleted`
+4. **Signing secret** → `MEMBERSTACK_WEBHOOK_SECRET`
+5. **Day-one sandbox test** (PRD §2.4): create member via Admin REST + passwordless login before enabling `WRITETHROUGH_ENABLED` in prod
 
 ---
 
