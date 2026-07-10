@@ -28,7 +28,6 @@ import { STORYTAILOR } from '../config/storytailor';
 import { GrassCullingDebug } from '../debug/GrassCullingDebug';
 import {
     getDefaultCompileTimeoutMs,
-    getRoseCompileTimeoutMs,
     getRoseInstanceCount,
     getSafariCompileTimeoutMs,
     isSafari,
@@ -160,14 +159,12 @@ export function WorldController() {
 
             {/* Major components - toggle visibility instead of unmounting */}
             {enableRose && (
-                <AsyncCompile
-                    id="rose"
-                    onReady={setComponentReady}
-                    debug={debugMode}
-                    timeout={getRoseCompileTimeoutMs()}
-                >
-                    <Rose count={roseCount} visible={enableRose} />
-                </AsyncCompile>
+                <Rose
+                    count={roseCount}
+                    visible={enableRose}
+                    onCompileReady={setComponentReady}
+                    compileDebug={debugMode}
+                />
             )}
 
             {!safariMinimal && !grassCompileFailed && (
