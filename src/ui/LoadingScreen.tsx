@@ -3,7 +3,7 @@ import { useEffect, useRef, useState, useMemo } from "react";
 import { useGameStore } from "../core/store/gameStore";
 import { MEADOW_LOGO_ALT, MEADOW_LOGO_PATH, MEADOW_PLAYLIST_TRACKS, resolveMeadowAsset } from "../config/meadow";
 import { resumeMeadowAudioContext } from "../config/meadowAudio";
-import { startMeadowBgm, setMeadowBgmMuted } from "../audio/meadowBgmPlayer";
+import { prepareMeadowBgm, startMeadowBgm, setMeadowBgmMuted } from "../audio/meadowBgmPlayer";
 import { prefersReducedMotion } from "../core/utils/reducedMotion";
 import { formatGpuError, getGpuErrorHeadline, getGpuErrorHint } from "../core/utils/gpuError";
 import gsap from "gsap";
@@ -52,6 +52,10 @@ export function LoadingScreen() {
     const reduceMotion = prefersReducedMotion();
 
     useEffect(() => {
+        prepareMeadowBgm();
+    }, []);
+
+    useEffect(() => {
         if (gpuError) {
             setIsReadyToStart(false);
             setIsVisible(true);
@@ -75,23 +79,26 @@ export function LoadingScreen() {
             console.info('[meadow] BGM tracks:', MEADOW_PLAYLIST_TRACKS.map((t) => t.url));
         }
 
-        // User gesture — unlock Web Audio (footsteps) and start HTML5 BGM immediately.
-        resumeMeadowAudioContext(audioListener);
-        startMeadowBgm();
-        setMeadowBgmMuted(false);
-        setIsSoundOn(true);
-        setIsGameStarted(true);
+        const fadeOut = () => {
+            if (containerRef.current) {
+                animationRef.current = gsap.to(containerRef.current, {
+                    opacity: 0,
+                    duration: 0.9,
+                    ease: "power2.inOut",
+                    onComplete: () => setIsVisible(false),
+                });
+            } else {
+                setIsVisible(false);
+            }
+        };
 
-        if (containerRef.current) {
-            animationRef.current = gsap.to(containerRef.current, {
-                opacity: 0,
-                duration: 0.9,
-                ease: "power2.inOut",
-                onComplete: () => setIsVisible(false),
-            });
-        } else {
-            setIsVisible(false);
-        }
+        void resumeMeadowAudioContext(audioListener).then(() => {
+            startMeadowBgm();
+            setMeadowBgmMuted(false);
+            setIsSoundOn(true);
+            setIsGameStarted(true);
+            fadeOut();
+        });
     };
 
     useEffect(() => {

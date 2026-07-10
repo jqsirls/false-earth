@@ -1,5 +1,5 @@
 import { AudioLoader } from 'three'
-import { AudioContext as ThreeAudioContext } from 'three'
+import { AudioContext as ThreeAudioContext } from 'three/webgpu'
 
 /** Cross-origin anonymous — required when audio loads from CDN or `/meadow-assets` rewrite. */
 export function configureCdnAudioLoader(loader: AudioLoader): AudioLoader {
@@ -17,8 +17,10 @@ export const MEADOW_FOOTSTEP_PATHS = [
 ] as const
 
 /** Resume Web Audio on a user gesture — required before footsteps can play. */
-export function resumeMeadowAudioContext(listener?: { context: AudioContext } | null): void {
+export async function resumeMeadowAudioContext(
+  listener?: { context: AudioContext } | null,
+): Promise<void> {
   const ctx = listener?.context ?? ThreeAudioContext.getContext()
   if (!ctx || ctx.state !== 'suspended') return
-  void ctx.resume().catch(() => {})
+  await ctx.resume().catch(() => {})
 }

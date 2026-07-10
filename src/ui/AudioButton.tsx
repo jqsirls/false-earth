@@ -18,8 +18,9 @@ export default function AudioButton() {
     const size = 45;
 
     const toggleBgm = () => {
-        resumeMeadowAudioContext(listener);
-        setIsSoundOn(!isSoundOn);
+        void resumeMeadowAudioContext(listener).then(() => {
+            setIsSoundOn(!isSoundOn);
+        });
     };
 
     useShortcut('m', toggleBgm);
