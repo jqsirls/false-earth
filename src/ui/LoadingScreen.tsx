@@ -122,20 +122,12 @@ export function LoadingScreen() {
                     backgroundRepeat: 'no-repeat',
                 }}
             />
-            <div
-                aria-hidden
-                style={{
-                    position: 'absolute',
-                    inset: 0,
-                    background: 'linear-gradient(180deg, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.55) 45%, rgba(0,0,0,0.72) 100%)',
-                }}
-            />
-
             <header style={{
                 position: 'relative',
                 textAlign: 'center',
                 maxWidth: '440px',
                 padding: '24px',
+                textShadow: '0 1px 12px rgba(0,0,0,0.65), 0 2px 24px rgba(0,0,0,0.45)',
             }}>
                 <h1 style={{ margin: 0 }}>
                     <img
