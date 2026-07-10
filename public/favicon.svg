@@ -1,0 +1,92 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Booster's Meadow">
+  <style>
+    .mark { fill: #0A0D14; }
+    @media (prefers-color-scheme: dark) {
+      .mark { fill: #FFFFFF; }
+    }
+  </style>
+  <!-- Disc with astronaut + stars cut out (matches app-clip negative-space mark) -->
+  <path
+    class="mark"
+    fill-rule="evenodd"
+    d="
+      M50 5
+      a45 45 0 1 0 0.01 0
+      Z
+      M36 28
+      l3.2 3.2
+      l-3.2 3.2
+      l-3.2 -3.2
+      Z
+      M58 20
+      l2 2
+      l-2 2
+      l-2 -2
+      Z
+      M68 36
+      a2.2 2.2 0 1 0 0.01 0
+      Z
+      M28 44
+      a1.6 1.6 0 1 0 0.01 0
+      Z
+      M72 50
+      a1.4 1.4 0 1 0 0.01 0
+      Z
+      M42 34
+      h20
+      a9 9 0 0 1 9 9
+      v5
+      a5 5 0 0 1 -5 5
+      h-3.5
+      l-2.8 13
+      h-7.4
+      l-2.8 -13
+      H47
+      a5 5 0 0 1 -5 -5
+      v-5
+      a9 9 0 0 1 9 -9
+      Z
+      M47 41
+      h10
+      a4 4 0 0 1 4 4
+      v1.5
+      a4 4 0 0 1 -4 4
+      H47
+      a4 4 0 0 1 -4 -4
+      V45
+      a4 4 0 0 1 4 -4
+      Z
+      M63 38
+      a1.8 1.8 0 1 0 0.01 0
+      Z
+      M27 54
+      a5.5 4.5 0 0 1 5.5 -4.5
+      h1.8
+      v3.6
+      H32.5
+      a1.6 1.6 0 0 0 -1.6 1.6
+      v5.2
+      a1.6 1.6 0 0 0 1.6 1.6
+      h16.2
+      v3.6
+      H32.5
+      a5.5 4.5 0 0 1 -5.5 -4.5
+      v-6.6
+      Z
+      M73 54
+      a5.5 4.5 0 0 0 -5.5 -4.5
+      h-1.8
+      v3.6
+      h1.8
+      a1.6 1.6 0 0 1 1.6 1.6
+      v5.2
+      a1.6 1.6 0 0 1 -1.6 1.6
+      H51.8
+      v3.6
+      h16.2
+      a5.5 4.5 0 0 0 5.5 -4.5
+      v-6.6
+      Z
+    "
+  />
+</svg>
