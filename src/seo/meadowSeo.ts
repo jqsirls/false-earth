@@ -5,11 +5,11 @@ export const MEADOW_TITLE = "Booster's Meadow"
 export const MEADOW_DESCRIPTION =
   'A quiet meadow refuge from Storytailor. Wander with Booster through a calm cosmic moment, then press start when you are ready.'
 
-export const MEADOW_OG_IMAGE_URL = `${MEADOW_CANONICAL_URL}/seo-image.png`
+export const MEADOW_OG_IMAGE_URL = `${MEADOW_CANONICAL_URL}/seo-image.jpg`
 
-export const MEADOW_OG_IMAGE_WIDTH = 5810
+export const MEADOW_OG_IMAGE_WIDTH = 2400
 
-export const MEADOW_OG_IMAGE_HEIGHT = 3050
+export const MEADOW_OG_IMAGE_HEIGHT = 1260
 
 export const MEADOW_OG_SITE_NAME = 'Storytailor'
 
