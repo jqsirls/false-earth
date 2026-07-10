@@ -33,6 +33,10 @@ interface GameState {
   isSoundOn: boolean;
   setIsSoundOn: (isSoundOn: boolean) => void;
 
+  /** Cosmic Lullaby HTML5 BGM audibly playing (for ambient wind ducking). */
+  meadowBgmPlaying: boolean;
+  setMeadowBgmPlaying: (playing: boolean) => void;
+
   audioListener: AudioListener | null;
   setAudioListener: (listener: THREE.AudioListener) => void;
 
@@ -89,6 +93,9 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   isSoundOn: false,
   setIsSoundOn: (isSoundOn) => set({ isSoundOn: isSoundOn }),
+
+  meadowBgmPlaying: false,
+  setMeadowBgmPlaying: (playing) => set({ meadowBgmPlaying: playing }),
 
   audioListener: null,
   setAudioListener: (listener) => set({ audioListener: listener }),

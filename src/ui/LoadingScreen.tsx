@@ -3,7 +3,7 @@ import { useEffect, useRef, useState, useMemo } from "react";
 import { useGameStore } from "../core/store/gameStore";
 import { MEADOW_LOGO_ALT, MEADOW_LOGO_PATH, MEADOW_PLAYLIST_TRACKS, resolveMeadowAsset } from "../config/meadow";
 import { resumeMeadowAudioContext } from "../config/meadowAudio";
-import { prepareMeadowBgm, startMeadowBgm, setMeadowBgmMuted } from "../audio/meadowBgmPlayer";
+import { prepareMeadowBgm, startMeadowBgm, setMeadowBgmMuted, whenMeadowBgmPrepared } from "../audio/meadowBgmPlayer";
 import { prefersReducedMotion } from "../core/utils/reducedMotion";
 import { formatGpuError, getGpuErrorHeadline, getGpuErrorHint } from "../core/utils/gpuError";
 import gsap from "gsap";
@@ -36,6 +36,7 @@ export function LoadingScreen() {
     const gpuErrorInfo = useMemo(() => formatGpuError(gpuError), [gpuError]);
 
     const [isReadyToStart, setIsReadyToStart] = useState(false);
+    const [bgmReady, setBgmReady] = useState(false);
     const [isVisible, setIsVisible] = useState(true);
     const containerRef = useRef<HTMLDivElement>(null);
     const animationRef = useRef<gsap.core.Tween | null>(null);
@@ -54,6 +55,7 @@ export function LoadingScreen() {
 
     useEffect(() => {
         prepareMeadowBgm();
+        void whenMeadowBgmPrepared().then(() => setBgmReady(true));
     }, []);
 
     useEffect(() => {
@@ -65,13 +67,13 @@ export function LoadingScreen() {
             return;
         }
 
-        if (!active && loaded === total && total > 0) {
+        if (!active && loaded === total && total > 0 && bgmReady) {
             const t = setTimeout(() => setIsReadyToStart(true), 200);
             return () => clearTimeout(t);
         }
 
         setIsReadyToStart(false);
-    }, [active, loaded, total, gpuError]);
+    }, [active, loaded, total, gpuError, bgmReady]);
 
     const handleStart = () => {
         if (!isReadyToStart || gpuError || hasStartedRef.current) return;

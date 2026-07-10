@@ -2,9 +2,24 @@ import { meadowPlaylistTracks } from '../config/meadowPlaylist'
 
 const LOG_PREFIX = '[meadow-bgm]'
 
+type PlaybackListener = (playing: boolean) => void
+const playbackListeners = new Set<PlaybackListener>()
+
+function notifyPlayback(playing: boolean): void {
+  playbackListeners.forEach((listener) => listener(playing))
+}
+
+/** Wind ducking and UI sync — true when Cosmic Lullaby is audibly playing. */
+export function subscribeMeadowBgmPlayback(listener: PlaybackListener): () => void {
+  playbackListeners.add(listener)
+  return () => {
+    playbackListeners.delete(listener)
+  }
+}
+
 /**
  * HTML5 Audio playlist for Cosmic Lullaby — started on [ START ] user gesture.
- * Tracks load via `/meadow-assets` CDN rewrite; waits for `canplay` before play().
+ * Tracks load via `/meadow-assets` CDN rewrite; START stays gated until track 1 can play.
  */
 class MeadowBgmPlayer {
   private readonly urls: readonly string[]
@@ -13,6 +28,8 @@ class MeadowBgmPlayer {
   private started = false
   private muted = false
   private prepared = false
+  private firstTrackReady = false
+  private prepareResolve: (() => void) | null = null
   private pendingCanPlay: (() => void) | null = null
   private playGeneration = 0
 
@@ -20,7 +37,6 @@ class MeadowBgmPlayer {
     this.urls = urls
     this.audio = new Audio()
     this.audio.preload = 'auto'
-    this.audio.crossOrigin = 'anonymous'
 
     this.audio.addEventListener('ended', () => {
       if (!this.started) return
@@ -39,8 +55,54 @@ class MeadowBgmPlayer {
   prepare(): void {
     if (this.prepared || this.urls.length === 0) return
     this.prepared = true
-    this.audio.src = this.urls[0]!
+
+    const url = this.resolveSrc(this.urls[0]!)
+    this.applyCrossOrigin(url)
+    this.audio.src = url
     this.audio.load()
+
+    const markReady = () => {
+      if (this.firstTrackReady) return
+      if (this.audio.readyState < HTMLMediaElement.HAVE_FUTURE_DATA) return
+      this.firstTrackReady = true
+      this.prepareResolve?.()
+      this.prepareResolve = null
+    }
+
+    if (this.audio.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA) {
+      markReady()
+      return
+    }
+
+    const onReady = () => markReady()
+    this.audio.addEventListener('canplaythrough', onReady, { once: true })
+    this.audio.addEventListener('canplay', onReady, { once: true })
+    this.audio.addEventListener(
+      'error',
+      () => {
+        console.error(`${LOG_PREFIX} prepare failed for`, url)
+        markReady()
+      },
+      { once: true },
+    )
+  }
+
+  /** Resolves when track 1 is buffered enough for a synchronous gesture play(). */
+  whenFirstTrackReady(): Promise<void> {
+    if (this.firstTrackReady) return Promise.resolve()
+    if (!this.prepared) this.prepare()
+
+    return new Promise((resolve) => {
+      this.prepareResolve = resolve
+      window.setTimeout(() => {
+        if (this.firstTrackReady) return
+        console.warn(`${LOG_PREFIX} first track slow — allowing START anyway`)
+        this.firstTrackReady = true
+        this.prepareResolve?.()
+        this.prepareResolve = null
+        resolve()
+      }, 15_000)
+    })
   }
 
   /** Call from [ START ] click — must run inside a user gesture. */
@@ -51,11 +113,12 @@ class MeadowBgmPlayer {
     this.audio.muted = this.muted
     this.audio.volume = 1
     console.info(`${LOG_PREFIX} starting playlist (${this.urls.length} tracks)`)
-    this.playIndex(0, { eager: true })
+    this.playIndex(0, { fromUserGesture: true })
   }
 
   stop(): void {
     this.started = false
+    notifyPlayback(false)
     this.clearPendingCanPlay()
     this.playGeneration += 1
     this.audio.pause()
@@ -63,11 +126,28 @@ class MeadowBgmPlayer {
     this.audio.removeAttribute('src')
     this.audio.load()
     this.prepared = false
+    this.firstTrackReady = false
   }
 
   setMuted(muted: boolean): void {
     this.muted = muted
     this.audio.muted = muted
+    if (this.started) {
+      notifyPlayback(!muted && !this.audio.paused)
+    }
+  }
+
+  private applyCrossOrigin(resolvedUrl: string): void {
+    try {
+      const origin = new URL(resolvedUrl).origin
+      if (origin !== window.location.origin) {
+        this.audio.crossOrigin = 'anonymous'
+      } else {
+        this.audio.removeAttribute('crossorigin')
+      }
+    } catch {
+      this.audio.removeAttribute('crossorigin')
+    }
   }
 
   private resolveSrc(url: string): string {
@@ -80,7 +160,7 @@ class MeadowBgmPlayer {
     this.pendingCanPlay = null
   }
 
-  private playIndex(nextIndex: number, options: { eager?: boolean } = {}): void {
+  private playIndex(nextIndex: number, options: { fromUserGesture?: boolean } = {}): void {
     if (this.urls.length === 0 || !this.started) return
 
     this.clearPendingCanPlay()
@@ -108,8 +188,18 @@ class MeadowBgmPlayer {
         .then(() => {
           if (generation !== this.playGeneration) return
           console.info(`${LOG_PREFIX} playing`, url)
+          notifyPlayback(!this.muted)
         })
         .catch((err: unknown) => {
+          const errorName = err instanceof Error ? err.name : ''
+          if (errorName === 'NotAllowedError') {
+            console.warn(`${LOG_PREFIX} play() blocked by autoplay policy`, url)
+            return
+          }
+          if (this.audio.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
+            console.warn(`${LOG_PREFIX} play() before ready — waiting for canplay`, url)
+            return
+          }
           console.error(`${LOG_PREFIX} play() rejected for`, url, err)
           if (this.started && generation === this.playGeneration) {
             this.playIndex(this.index + 1)
@@ -118,16 +208,19 @@ class MeadowBgmPlayer {
     }
 
     if (needsLoad) {
-      this.audio.src = url
+      this.applyCrossOrigin(resolvedSrc)
+      this.audio.src = resolvedSrc
       this.audio.load()
     }
 
-    if (options.eager) {
+    if (
+      options.fromUserGesture ||
+      this.audio.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA
+    ) {
       beginPlay()
     }
 
-    if (!needsLoad && this.audio.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA) {
-      beginPlay()
+    if (this.audio.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA) {
       return
     }
 
@@ -152,6 +245,10 @@ function getPlayer(): MeadowBgmPlayer {
 
 export function prepareMeadowBgm(): void {
   getPlayer().prepare()
+}
+
+export function whenMeadowBgmPrepared(): Promise<void> {
+  return getPlayer().whenFirstTrackReady()
 }
 
 export function startMeadowBgm(): void {

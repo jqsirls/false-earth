@@ -22,6 +22,9 @@ export const MEADOW_AMBIENT_TRACKS = [
   { id: 'noise', url: '/audio/noise.m4a', volume: 0.1 },
 ] as const
 
+/** Wind/ambient duck when Cosmic Lullaby BGM is playing (40% reduction). */
+export const MEADOW_WIND_DUCK_MULTIPLIER = 0.6
+
 /** Resume Web Audio on a user gesture — required before footsteps can play. */
 export async function resumeMeadowAudioContext(
   listener?: { context: AudioContext } | null,

@@ -5,15 +5,17 @@ import { WebGPUCanvas, Bgm } from '@core';
 import { DistortedCircle } from '@core';
 import { useShortcut } from '@core/hooks/useShortcut';
 import { resumeMeadowAudioContext } from '../config/meadowAudio';
-import { setMeadowBgmMuted } from '../audio/meadowBgmPlayer';
+import { setMeadowBgmMuted, subscribeMeadowBgmPlayback } from '../audio/meadowBgmPlayer';
 import { useEffect } from 'react';
-import { MEADOW_AMBIENT_TRACKS } from '../config/meadowAudio';
+import { MEADOW_AMBIENT_TRACKS, MEADOW_WIND_DUCK_MULTIPLIER } from '../config/meadowAudio';
 
 export default function AudioButton() {
     const listener = useGameStore(s => s.audioListener);
     const isControlEnabled = useGameStore((state) => state.isControlEnabled);
     const isSoundOn = useGameStore((state) => state.isSoundOn);
     const setIsSoundOn = useGameStore((state) => state.setIsSoundOn);
+    const meadowBgmPlaying = useGameStore((state) => state.meadowBgmPlaying);
+    const setMeadowBgmPlaying = useGameStore((state) => state.setMeadowBgmPlaying);
 
     const radius = 10;
     const size = 45;
@@ -27,8 +29,15 @@ export default function AudioButton() {
     useShortcut('m', toggleSound);
 
     useEffect(() => {
+        return subscribeMeadowBgmPlayback(setMeadowBgmPlaying);
+    }, [setMeadowBgmPlaying]);
+
+    useEffect(() => {
         setMeadowBgmMuted(!isSoundOn);
     }, [isSoundOn]);
+
+    const windVolumeScale =
+        isSoundOn && meadowBgmPlaying ? MEADOW_WIND_DUCK_MULTIPLIER : 1;
 
     if (!isControlEnabled) return null;
 
@@ -52,7 +61,12 @@ export default function AudioButton() {
                 <meshBasicMaterial />
             </mesh>
 
-            <Bgm listener={listener} active={isSoundOn} tracks={[...MEADOW_AMBIENT_TRACKS]} />
+            <Bgm
+                listener={listener}
+                active={isSoundOn}
+                tracks={[...MEADOW_AMBIENT_TRACKS]}
+                volumeScale={windVolumeScale}
+            />
 
             <group>
                 {[12.35, 0.58, 3.67].map((seed, i) => (
