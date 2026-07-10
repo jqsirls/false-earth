@@ -91,11 +91,13 @@ export function shouldUseMinimalScene(): boolean {
   return shouldUseMobileLiteScene() || shouldUseSafariMinimalScene();
 }
 
-/** VAT rose field is heavy on mobile GPU RAM — off unless ?roses=1. */
+/** VAT rose field is heavy on mobile GPU RAM — off unless ?roses=1. Desktop keeps roses (incl. Safari). */
 export function shouldEnableRoses(): boolean {
   if (shouldUseMinimalScene()) return false;
-  if (!isMemoryConstrainedGpu()) return true;
-  return readSearchParam('roses') === '1';
+  if (isMobileDevice() || isIosDevice()) {
+    return readSearchParam('roses') === '1';
+  }
+  return true;
 }
 
 export function getRoseInstanceCount(defaultCount: number): number {

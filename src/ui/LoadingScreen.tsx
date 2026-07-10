@@ -94,7 +94,9 @@ export function LoadingScreen() {
             }
         };
 
-        void resumeMeadowAudioContext(audioListener).then(() => {
+        void resumeMeadowAudioContext(audioListener)
+            .catch(() => {})
+            .finally(() => {
             startMeadowBgm();
             setMeadowBgmMuted(false);
             setIsSoundOn(true);

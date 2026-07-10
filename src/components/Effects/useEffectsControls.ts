@@ -17,18 +17,18 @@ export function useEffectsControls() {
 
   const bloomParams = useControls('Effects.Bloom', {
     enabled: { value: true, label: 'Enable Bloom' },
-    threshold: { value: 0.72, min: 0, max: 1, step: 0.01 },
-    strength: { value: 0.16, min: 0, max: 3, step: 0.01 },
-    radius: { value: 0.32, min: 0, max: 1, step: 0.01 },
+    threshold: { value: 0.88, min: 0, max: 1, step: 0.01 },
+    strength: { value: 0.08, min: 0, max: 3, step: 0.01 },
+    radius: { value: 0.22, min: 0, max: 1, step: 0.01 },
   }, { collapsed: true });
 
   const toneMappingParams = useControls('Effects.Tone Mapping', {
     enabled: { value: true, label: 'Enable Tone Mapping (AgX)' },
-    exposure: { value: 0.96, min: 0.1, max: 2, step: 0.01 },
+    exposure: { value: 1.05, min: 0.1, max: 2, step: 0.01 },
   }, { collapsed: true });
 
   const dofParamsTPS = useControls('Effects.DoF.TPS', {
-    enabled: { value: true, label: 'Enable Depth of Field' },
+    enabled: { value: false, label: 'Enable Depth of Field' },
     autofocus: { value: true, label: 'Auto Focus Character' },
     focusDistance: { value: 1.3, min: 0, max: 100, step: 0.1, render: (get) => !get('Effects.DoF.TPS.autofocus') },
     focalLength: { value: 25.0, min: 0.01, max: 100, step: 0.1 },
@@ -36,7 +36,7 @@ export function useEffectsControls() {
   }, { collapsed: true });
 
   const dofParamsFREE = useControls('Effects.DoF.FREE', {
-    enabled: { value: true, label: 'Enable Depth of Field' },
+    enabled: { value: false, label: 'Enable Depth of Field' },
     autofocus: { value: false, label: 'Auto Focus Character' },
     focusDistance: { value: 5, min: 0, max: 100, step: 0.1, render: (get) => !get('Effects.DoF.FREE.autofocus') },
     focalLength: { value: 10.0, min: 0.01, max: 100, step: 0.1 },

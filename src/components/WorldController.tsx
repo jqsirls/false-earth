@@ -79,10 +79,9 @@ export function WorldController() {
         };
     }, [debugMode]);
 
-    const { enableEnv, enableRose, enableGrass, enableCharacter, enableGrassDebug } = useControls('Game.Content', {
+    const { enableEnv, enableGrass, enableCharacter, enableGrassDebug } = useControls('Game.Content', {
         enableEnv: { value: true, label: 'Environment' },
         enableCharacter: { value: true, label: '👤 Character' },
-        enableRose: { value: rosesEnabled, label: '🌹 Rose Field' },
         enableGrass: { value: true, label: '🌿 Grass Field' },
         enableGrassDebug: { value: false, label: '🌿 Grass Culling Debug' },
     }, { collapsed: true });
@@ -128,11 +127,11 @@ export function WorldController() {
 
     const activeTargetIds = useMemo(() => {
         const targets: string[] = [];
-        if (enableRose) targets.push('rose');
+        if (rosesEnabled) targets.push('rose');
         if (enableGrass && !minimalScene && !grassCompileFailed) targets.push('grass');
         if (enableCharacter) targets.push('character');
         return targets;
-    }, [enableRose, enableGrass, enableCharacter, minimalScene, grassCompileFailed]);
+    }, [rosesEnabled, enableGrass, enableCharacter, minimalScene, grassCompileFailed]);
 
     useEffect(() => {
         setActiveTargets(activeTargetIds);
@@ -157,10 +156,10 @@ export function WorldController() {
             </group>
 
             {/* Major components - toggle visibility instead of unmounting */}
-            {enableRose && (
+            {rosesEnabled && (
                 <Rose
                     count={roseCount}
-                    visible={enableRose}
+                    visible={rosesEnabled}
                     onCompileReady={setComponentReady}
                     compileDebug={debugMode}
                 />

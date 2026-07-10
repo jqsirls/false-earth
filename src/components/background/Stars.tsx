@@ -1,7 +1,8 @@
 import { useRef, useMemo, useEffect } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three/webgpu';
-import { uniform, instancedBufferAttribute, Fn, uv, vec3, float, length, smoothstep, mx_hsvtorgb, mx_rgbtohsv, fract, sin, PI2, vec4 } from 'three/tsl';
+import { uniform, instancedBufferAttribute, Fn, uv, vec3, float, length, mx_hsvtorgb, mx_rgbtohsv, fract, sin, PI2, vec4 } from 'three/tsl';
+import { wgslSmoothstep } from '../../core/shaders/wgslSmoothstep';
 import { useControls } from 'leva';
 import { CameraMode, useGameStore } from '../../core/store/gameStore';
 import { uTime } from '../../core/shaders/uniforms';
@@ -14,7 +15,7 @@ interface StarsProps {
 }
 
 export function Stars({
-  count = 500,
+  count = 320,
   radius = 190,
   speed = 2,
   axis = [0.2, 1, 0],
@@ -24,32 +25,32 @@ export function Stars({
   const cameraMode = useGameStore((state) => state.cameraMode);
 
   const uniforms = useMemo(() => ({
-    uScale: uniform(0.25),
-    uColor: uniform(new THREE.Color('#bbd0f5')),
-    uHueVar: uniform(0.1),
+    uScale: uniform(0.18),
+    uColor: uniform(new THREE.Color('#a8b8d0')),
+    uHueVar: uniform(0.06),
     uRim: uniform(0.95),
-    uSpeed: uniform(2),
-    uIntensity: uniform(1),
+    uSpeed: uniform(1.5),
+    uIntensity: uniform(0.65),
   }), []);
 
   const { rim } = useControls('Stars', {
     scale: {
-      value: 0.5, min: 0, max: 1, step: 0.01,
+      value: 0.32, min: 0, max: 1, step: 0.01,
       onChange: (v) => (uniforms.uScale.value = v)
     },
     baseColor: {
-      value: '#bbd0f5',
+      value: '#a8b8d0',
       onChange: (v) => uniforms.uColor.value.set(v)
     },
     hueVariation: {
-      value: 0.1, min: 0, max: 1, step: 0.01,
+      value: 0.06, min: 0, max: 1, step: 0.01,
       onChange: (v) => (uniforms.uHueVar.value = v)
     },
     rim: {
       value: 0.95, min: 0, max: 1, step: 0.01,
     },
     speed: {
-      value: 4, min: 0, max: 10, step: 0.01,
+      value: 2.5, min: 0, max: 10, step: 0.01,
       onChange: (v) => (uniforms.uSpeed.value = v)
     },
   }, { collapsed: true });
@@ -111,7 +112,7 @@ export function Stars({
 
     const shape = Fn(() => {
       const d = length(uv().sub(0.5));
-      return smoothstep(float(0.5), float(0.3), d);
+      return wgslSmoothstep(float(0.5), float(0.3), d);
     })();
 
     mat.colorNode = vec4(finalColor, shape);
@@ -136,7 +137,7 @@ export function Stars({
   const rotationAxis = useMemo(() => new THREE.Vector3(axis[0], axis[1], axis[2]), [axis]);
 
   useEffect(() => {
-    uniforms.uIntensity.value =  cameraMode === CameraMode.FPV ? 10 : 1
+    uniforms.uIntensity.value = cameraMode === CameraMode.FPV ? 3.5 : 0.65
   }, [cameraMode])
 
   useFrame(({ clock }) => {

@@ -484,9 +484,9 @@ export const applyGrassPatchColors = (
 
     const patchMask = wgslSmoothstep(float(0.38), float(0.58), clumpNoise);
 
-    const tealBlend = mix(baseColor, uTealAccent, float(0.62));
-    const purpleBlend = mix(baseColor, uPurpleAccent, float(0.62));
-    const amberBlend = mix(baseColor, uAmberAccent, float(0.62));
+    const tealBlend = mix(baseColor, uTealAccent, float(0.42));
+    const purpleBlend = mix(baseColor, uPurpleAccent, float(0.48));
+    const amberBlend = mix(baseColor, uAmberAccent, float(0.45));
 
     const isTeal = variantNoise.lessThan(float(0.34));
     const isPurple = variantNoise

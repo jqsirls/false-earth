@@ -73,10 +73,10 @@ export function useGrassUniforms() {
                 uCharacterFlattenAmount: uniform(0.5),
                 uActiveWaveCount: uniform(0.0),
 
-                uPatchScale: uniform(0.07),
-                uPatchStrength: uniform(0.55),
-        uTealAccent: uniform(vec3(0.23, 0.36, 0.32)),
-        uPurpleAccent: uniform(vec3(0.36, 0.31, 0.43)),
+        uPatchScale: uniform(0.07),
+        uPatchStrength: uniform(0.38),
+        uTealAccent: uniform(vec3(0.29, 0.36, 0.28)),
+        uPurpleAccent: uniform(vec3(0.42, 0.35, 0.45)),
         uAmberAccent: uniform(vec3(0.54, 0.41, 0.25)),
             }
         }), [])

@@ -302,7 +302,7 @@ export function createGrassMaterial(
   // Calculate AO factor (reusable across colorNode, roughnessNode, and envNode)
   const calculateAO = () => {
     return mix(
-      float(0.35),
+      float(0.48),
       float(1.0),
       clamp(pow(vHeight, uniforms.uAOPower), float(0.0), float(1.0))
     );

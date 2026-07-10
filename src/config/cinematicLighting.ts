@@ -1,22 +1,22 @@
 /**
- * Cinematic sci-fi lighting ratios (phases 1–4).
- * Values are tuned relative to directional key = 1.0, not absolute engine units.
+ * Meadow lighting baseline — warm key, soft fill, world-locked rim.
+ * Ratios are relative to directional key = 1.0.
  */
 export const CINEMATIC_LIGHTING = {
-  /** Dominant moon/sun — cool-neutral key with slight warmth in highlights */
-  keyColor: '#c8d0e0',
-  /** Reference key intensity (Three.js linear light units) */
-  keyIntensity: 2.4,
-  /** Fixed position: behind + left of spawn, elevated for rim readability */
-  keyPosition: [-14, 20, -22] as const,
-  /** IBL fill relative to key (target 0.08–0.18) */
-  environmentIntensity: 0.14,
-  /** Weak hemisphere for shadow fill without flattening */
-  hemisphereSky: '#3a4458',
-  hemisphereGround: '#0e1218',
-  hemisphereIntensity: 0.22,
-  /** Subtle character rim — world-locked, not camera-follow */
-  rimColor: '#9eb4d4',
-  rimIntensity: 0.35,
-  rimPosition: [-6, 8, -10] as const,
+  /** Warm-neutral key — moonlight with readable suit highlights */
+  keyColor: '#e6e2d8',
+  /** Soft key (not harsh drama) */
+  keyIntensity: 1.85,
+  /** Above-behind-left of spawn (~35° elevation) — lights grass + astronaut together */
+  keyPosition: [-18, 22, -16] as const,
+  /** IBL fill — restored from cinematic crush (was 0.14) */
+  environmentIntensity: 0.3,
+  /** Neutral shadow fill — navy/charcoal, not cyan */
+  hemisphereSky: '#6a6e78',
+  hemisphereGround: '#1a1816',
+  hemisphereIntensity: 0.28,
+  /** Subtle world-locked character rim */
+  rimColor: '#c8b8a4',
+  rimIntensity: 0.12,
+  rimPosition: [-8, 10, -12] as const,
 } as const

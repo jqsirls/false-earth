@@ -188,6 +188,7 @@ export default function App() {
 
                     <Suspense fallback={null}>
                         <color attach="background" args={['#000000']} />
+                        <fog attach="fog" args={['#0c0e12', 55, 165]} />
                         <CameraViewControl />
                         <Environment
                             files={resolveMeadowAsset('/textures/potsdamer_platz_1k_nb.hdr')}
