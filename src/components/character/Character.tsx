@@ -56,15 +56,6 @@ function CharacterRig({
   }, [setCharacterRef]);
 
   useEffect(() => {
-    if (!scene) return;
-    scene.traverse((child) => {
-      if (!(child instanceof THREE.Mesh)) return;
-      child.castShadow = true;
-      child.receiveShadow = true;
-    });
-  }, [scene]);
-
-  useEffect(() => {
     const shouldBeVisible = cameraMode !== CameraMode.FPV;
     if (helmetMaterials.length > 0) {
       helmetMaterials.forEach((mat) => {

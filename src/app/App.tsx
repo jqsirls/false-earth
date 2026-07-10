@@ -18,7 +18,6 @@ import { ROSE_TEXTURES } from "../components/Rose/core/config";
 import { BODY_TEXTURE_PATHS, DETAIL_TEXTURE_PATHS, MODEL_PATHS } from '../components/character/config';
 import { JQ_LOCOMOTION_ANIM_PATHS, getJqPartTexturePaths } from '../components/character/jqConfig';
 import { STORYTAILOR } from '../config/storytailor';
-import { CINEMATIC_LIGHTING } from '../config/cinematicLighting';
 import { CanvasErrorBoundary } from './CanvasErrorBoundary';
 import { getInitialDpr, getMaxDpr, isMemoryConstrainedGpu, shouldPreloadVatRoses } from '../core/utils/browserCaps';
 import { MEADOW_FOOTSTEP_PATHS } from '../config/meadowAudio';
@@ -54,7 +53,7 @@ function collectJqTexturePaths(): string[] {
     return [...paths];
 }
 
-useLoader.preload(AudioLoader, [...MEADOW_FOOTSTEP_PATHS]);
+useLoader.preload(AudioLoader, [...MEADOW_FOOTSTEP_PATHS, '/audio/wave01.mp3']);
 
 useGLTF.preload(
   STORYTAILOR.useJqCharacter
@@ -188,11 +187,9 @@ export default function App() {
 
                     <Suspense fallback={null}>
                         <color attach="background" args={['#000000']} />
-                        <fog attach="fog" args={['#0c0e12', 55, 165]} />
                         <CameraViewControl />
                         <Environment
                             files={resolveMeadowAsset('/textures/potsdamer_platz_1k_nb.hdr')}
-                            environmentIntensity={CINEMATIC_LIGHTING.environmentIntensity}
                         />
                         <DirectionalLight />
                         <Effects />

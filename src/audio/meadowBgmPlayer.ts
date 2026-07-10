@@ -49,8 +49,9 @@ class MeadowBgmPlayer {
     this.started = true
     this.index = 0
     this.audio.muted = this.muted
+    this.audio.volume = 1
     console.info(`${LOG_PREFIX} starting playlist (${this.urls.length} tracks)`)
-    this.playIndex(0)
+    this.playIndex(0, { eager: true })
   }
 
   stop(): void {
@@ -79,7 +80,7 @@ class MeadowBgmPlayer {
     this.pendingCanPlay = null
   }
 
-  private playIndex(nextIndex: number): void {
+  private playIndex(nextIndex: number, options: { eager?: boolean } = {}): void {
     if (this.urls.length === 0 || !this.started) return
 
     this.clearPendingCanPlay()
@@ -99,6 +100,7 @@ class MeadowBgmPlayer {
       }
 
       this.audio.muted = this.muted
+      this.audio.volume = 1
       const playPromise = this.audio.play()
       if (!playPromise) return
 
@@ -120,8 +122,10 @@ class MeadowBgmPlayer {
       this.audio.load()
     }
 
-    // Only trust readyState when we did not just call load() — load() is async and
-    // the previous track's readyState would otherwise trigger a duplicate play().
+    if (options.eager) {
+      beginPlay()
+    }
+
     if (!needsLoad && this.audio.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA) {
       beginPlay()
       return

@@ -81,6 +81,13 @@ export function LoadingScreen() {
             console.info('[meadow] BGM tracks:', MEADOW_PLAYLIST_TRACKS.map((t) => t.url));
         }
 
+        // HTML5 play() must run synchronously inside the user gesture — not after async resume.
+        startMeadowBgm();
+        setMeadowBgmMuted(false);
+        setIsSoundOn(true);
+        setIsGameStarted(true);
+        void resumeMeadowAudioContext(audioListener).catch(() => {});
+
         const fadeOut = () => {
             if (containerRef.current) {
                 animationRef.current = gsap.to(containerRef.current, {
@@ -94,15 +101,7 @@ export function LoadingScreen() {
             }
         };
 
-        void resumeMeadowAudioContext(audioListener)
-            .catch(() => {})
-            .finally(() => {
-            startMeadowBgm();
-            setMeadowBgmMuted(false);
-            setIsSoundOn(true);
-            setIsGameStarted(true);
-            fadeOut();
-        });
+        fadeOut();
     };
 
     useEffect(() => {

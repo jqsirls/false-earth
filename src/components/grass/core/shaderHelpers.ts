@@ -11,6 +11,7 @@ import {
   Fn,
   pow,
   length,
+  smoothstep,
   cameraPosition,
   cross,
   clamp,
@@ -24,13 +25,11 @@ import {
   fract,
   select,
   dot,
-  mx_noise_float,
 } from "three/tsl";
 import { rotateAxis } from "../../../core/shaders/terrainHelpers";
 import { DEFAULT_GRASS_AREA_SIZE } from "./config";
 import { safeNormalize2D, } from "../../../../packages/three-core/src/utils/tsl/math";
 import { easeOutCubic, easeOutExpo  } from "@core";
-import { wgslSmoothstep } from "../../../core/shaders/wgslSmoothstep";
 
 // PCG Hash: no sin, no mod — stable and non-repeating (integer in -> random 0..1 out)
 const PCG_MUL = 747796405;
@@ -215,7 +214,7 @@ export function applyVertexSway(
     worldXZ: any
   ) => {
     // Only affects vertices near the tip (t close to 1.0)
-    const topSwayMask = wgslSmoothstep(float(0.5), float(1.0), t);
+    const topSwayMask = smoothstep(float(0.5), float(1.0), t);
     
     // Get wind direction for wave calculation
     const W = getWindDirection();
@@ -268,7 +267,7 @@ export function computeLightingNormal(near: number, far: number) {
 
       // Distance mask: further from the camera, blend more toward clump normal
       const dist = length(cameraPosition.sub(worldPos));
-      const distMask = wgslSmoothstep(float(near), float(far), dist);
+      const distMask = smoothstep(float(near), float(far), dist);
 
       // Blend geometry normal and clump normal
       const blendFactor = heightMask.mul(distMask);
@@ -425,7 +424,7 @@ export const applyCharacterPush = (
   // Calculate distance from character to blade
   const diff = worldXZ.sub(vec2(uCharacterWorldPos.x, uCharacterWorldPos.z));
   const diffLength = length(diff);
-  const pushStrength = wgslSmoothstep(pushRadius, float(0), diffLength); // 1 near character, 0 far
+  const pushStrength = smoothstep(pushRadius, float(0), diffLength); // 1 near character, 0 far
   
   // Normalize direction vector (from character to blade) for pushing away
   const pushDirection = normalize(diff);
@@ -462,46 +461,6 @@ const WaveResult = struct({
   strength: 'float',  // For Emissive (Scalar 0-1)
   force: 'vec3'       // For Push (Vector Direction * Strength)
 });
-
-/**
- * Blends calm Storytailor accent patches (teal, purple, amber) into grass base color.
- * Uses procedural noise at world XZ — organic clumps, no grid.
- */
-export const applyGrassPatchColors = (
-  uPatchScale: any,
-  uPatchStrength: any,
-  uTealAccent: any,
-  uPurpleAccent: any,
-  uAmberAccent: any,
-) => {
-  return Fn(([baseColor, worldXZ]: [any, any]) => {
-    const scale = uPatchScale;
-    const clumpPos = worldXZ.mul(scale);
-    const variantPos = worldXZ.mul(scale.mul(0.61)).add(vec2(12.7, 8.3));
-
-    const clumpNoise = mx_noise_float(clumpPos);
-    const variantNoise = mx_noise_float(variantPos);
-
-    const patchMask = wgslSmoothstep(float(0.38), float(0.58), clumpNoise);
-
-    const tealBlend = mix(baseColor, uTealAccent, float(0.42));
-    const purpleBlend = mix(baseColor, uPurpleAccent, float(0.48));
-    const amberBlend = mix(baseColor, uAmberAccent, float(0.45));
-
-    const isTeal = variantNoise.lessThan(float(0.34));
-    const isPurple = variantNoise
-      .greaterThanEqual(float(0.34))
-      .and(variantNoise.lessThan(float(0.67)));
-
-    const patchColor = select(
-      isTeal,
-      tealBlend,
-      select(isPurple, purpleBlend, amberBlend),
-    );
-
-    return mix(baseColor, patchColor, patchMask.mul(uPatchStrength));
-  });
-};
 
 /**
  * Creates a reusable wave calculation function that computes both emissive strength and push force
@@ -550,9 +509,9 @@ export const createWaveLogic = (waveBuffer: any, uActiveWaveCount: any, uTime: a
           const ringWidth = maxRadius.mul(0.2);
           
           // Calculate Strength (Shape + Fade)
-          const shape = wgslSmoothstep(ringWidth, float(0.0), distFromWavefront);
-          const fade = wgslSmoothstep(float(1.0), float(0.5), progress)
-                      .mul(wgslSmoothstep(float(0.0), float(0.1), progress));
+          const shape = smoothstep(ringWidth, float(0.0), distFromWavefront);
+          const fade = smoothstep(float(1.0), float(0.5), progress)
+                      .mul(smoothstep(float(0.0), float(0.1), progress));
           
           const combinedStrength = shape.mul(fade);
 

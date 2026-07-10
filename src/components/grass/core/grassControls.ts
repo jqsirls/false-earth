@@ -30,15 +30,10 @@ export function createGrassControls() {
     Appearance: folder({
       Color: folder({
         tipColor: { value: TIP_COLOR_PRESETS[0] },
-        baseColor: { value: '#141210' },
-        bladeSeedRange: { value: { x: 0.95, y: 1.05 }, step: 0.01, min: 0.5, max: 1.5 },
-        clumpSeedRange: { value: { x: 0.88, y: 1.12 }, step: 0.01, min: 0.5, max: 1.5 },
-        aoPower: { value: 5.2, min: 0.1, max: 20.0, step: 0.1 },
-        patchScale: { value: 0.07, min: 0.02, max: 0.2, step: 0.005, label: 'Patch scale' },
-        patchStrength: { value: 0.38, min: 0.0, max: 1.0, step: 0.01, label: 'Patch strength' },
-        tealAccent: { value: '#4a5c48', label: 'Teal patch' },
-        purpleAccent: { value: '#6a5a72', label: 'Purple patch' },
-        amberAccent: { value: '#8a6840', label: 'Amber patch' },
+        baseColor: { value: '#000000' },
+        bladeSeedRange: { value: { x: 0.95, y: 1.03 }, step: 0.01, min: 0.5, max: 1.5 },
+        clumpSeedRange: { value: { x: 0.9, y: 1.1 }, step: 0.01, min: 0.5, max: 1.5 },
+        aoPower: { value: 5, min: 0.1, max: 20.0, step: 0.1 },
       }, { collapsed: true }),
       Normal: folder({
         midSoft: { value: 0.25, min: 0.0, max: 1.0, step: 0.01 },
@@ -74,10 +69,10 @@ export function createGrassControls() {
     }, { collapsed: true }),
 
     Material: folder({
-      roughness: { value: 0.48, min: 0.0, max: 1.0, step: 0.01 },
-      metalness: { value: 0.18, min: 0.0, max: 1.0, step: 0.01 },
-      emissive: { value: '#3a3028' },
-      envMapIntensity: { value: 0.28, min: 0.0, max: 3.0, step: 0.01 },
+      roughness: { value: 0.35, min: 0.0, max: 1.0, step: 0.01 },
+      metalness: { value: 0.5, min: 0.0, max: 1.0, step: 0.01 },
+      emissive: { value: '#61ffef' },
+      envMapIntensity: { value: 0.5, min: 0.0, max: 3.0, step: 0.1 },
     }, { collapsed: true }),
   }
 }

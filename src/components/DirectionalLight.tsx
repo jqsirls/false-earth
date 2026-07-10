@@ -1,114 +1,79 @@
-import { useRef, useEffect, useMemo } from 'react'
-import { useThree } from '@react-three/fiber'
+import { useRef, useMemo, useEffect } from 'react'
+import { useFrame, useThree } from '@react-three/fiber'
 import { useControls } from 'leva'
 import * as THREE from 'three'
-import { useGameStore } from '../core/store/gameStore'
-import { CINEMATIC_LIGHTING } from '../config/cinematicLighting'
-import { getShadowMapSize, shouldEnableDirectionalShadows } from '../core/utils/browserCaps'
+
 
 export function DirectionalLight() {
-  const directionalLightRef = useRef<THREE.DirectionalLight>(null)
-  const rimLightRef = useRef<THREE.DirectionalLight>(null)
-  const helperRef = useRef<THREE.DirectionalLightHelper | null>(null)
-  const { scene } = useThree()
-  const quality = useGameStore((state) => state.quality)
+    const directionalLightRef = useRef<THREE.DirectionalLight>(null)
+    const helperRef = useRef<THREE.DirectionalLightHelper | null>(null)
+    const { scene } = useThree()
+    
+    const { rotationSpeed, color, intensity, debug } = useControls('Directional Light', {
+        rotationSpeed: { value: 0.5, min: 0, max: 2, step: 0.1 },
+        color: { value: '#ffffff' },
+        intensity: { value: 2.0, min: 0, max: 3, step: 0.1 },
+        debug: { value: false },
+    }, { collapsed: true })
 
-  const shadowsEnabled = shouldEnableDirectionalShadows()
-  const shadowMapSize = getShadowMapSize(quality)
+    const basePosition = useMemo(() => new THREE.Vector3(0, 2, 5), [])
+    const positionRef = useRef(new THREE.Vector3())
+    const rotationMatrixRef = useRef(new THREE.Matrix4())
 
-  const { color, intensity, debug, rimIntensity } = useControls('Directional Light', {
-    color: { value: CINEMATIC_LIGHTING.keyColor },
-    intensity: { value: CINEMATIC_LIGHTING.keyIntensity, min: 0, max: 4, step: 0.05 },
-    rimIntensity: {
-      value: CINEMATIC_LIGHTING.rimIntensity,
-      min: 0,
-      max: 1,
-      step: 0.02,
-      label: 'Rim support',
-    },
-    debug: { value: false },
-  }, { collapsed: true })
+    // Manage helper visibility
+    useEffect(() => {
+        if (!directionalLightRef.current) return
+        
+        if (debug && !helperRef.current) {
+            // Create helper
+            const helper = new THREE.DirectionalLightHelper(directionalLightRef.current, 1, 'red')
+            helperRef.current = helper
+            scene.add(helper)
+        } else if (!debug && helperRef.current) {
+            // Remove helper
+            scene.remove(helperRef.current)
+            helperRef.current.dispose()
+            helperRef.current = null
+        }
+        
+        return () => {
+            // Cleanup on unmount
+            if (helperRef.current) {
+                scene.remove(helperRef.current)
+                helperRef.current.dispose()
+                helperRef.current = null
+            }
+        }
+    }, [debug, scene])
 
-  const keyPosition = useMemo(
-    () => new THREE.Vector3(...CINEMATIC_LIGHTING.keyPosition),
-    [],
-  )
-  const rimPosition = useMemo(
-    () => new THREE.Vector3(...CINEMATIC_LIGHTING.rimPosition),
-    [],
-  )
+    // Update light properties
+    useEffect(() => {
+        if (!directionalLightRef.current) return
 
-  useEffect(() => {
-    if (!directionalLightRef.current) return
+        const light = directionalLightRef.current
 
-    if (debug && !helperRef.current) {
-      const helper = new THREE.DirectionalLightHelper(directionalLightRef.current, 2, 'red')
-      helperRef.current = helper
-      scene.add(helper)
-    } else if (!debug && helperRef.current) {
-      scene.remove(helperRef.current)
-      helperRef.current.dispose()
-      helperRef.current = null
-    }
+        // Update light color and intensity
+        light.color.set(color)
+        light.intensity = intensity
+    }, [color, intensity])
 
-    return () => {
-      if (helperRef.current) {
-        scene.remove(helperRef.current)
-        helperRef.current.dispose()
-        helperRef.current = null
-      }
-    }
-  }, [debug, scene])
+    useFrame((state) => {
+        if (!directionalLightRef.current) return
 
-  useEffect(() => {
-    const light = directionalLightRef.current
-    if (!light) return
+        const rotationY = state.clock.elapsedTime * rotationSpeed
+        positionRef.current.copy(basePosition)
+        rotationMatrixRef.current.makeRotationY(rotationY)
+        positionRef.current.applyMatrix4(rotationMatrixRef.current)
+        directionalLightRef.current.position.copy(positionRef.current)
+        
+        // Update helper if it exists
+        if (helperRef.current) {
+            helperRef.current.update()
+        }
+    })
 
-    light.color.set(color)
-    light.intensity = intensity
-    light.position.copy(keyPosition)
-
-    light.castShadow = shadowsEnabled
-    if (shadowsEnabled) {
-      const shadow = light.shadow
-      shadow.mapSize.set(shadowMapSize, shadowMapSize)
-      shadow.camera.near = 1
-      shadow.camera.far = 90
-      shadow.camera.left = -45
-      shadow.camera.right = 45
-      shadow.camera.top = 45
-      shadow.camera.bottom = -45
-      shadow.bias = -0.00035
-      shadow.normalBias = 0.025
-    }
-
-    if (helperRef.current) helperRef.current.update()
-  }, [color, intensity, keyPosition, shadowsEnabled, shadowMapSize])
-
-  useEffect(() => {
-    const rim = rimLightRef.current
-    if (!rim) return
-
-    rim.color.set(CINEMATIC_LIGHTING.rimColor)
-    rim.intensity = rimIntensity
-    rim.position.copy(rimPosition)
-  }, [rimIntensity, rimPosition])
-
-  return (
-    <>
-      <hemisphereLight
-        args={[
-          CINEMATIC_LIGHTING.hemisphereSky,
-          CINEMATIC_LIGHTING.hemisphereGround,
-          CINEMATIC_LIGHTING.hemisphereIntensity,
-        ]}
-      />
-      <directionalLight ref={directionalLightRef} castShadow={shadowsEnabled}>
-        <object3D attach="target" position={[0, 0, 0]} />
-      </directionalLight>
-      <directionalLight ref={rimLightRef} castShadow={false}>
-        <object3D attach="target" position={[0, 1.2, 0]} />
-      </directionalLight>
-    </>
-  )
+    return (
+        <directionalLight ref={directionalLightRef} position={basePosition.toArray()} intensity={1.0} />
+    )
 }
+

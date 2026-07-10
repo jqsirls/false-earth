@@ -2,8 +2,7 @@ import { useRef, useEffect, useMemo, useContext } from "react";
 import { useThree, useFrame } from "@react-three/fiber";
 import * as THREE from "three/webgpu";
 import { WebGPURenderer } from "three/webgpu";
-import { clamp, float, Fn, If, length, mix, pass, pow, renderOutput, uniform, uv, vec4 } from "three/tsl";
-import { wgslSmoothstep } from "../../core/shaders/wgslSmoothstep";
+import { clamp, float, Fn, If, length, mix, pass, pow, smoothstep, uniform, uv, vec4 } from "three/tsl";
 import { bloom } from "three/addons/tsl/display/BloomNode.js";
 import { dof } from "three/addons/tsl/display/DepthOfFieldNode.js";
 import { smaa } from "three/addons/tsl/display/SMAANode.js";
@@ -58,7 +57,6 @@ export default function Effects() {
 
     const renderer = gl as WebGPURenderer;
     const pp = new THREE.PostProcessing(renderer);
-    pp.outputColorTransform = false;
     postProcessingRef.current = pp;
 
     const scenePass = pass(scene, camera);
@@ -107,10 +105,10 @@ export default function Effects() {
     }
 
     const depthDiff = beamDepth.sub(sceneDepth);
-    const beamOcclusion = wgslSmoothstep(float(0), float(10), depthDiff);
+    const beamOcclusion = smoothstep(float(0), float(10), depthDiff);
     finalNode = finalNode.add(beamColor.mul(beamOcclusion));
 
-    const vignette = wgslSmoothstep(0.2, 0.8, dist);
+    const vignette = smoothstep(0.2, 0.8, dist);
     const mask = clamp(float(1.0).sub(vignette), 0.0, 1.0);
     const helmetOverlay = finalNode.mul(vec4(mask, mask, mask, 1.0)).mul(vec4(0.6, 0.65, 0.7, 1.0));
     finalNode = mix(finalNode, helmetOverlay, uParams.current.helmetStr);
@@ -123,17 +121,13 @@ export default function Effects() {
       finalNode = finalNode.add(bloomNode);
     }
 
-    const toneMappingMode = tmCfg.enabled ? THREE.AgXToneMapping : THREE.NoToneMapping;
-    finalNode = renderOutput(finalNode, toneMappingMode, THREE.SRGBColorSpace);
-
     if (isHighQuality && smaaEnabled) {
       finalNode = smaa(finalNode);
     }
 
     pp.outputNode = finalNode;
 
-    renderer.toneMapping = THREE.NoToneMapping;
-    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = tmCfg.enabled ? THREE.ReinhardToneMapping : THREE.NoToneMapping;
 
     return () => {
       postProcessingRef.current = null;

@@ -16,6 +16,12 @@ export const MEADOW_FOOTSTEP_PATHS = [
   '/audio/fs_grass5.mp3',
 ] as const
 
+/** Upstream false-earth ambient wind bed — bundled same-origin, layered under Cosmic Lullaby BGM. */
+export const MEADOW_AMBIENT_TRACKS = [
+  { id: 'grass_field', url: '/audio/grass_field.mp3', volume: 1.5 },
+  { id: 'noise', url: '/audio/noise.m4a', volume: 0.1 },
+] as const
+
 /** Resume Web Audio on a user gesture — required before footsteps can play. */
 export async function resumeMeadowAudioContext(
   listener?: { context: AudioContext } | null,

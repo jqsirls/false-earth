@@ -32,13 +32,13 @@ export const DEFAULT_LOD_SEGMENTS_CONFIG = [
   },
 ] as const
 
-// Color presets for tipColor — warm field greens with brown/purple variation
+// Color presets for tipColor
 export const TIP_COLOR_PRESETS = [
-  '#3a5238',
+  '#2e698c',
   '#3e8d2f', // Default green
   '#4b4b4b', // Default gray
   '#8c502e', // Brown
-  '#4a4840', // Warm neutral
+  '#21546c', // Blue
   '#7c7c22', // Yellow
 ]
 
