@@ -8,14 +8,18 @@ import { gameEvents } from '../../core/events';
 import { uTime } from '../../core/shaders/uniforms';
 import { usePrefersReducedMotion } from '../../core/utils/reducedMotion';
 import { playOrbChime, prepareOrbChime } from '../../audio/orbChime';
-import { getDefaultCompileTimeoutMs } from '../../core/utils/browserCaps';
+import {
+  getDefaultCompileTimeoutMs,
+  getOrbGroundCount,
+  getOrbSkyCount,
+  shouldUseCheapOrbRendering,
+} from '../../core/utils/browserCaps';
 import { resolveMeadowAsset } from '../../config/meadowAssets';
 import { createOrbMaterial } from './core/orbMaterial';
 import { orbDrift, orbOmegaFromRandom } from './core/orbMotion';
 import {
   CHARACTER_CENTER_HEIGHT,
   ORB_COLLECT_VERTICAL_TOLERANCE,
-  ORB_COUNT,
   ORB_FIELD_MAX_RADIUS,
   ORB_FIELD_MIN_RADIUS,
   ORB_GROUND_COLLECT_RADIUS,
@@ -27,6 +31,7 @@ import {
   ORB_RESPAWN_MIN_CHARACTER_DISTANCE,
   ORB_RESPAWN_MIN_SECONDS,
   ORB_SKY_COLLECT_RADIUS,
+  ORB_SKY_COUNT,
   ORB_SKY_HOVER_MAX,
   ORB_SKY_HOVER_MIN,
   ORB_SKY_SIZE,
@@ -35,12 +40,21 @@ import {
 const MIN_ORB_SPACING = 6;
 const RESPAWN_PLACEMENT_ATTEMPTS = 16;
 
+// Device-static caps (research-locked band is 8–15 field + 2–4 sky):
+// constrained GPUs run the floor of the band, desktop runs the full count.
+const EFFECTIVE_GROUND_COUNT = getOrbGroundCount(ORB_GROUND_COUNT);
+const EFFECTIVE_SKY_COUNT = getOrbSkyCount(ORB_SKY_COUNT);
+const EFFECTIVE_ORB_COUNT = EFFECTIVE_GROUND_COUNT + EFFECTIVE_SKY_COUNT;
+
 /**
  * Owner's sculpted orb (Abstract_Spherical_Shape), decimated via
  * tools/3d/blender_orb_glb.py. GLBs are .vercelignored — production loads
  * from the meadow CDN via resolveMeadowAsset, local dev from public/.
+ * Constrained GPUs load the 5k-tri decimation instead of the 20k sculpt.
  */
-const ORB_MODEL_PATH = resolveMeadowAsset('/models/orb-v3.glb');
+const ORB_MODEL_PATH = resolveMeadowAsset(
+  shouldUseCheapOrbRendering() ? '/models/orb-v3-lite.glb' : '/models/orb-v3.glb',
+);
 
 interface OrbsProps {
   onCompileReady?: (id: string, isReady: boolean) => void;
@@ -48,7 +62,7 @@ interface OrbsProps {
 }
 
 function isSkyOrb(index: number): boolean {
-  return index >= ORB_GROUND_COUNT;
+  return index >= EFFECTIVE_GROUND_COUNT;
 }
 
 function randomHover(index: number): number {
@@ -93,10 +107,10 @@ export default function Orbs({ onCompileReady, compileDebug = false }: OrbsProps
   }, [gltf]);
 
   const system = useMemo(() => {
-    const gpu = createOrbMaterial();
+    const gpu = createOrbMaterial(EFFECTIVE_ORB_COUNT);
     const candidate = { x: 0, z: 0 };
 
-    for (let i = 0; i < ORB_COUNT; i += 1) {
+    for (let i = 0; i < EFFECTIVE_ORB_COUNT; i += 1) {
       // Sparse scatter: rejection-sample for mutual spacing.
       for (let attempt = 0; attempt < 24; attempt += 1) {
         randomFieldXZ(candidate);
@@ -124,7 +138,7 @@ export default function Orbs({ onCompileReady, compileDebug = false }: OrbsProps
     // Fallback icosphere only if the GLB somehow has no mesh.
     const geometry = orbGeometry ?? new THREE.IcosahedronGeometry(1, 2);
     const ownsGeometry = !orbGeometry;
-    const mesh = new THREE.InstancedMesh(geometry, gpu.material, ORB_COUNT);
+    const mesh = new THREE.InstancedMesh(geometry, gpu.material, EFFECTIVE_ORB_COUNT);
     mesh.frustumCulled = false;
     mesh.castShadow = false;
     mesh.receiveShadow = false;
@@ -148,7 +162,7 @@ export default function Orbs({ onCompileReady, compileDebug = false }: OrbsProps
   }, [system]);
 
   const gatheredCountRef = useRef(0);
-  const respawnAtRef = useRef<Float64Array>(new Float64Array(ORB_COUNT).fill(-1));
+  const respawnAtRef = useRef<Float64Array>(new Float64Array(EFFECTIVE_ORB_COUNT).fill(-1));
 
   const collectOrb = (index: number, t: number) => {
     const state = system.gpu.stateArray[index];
@@ -174,7 +188,7 @@ export default function Orbs({ onCompileReady, compileDebug = false }: OrbsProps
     const debugApi = {
       collect: (index = 0) => collectOrbRef.current(index, uTime.value),
       collectNext: () => {
-        for (let i = 0; i < ORB_COUNT; i += 1) {
+        for (let i = 0; i < EFFECTIVE_ORB_COUNT; i += 1) {
           if (collectOrbRef.current(i, uTime.value)) return i;
         }
         return -1;
@@ -224,7 +238,7 @@ export default function Orbs({ onCompileReady, compileDebug = false }: OrbsProps
     const { baseArray, motionArray, stateArray } = system.gpu;
     let frustumReady = false;
 
-    for (let i = 0; i < ORB_COUNT; i += 1) {
+    for (let i = 0; i < EFFECTIVE_ORB_COUNT; i += 1) {
       const state = stateArray[i];
 
       if (state.x >= 0.5) {

@@ -26,6 +26,7 @@ import {
   vec3,
 } from 'three/tsl';
 import { getTerrainHeight } from '../../../core/shaders/terrainHelpers';
+import { shouldUseCheapOrbRendering } from '../../../core/utils/browserCaps';
 import {
   uTerrainAmp,
   uTerrainFreq,
@@ -33,7 +34,6 @@ import {
   uTime,
 } from '../../../core/shaders/uniforms';
 import {
-  ORB_COUNT,
   ORB_DISSOLVE_SECONDS,
   ORB_DRIFT_AMP_XZ,
   ORB_DRIFT_AMP_Y,
@@ -63,10 +63,10 @@ export interface OrbGpuState {
  *
  * Drift formulas MUST mirror orbMotion.ts (CPU collect check).
  */
-export function createOrbMaterial(): OrbGpuState {
-  const baseArray = Array.from({ length: ORB_COUNT }, () => new THREE.Vector4());
-  const motionArray = Array.from({ length: ORB_COUNT }, () => new THREE.Vector4());
-  const stateArray = Array.from({ length: ORB_COUNT }, () => new THREE.Vector4());
+export function createOrbMaterial(orbCount: number): OrbGpuState {
+  const baseArray = Array.from({ length: orbCount }, () => new THREE.Vector4());
+  const motionArray = Array.from({ length: orbCount }, () => new THREE.Vector4());
+  const stateArray = Array.from({ length: orbCount }, () => new THREE.Vector4());
 
   const uBase = uniformArray(baseArray);
   const uMotion = uniformArray(motionArray);
@@ -175,7 +175,10 @@ export function createOrbMaterial(): OrbGpuState {
   material.transparent = true;
   material.blending = THREE.NormalBlending;
   material.depthWrite = false;
-  material.side = THREE.DoubleSide;
+  // DoubleSide translucency shades every fragment twice; on the shared
+  // iOS/mobile GPU memory pool FrontSide halves the transparent overdraw
+  // while keeping the glassy fresnel look. Desktop keeps the inner shells.
+  material.side = shouldUseCheapOrbRendering() ? THREE.FrontSide : THREE.DoubleSide;
   material.fog = false;
 
   return { material, baseArray, motionArray, stateArray, uMotionScale };

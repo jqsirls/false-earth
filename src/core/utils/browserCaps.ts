@@ -134,9 +134,33 @@ export function getJqTextureRoot(): string {
   return resolveMeadowAsset(isMemoryConstrainedGpu() ? '/textures/jq-lite' : '/textures/jq');
 }
 
-/** Only disable heavy post in explicit lite escape-hatch scenes. */
+/**
+ * Heavy post (bloom/DoF/SMAA) allocates several full-res render targets —
+ * too much for the shared iOS/mobile GPU memory pool on top of grass + roses.
+ * Off on memory-constrained GPUs and in explicit lite escape-hatch scenes;
+ * desktop keeps the full chain.
+ */
 export function shouldDisableHeavyPostProcessing(): boolean {
-  return shouldUseMinimalScene();
+  return shouldUseMinimalScene() || isMemoryConstrainedGpu();
+}
+
+/** Orb population: research-locked floor (8 field + 2 sky) on constrained GPUs. */
+export function getOrbGroundCount(defaultCount: number): number {
+  if (isMemoryConstrainedGpu()) return Math.min(defaultCount, 8);
+  return defaultCount;
+}
+
+export function getOrbSkyCount(defaultCount: number): number {
+  if (isMemoryConstrainedGpu()) return Math.min(defaultCount, 2);
+  return defaultCount;
+}
+
+/**
+ * Constrained GPUs draw orbs FrontSide (half the transparent fragment work of
+ * DoubleSide) and load the 5k-tri decimated sculpt instead of the 20k one.
+ */
+export function shouldUseCheapOrbRendering(): boolean {
+  return isMemoryConstrainedGpu();
 }
 
 /** Directional shadows — off only in lite escape-hatch scenes. */
