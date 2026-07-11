@@ -8,20 +8,27 @@ import { resumeMeadowAudioContext } from '../config/meadowAudio';
 import { setMeadowBgmMuted, subscribeMeadowBgmPlayback } from '../audio/meadowBgmPlayer';
 import { useEffect } from 'react';
 import { MEADOW_AMBIENT_TRACKS, MEADOW_WIND_DUCK_MULTIPLIER } from '../config/meadowAudio';
+import { useIsMeadowOverlayOpen } from '../core/hooks/useIsMeadowOverlayOpen';
+import { meadowFocusCss, meadowHudFontFamily, meadowIconPillStyle } from './meadowUiStyles';
 
 export default function AudioButton() {
     const listener = useGameStore(s => s.audioListener);
     const isControlEnabled = useGameStore((state) => state.isControlEnabled);
     const isGameStarted = useGameStore((state) => state.isGameStarted);
+    const isMobile = useGameStore((state) => state.isMobile);
     const isSoundOn = useGameStore((state) => state.isSoundOn);
     const setIsSoundOn = useGameStore((state) => state.setIsSoundOn);
     const meadowBgmPlaying = useGameStore((state) => state.meadowBgmPlaying);
     const setMeadowBgmPlaying = useGameStore((state) => state.setMeadowBgmPlaying);
+    const isOverlayOpen = useIsMeadowOverlayOpen();
 
     const radius = 10;
     const size = 45;
 
     const toggleSound = () => {
+        // No toggling before START or while a modal/sheet is open (useShortcut
+        // already ignores keypresses inside INPUT/TEXTAREA fields).
+        if (!isControlEnabled || isOverlayOpen) return;
         void resumeMeadowAudioContext(listener).then(() => {
             setIsSoundOn(!isSoundOn);
         });
@@ -45,10 +52,48 @@ export default function AudioButton() {
     if (!isControlEnabled) return null;
 
     return (
+        <>
+        {isMobile && (
+            <>
+                <style>{meadowFocusCss}</style>
+                <button
+                    type="button"
+                    className="meadow-focusable"
+                    aria-label={isSoundOn ? 'Turn music off' : 'Turn music on'}
+                    aria-pressed={isSoundOn}
+                    onClick={toggleSound}
+                    style={{
+                        ...meadowIconPillStyle,
+                        position: 'fixed',
+                        top: 'calc(max(20px, env(safe-area-inset-top)) + 52px)',
+                        right: 'max(20px, env(safe-area-inset-right))',
+                        zIndex: 20,
+                        pointerEvents: 'auto',
+                        fontFamily: meadowHudFontFamily,
+                        fontSize: '0.65rem',
+                        letterSpacing: '0.12em',
+                        textTransform: 'uppercase',
+                        color: isSoundOn ? '#fff' : 'rgba(255,255,255,0.5)',
+                        cursor: 'pointer',
+                    }}
+                >
+                    MUSIC {isSoundOn ? 'ON' : 'OFF'}
+                </button>
+            </>
+        )}
         <WebGPUCanvas
             width={size}
             height={size}
-            style={{ position: 'fixed', bottom: 0, right: 0, zIndex: 20 }}
+            style={{
+                position: 'fixed',
+                bottom: 0,
+                right: 0,
+                zIndex: 20,
+                // Mobile gets the labeled MUSIC pill instead; keep the canvas
+                // mounted (it hosts the wind Bgm) but hide the circle visual.
+                opacity: isMobile ? 0 : 1,
+                pointerEvents: isMobile ? 'none' : 'auto',
+            }}
         >
             <mesh
                 onClick={toggleSound}
@@ -82,5 +127,6 @@ export default function AudioButton() {
                 ))}
             </group>
         </WebGPUCanvas>
+        </>
     );
 }

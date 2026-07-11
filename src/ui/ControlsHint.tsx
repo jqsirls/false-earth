@@ -148,6 +148,7 @@ export function ControlsHint() {
               }
               label="FLY"
             />
+            <InstructionRow input={<Key>M</Key>} label="MUSIC" />
           </div>
           <p
             style={{
