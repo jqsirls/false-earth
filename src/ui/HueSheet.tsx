@@ -4,6 +4,7 @@ import { useMeadowAuthStore } from '../core/store/meadowAuthStore';
 import { usePrefersReducedMotion } from '../core/utils/reducedMotion';
 import { useFocusTrap } from '../core/hooks/useFocusTrap';
 import {
+  completeMeadowHueConnect,
   fetchMeadowHueProfile,
   formatHueStatusLabel,
   patchMeadowHueProfile,
@@ -14,6 +15,11 @@ import {
   type HueProfile,
 } from '../api/meadowHueApi';
 import { rememberHueConnectState } from './HueOAuthHandler';
+import {
+  clearPendingHueOAuth,
+  isHueOAuthMessage,
+  takeHueCallbackHandoff,
+} from '../lib/hueOAuth';
 import {
   meadowCrtCss,
   meadowFocusCss,
@@ -50,6 +56,8 @@ export function HueSheet() {
   const [error, setError] = useState<string | null>(null);
   const [isBusy, setIsBusy] = useState(false);
   const [previewId, setPreviewId] = useState<string | null>(null);
+  const popupRef = useRef<Window | null>(null);
+  const oauthHandledRef = useRef(false);
 
   useFocusTrap(isOpen, panelRef);
 
@@ -104,13 +112,116 @@ export function HueSheet() {
     return () => window.clearTimeout(timer);
   }, [previewId]);
 
+  const finishOAuthConnect = useCallback(
+    async (code: string) => {
+      if (oauthHandledRef.current) return;
+      oauthHandledRef.current = true;
+
+      try {
+        popupRef.current?.close();
+      } catch {
+        // Popup already closed itself.
+      }
+      popupRef.current = null;
+
+      setIsBusy(true);
+      const result = await completeMeadowHueConnect(code);
+      clearPendingHueOAuth();
+      setIsBusy(false);
+
+      if (!result.ok) {
+        oauthHandledRef.current = false;
+        setPhase('error');
+        setError(result.message);
+        return;
+      }
+
+      if (result.data.inventory.rooms.length > 0) {
+        setRooms(result.data.inventory.rooms);
+      }
+      await loadProfile();
+    },
+    [loadProfile],
+  );
+
+  // While the Hue sign-in popup is open: postMessage is the fast path, the
+  // same-origin localStorage handoff catches lost messages, and getStatus
+  // polling is the backend source of truth (flips the sheet even if both
+  // client channels fail). The meadow scene keeps running untouched.
+  useEffect(() => {
+    if (phase !== 'connecting') return undefined;
+
+    const onMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+      if (!isHueOAuthMessage(event.data)) return;
+      void finishOAuthConnect(event.data.code);
+    };
+
+    const consumeHandoff = () => {
+      const handoff = takeHueCallbackHandoff();
+      if (handoff) void finishOAuthConnect(handoff.code);
+    };
+
+    const onStorage = (event: StorageEvent) => {
+      if (event.key && event.key !== 'meadow.hueCallbackHandoff') return;
+      consumeHandoff();
+    };
+
+    window.addEventListener('message', onMessage);
+    window.addEventListener('storage', onStorage);
+
+    const poll = window.setInterval(() => {
+      consumeHandoff();
+      if (oauthHandledRef.current) return;
+      void fetchMeadowHueProfile().then((result) => {
+        if (oauthHandledRef.current) return;
+        if (result.ok && result.data.connected) {
+          oauthHandledRef.current = true;
+          try {
+            popupRef.current?.close();
+          } catch {
+            // Popup already closed itself.
+          }
+          popupRef.current = null;
+          setProfile(result.data);
+          setPhase('connected');
+          setIsBusy(false);
+        }
+      });
+    }, 3500);
+
+    return () => {
+      window.removeEventListener('message', onMessage);
+      window.removeEventListener('storage', onStorage);
+      window.clearInterval(poll);
+    };
+  }, [phase, finishOAuthConnect]);
+
   const handleConnect = useCallback(async () => {
     setIsBusy(true);
     setError(null);
     setPhase('connecting');
+    oauthHandledRef.current = false;
+
+    // Open the popup synchronously on tap (popup blockers require a user
+    // gesture); point it at the auth URL once the backend replies. On iOS
+    // Safari this becomes a new tab — acceptable, same relay flow.
+    let popup: Window | null = null;
+    try {
+      popup = window.open('', 'meadow-hue-oauth', 'popup,width=480,height=720');
+    } catch {
+      popup = null;
+    }
+    popupRef.current = popup;
 
     const result = await startMeadowHueConnect();
     if (!result.ok) {
+      try {
+        popup?.close();
+      } catch {
+        // Ignore close failures on the empty popup.
+      }
+      popupRef.current = null;
       setIsBusy(false);
       if (result.code === 'PROFILE_INCOMPLETE') {
         setPhase('profile_incomplete');
@@ -126,6 +237,19 @@ export function HueSheet() {
     }
 
     rememberHueConnectState(result.data.state);
+
+    if (popup && !popup.closed) {
+      try {
+        popup.location.href = result.data.authUrl;
+        setIsBusy(false);
+        return;
+      } catch {
+        // Fall through to full redirect.
+      }
+    }
+
+    // Popup blocked entirely — full-redirect fallback (HueOAuthHandler
+    // completes the connect from URL params when the meadow reloads).
     window.location.assign(result.data.authUrl);
   }, []);
 
@@ -340,9 +464,32 @@ export function HueSheet() {
         ) : null}
 
         {phase === 'loading' || phase === 'connecting' ? (
-          <p style={{ margin: '0 0 16px', fontSize: '0.68rem', color: 'rgba(255,255,255,0.55)' }}>
-            {phase === 'connecting' ? 'Opening Philips Hue sign-in…' : 'Checking your lights…'}
+          <p style={{ margin: '0 0 16px', fontSize: '0.68rem', lineHeight: 1.5, color: 'rgba(255,255,255,0.55)' }}>
+            {phase === 'connecting'
+              ? 'Finish sign-in in the Philips Hue window — this sheet updates on its own.'
+              : 'Checking your lights…'}
           </p>
+        ) : null}
+
+        {phase === 'connecting' ? (
+          <button
+            type="button"
+            className="meadow-focusable"
+            onClick={() => {
+              try {
+                popupRef.current?.close();
+              } catch {
+                // Popup already gone.
+              }
+              popupRef.current = null;
+              oauthHandledRef.current = false;
+              setIsBusy(false);
+              setPhase('disconnected');
+            }}
+            style={{ ...meadowHudQuietButtonStyle, marginBottom: '10px' }}
+          >
+            Cancel
+          </button>
         ) : null}
 
         {phase === 'not_ready' ? (

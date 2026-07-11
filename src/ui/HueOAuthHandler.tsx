@@ -5,6 +5,7 @@ import {
   readHueOAuthFromUrl,
   readPendingHueOAuth,
   storeHueConnectState,
+  takeHueCallbackHandoff,
 } from '../lib/hueOAuth';
 import {
   completeMeadowHueConnect,
@@ -22,21 +23,17 @@ export function HueOAuthHandler() {
   const handlingRef = useRef(false);
 
   useEffect(() => {
-    if (!isAuthenticated || handlingRef.current) return;
+    if (!isAuthenticated) return undefined;
 
-    const fromUrl = readHueOAuthFromUrl();
-    const pending = readPendingHueOAuth();
-    const payload = fromUrl ?? pending;
-    if (!payload) return;
+    const complete = async (code: string, fromUrl: boolean) => {
+      if (handlingRef.current) return;
+      handlingRef.current = true;
 
-    handlingRef.current = true;
-
-    const run = async () => {
       if (fromUrl) {
         clearHueOAuthQueryParams();
       }
 
-      const result = await completeMeadowHueConnect(payload.code);
+      const result = await completeMeadowHueConnect(code);
       clearPendingHueOAuth();
 
       if (result.ok && result.data.inventory.rooms.length > 0) {
@@ -47,7 +44,22 @@ export function HueOAuthHandler() {
       handlingRef.current = false;
     };
 
-    void run();
+    const urlPayload = readHueOAuthFromUrl();
+    const payload = urlPayload ?? readPendingHueOAuth() ?? takeHueCallbackHandoff();
+    if (payload) {
+      void complete(payload.code, Boolean(urlPayload));
+    }
+
+    // Safety net: the popup's localStorage handoff arrives while the Hue
+    // sheet is closed (HueSheet only listens in its connecting phase).
+    const onStorage = (event: StorageEvent) => {
+      if (event.key && event.key !== 'meadow.hueCallbackHandoff') return;
+      if (useMeadowAuthStore.getState().isHueSheetOpen) return;
+      const handoff = takeHueCallbackHandoff();
+      if (handoff) void complete(handoff.code, false);
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
   }, [isAuthenticated, openHueSheet, setPendingHueRooms]);
 
   return null;

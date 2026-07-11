@@ -1,7 +1,7 @@
 import './style.css'
 import { createRoot } from 'react-dom/client'
-import App from './app/App'
 import { StrictMode } from 'react'
+import { maybeRenderHueCallbackLanding } from './lib/hueCallbackLanding'
 
 function showBootstrapError(message) {
   const root = document.querySelector('#root')
@@ -17,11 +17,18 @@ function showBootstrapError(message) {
   `
 }
 
-try {
-  createRoot(document.querySelector('#root')).render(<StrictMode><App /></StrictMode>)
-} catch (error) {
-  console.error('[false-earth] bootstrap failed:', error)
-  showBootstrapError(error instanceof Error ? error.message : 'Unknown startup error')
+// Hue OAuth popup landing: relay params to the opener and close — never boot
+// the 3D scene in the popup. App is imported dynamically so its module-level
+// asset preloads don't run for this window.
+if (!maybeRenderHueCallbackLanding()) {
+  import('./app/App')
+    .then(({ default: App }) => {
+      createRoot(document.querySelector('#root')).render(<StrictMode><App /></StrictMode>)
+    })
+    .catch((error) => {
+      console.error('[false-earth] bootstrap failed:', error)
+      showBootstrapError(error instanceof Error ? error.message : 'Unknown startup error')
+    })
 }
 
 window.addEventListener('error', (event) => {
