@@ -11,6 +11,7 @@ import {
 } from './meadowUiStyles';
 
 const FOOTER_ITEMS: Array<{ id: LegalModalId; label: string }> = [
+  { id: 'about', label: 'About' },
   { id: 'privacy', label: 'Privacy' },
   { id: 'terms', label: 'Terms' },
   { id: 'research', label: 'Research' },
@@ -18,9 +19,11 @@ const FOOTER_ITEMS: Array<{ id: LegalModalId; label: string }> = [
 
 export function MeadowFooter() {
   const isControlEnabled = useGameStore((state) => state.isControlEnabled);
+  const isMobile = useGameStore((state) => state.isMobile);
   const gpuError = useGameStore((state) => state.gpuError);
   const openLegalModal = useMeadowUiStore((state) => state.openLegalModal);
   const triggerRefs = useRef<Record<LegalModalId, HTMLButtonElement | null>>({
+    about: null,
     terms: null,
     privacy: null,
     research: null,
@@ -32,6 +35,10 @@ export function MeadowFooter() {
     trackLegalModalOpen(id);
     openLegalModal(id);
   };
+
+  // Desktop reads too dim over the bright meadow horizon; mobile's current
+  // step works there (owner call, 2026-07-11).
+  const restColor = isMobile ? meadowModalTokens.muted : meadowModalTokens.mutedBright;
 
   return (
     <>
@@ -51,7 +58,7 @@ export function MeadowFooter() {
           gap: '4px 2px',
           maxWidth: 'min(96vw, 720px)',
           padding: '0 12px',
-          color: meadowModalTokens.muted,
+          color: restColor,
           fontFamily: meadowHudFontFamily,
           fontSize: '0.65rem',
           letterSpacing: '0.04em',
@@ -67,7 +74,7 @@ export function MeadowFooter() {
               }}
               type="button"
               className="meadow-focusable"
-              style={meadowFooterLinkStyle}
+              style={{ ...meadowFooterLinkStyle, color: restColor }}
               onClick={() => openFromFooter(item.id)}
               onMouseEnter={(event) => {
                 event.currentTarget.style.textDecoration = 'underline';
@@ -75,7 +82,7 @@ export function MeadowFooter() {
               }}
               onMouseLeave={(event) => {
                 event.currentTarget.style.textDecoration = 'none';
-                event.currentTarget.style.color = meadowModalTokens.muted;
+                event.currentTarget.style.color = restColor;
               }}
               onFocus={(event) => {
                 event.currentTarget.style.textDecoration = 'underline';
@@ -83,7 +90,7 @@ export function MeadowFooter() {
               }}
               onBlur={(event) => {
                 event.currentTarget.style.textDecoration = 'none';
-                event.currentTarget.style.color = meadowModalTokens.muted;
+                event.currentTarget.style.color = restColor;
               }}
             >
               {item.label}

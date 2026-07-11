@@ -2,11 +2,14 @@ import { useEffect, useRef } from 'react';
 import { useGameStore } from '../core/store/gameStore';
 import { useMeadowUiStore } from '../core/store/meadowUiStore';
 import { useFocusTrap } from '../core/hooks/useFocusTrap';
+import { useHueEntry } from '../core/hooks/useHueEntry';
 import { usePrefersReducedMotion } from '../core/utils/reducedMotion';
 import { LEGAL_MODAL_CONTENT, type LegalModalId } from './legalModalContent';
+import { BuyLightsLink } from './BuyLightsLink';
 import {
   meadowCrtCss,
   meadowFocusCss,
+  meadowHudActionStyle,
   meadowHudFontFamily,
   meadowLegalPanelDesktop,
   meadowLegalPanelMobile,
@@ -95,6 +98,7 @@ export function LegalModal() {
   const closeLegalModal = useMeadowUiStore((state) => state.closeLegalModal);
   const panelRef = useRef<HTMLElement>(null);
   const triggerRef = useRef<HTMLElement | null>(null);
+  const { isChecking: isHueEntryChecking, enterHueFlow } = useHueEntry();
 
   useFocusTrap(Boolean(legalModal), panelRef);
 
@@ -290,6 +294,26 @@ export function LegalModal() {
             </div>
           ))}
         </div>
+
+        {content.id === 'about' ? (
+          <div style={{ marginTop: '18px' }}>
+            <button
+              type="button"
+              className="meadow-focusable"
+              data-testid="meadow-about-connect-lights"
+              aria-busy={isHueEntryChecking}
+              onClick={() => void enterHueFlow(closeLegalModal)}
+              style={{
+                ...meadowHudActionStyle,
+                opacity: isHueEntryChecking ? 0.65 : 1,
+                cursor: isHueEntryChecking ? 'wait' : 'pointer',
+              }}
+            >
+              [ CONNECT LIGHTS ]
+            </button>
+            <BuyLightsLink style={{ marginTop: '10px' }} />
+          </div>
+        ) : null}
 
         <p
           style={{

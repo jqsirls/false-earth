@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useGameStore } from '../core/store/gameStore';
 import { useMeadowAuthStore } from '../core/store/meadowAuthStore';
 import { useHueStatusStore } from '../core/store/hueStatusStore';
-import { getProfileStatus } from '../api/meadowAuthApi';
+import { useHueEntry } from '../core/hooks/useHueEntry';
 import { fetchMeadowHueProfile } from '../api/meadowHueApi';
 import LightbulbOutlinedIcon from '@mui/icons-material/LightbulbOutlined';
 import LightbulbIcon from '@mui/icons-material/Lightbulb';
@@ -33,11 +33,9 @@ export function LampButton() {
   const isControlEnabled = useGameStore((state) => state.isControlEnabled);
   const gpuError = useGameStore((state) => state.gpuError);
   const isAuthenticated = useMeadowAuthStore((state) => state.isAuthenticated);
-  const openAuthSheet = useMeadowAuthStore((state) => state.openAuthSheet);
-  const openHueSheet = useMeadowAuthStore((state) => state.openHueSheet);
   const hueConnected = useHueStatusStore((state) => state.connected);
   const setHueConnected = useHueStatusStore((state) => state.setConnected);
-  const [isChecking, setIsChecking] = useState(false);
+  const { isChecking, enterHueFlow } = useHueEntry();
 
   // One status check when a signed-in visitor reaches the meadow — the Hue
   // sheet keeps the shared state fresh afterwards (connect/disconnect events).
@@ -57,29 +55,9 @@ export function LampButton() {
 
   const isConnected = isAuthenticated && hueConnected === true;
 
-  const handleClick = async () => {
-    if (isChecking) return;
-
-    if (!isAuthenticated) {
-      openAuthSheet('hue_connect');
-      return;
-    }
-
-    // Gate Hue on a complete Storytailor profile — route to the in-modal
-    // profile step instead of a dead-end inside the Hue sheet.
-    setIsChecking(true);
-    const statusResult = await getProfileStatus();
-    setIsChecking(false);
-
-    if (statusResult.ok && !statusResult.status.complete) {
-      openAuthSheet('hue_connect');
-      return;
-    }
-
-    // Complete profile — or status check failed; the Hue sheet surfaces
-    // PROFILE_INCOMPLETE itself as a safety net.
-    openHueSheet();
-  };
+  // Signed out → auth sheet with hue_connect intent; signed in → profile
+  // gate → Hue sheet. Shared with the About modal via useHueEntry.
+  const handleClick = () => void enterHueFlow();
 
   return (
     <>
@@ -98,7 +76,7 @@ export function LampButton() {
           className={`meadow-focusable${isConnected ? ' meadow-lamp-connected' : ''}`}
           aria-label={isConnected ? 'Booster room lights — connected' : 'Booster room lights'}
           aria-busy={isChecking}
-          onClick={() => void handleClick()}
+          onClick={handleClick}
           style={{
             ...meadowIconPillStyle,
             opacity: isChecking ? 0.6 : 1,

@@ -22,6 +22,10 @@ export const meadowModalTokens = {
 
   muted: 'rgba(242, 245, 250, 0.55)',
 
+  /** Brighter muted step — desktop footer/hints where 0.55 reads too dim over the meadow. */
+
+  mutedBright: 'rgba(242, 245, 250, 0.88)',
+
   accent: '#FFFFFF',
 
   radius: '10px',

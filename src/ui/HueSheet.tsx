@@ -35,6 +35,7 @@ import {
   meadowSheetTitleStyle,
 } from './meadowUiStyles';
 import { useHueStatusStore } from '../core/store/hueStatusStore';
+import { BuyLightsLink } from './BuyLightsLink';
 
 type HueSheetPhase =
   | 'loading'
@@ -549,6 +550,10 @@ export function HueSheet() {
           </button>
         )}
 
+        {phase === 'disconnected' || phase === 'error' ? (
+          <BuyLightsLink style={{ marginBottom: '12px' }} />
+        ) : null}
+
         {phase === 'connected' && profile?.connected ? (
           <>
             <div
@@ -610,6 +615,9 @@ export function HueSheet() {
               >
                 {ambientNotice}
               </p>
+            ) : null}
+            {ambientNotice?.includes('no color lights') ? (
+              <BuyLightsLink style={{ marginBottom: '12px' }} />
             ) : null}
             <button
               type="button"

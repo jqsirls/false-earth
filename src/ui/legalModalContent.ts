@@ -1,4 +1,4 @@
-export type LegalModalId = 'terms' | 'privacy' | 'research';
+export type LegalModalId = 'about' | 'terms' | 'privacy' | 'research';
 
 export type LegalModalCitation = {
   label: string;
@@ -19,6 +19,19 @@ export type LegalModalContent = {
 };
 
 export const LEGAL_MODAL_CONTENT: Record<LegalModalId, LegalModalContent> = {
+  about: {
+    id: 'about',
+    title: 'ABOUT',
+    sections: [
+      {
+        paragraphs: [
+          'This is a quiet meadow at the edge of the sky. There is nothing to win here and nothing to finish. You can walk, fly, gather the drifting lights, or just stand in the grass and listen to the wind.',
+          'If you have smart lights at home, the room can drift along with the sky.',
+          "Storytailor's Booster lives here. Stay as long as you like.",
+        ],
+      },
+    ],
+  },
   terms: {
     id: 'terms',
     title: 'TERMS OF USE',

@@ -15,12 +15,16 @@ const COUNTER_CSS = `
 .orb-counter-readout {
   top: calc(max(12px, env(safe-area-inset-top)) + 8px);
   left: calc(max(12px, env(safe-area-inset-left)) + 8px);
+  /* Desktop: readable at a glance (owner 2026-07-11 — users couldn't find it). */
+  font-size: 1.05rem;
 }
 /* Narrow screens: the CTA pill spans most of the top strip, so sit below it
-   (CTA is smaller on mobile now, so the drop is tighter). */
+   (CTA is smaller on mobile now, so the drop is tighter). Mobile keeps the
+   original quieter size — the HUD strip is denser there. */
 @media (max-width: 560px) {
   .orb-counter-readout {
     top: calc(max(12px, env(safe-area-inset-top)) + 56px);
+    font-size: 0.7rem;
   }
 }
 @keyframes orb-counter-glitch {
@@ -81,7 +85,7 @@ export function OrbCounter() {
           userSelect: 'none',
           color: meadowModalTokens.accent,
           fontFamily: meadowHudFontFamily,
-          fontSize: '0.7rem',
+          // font-size lives in COUNTER_CSS so the mobile media query can win.
           letterSpacing: '0.14em',
           opacity: bright ? 1 : REST_OPACITY,
           transition: reducedMotion
