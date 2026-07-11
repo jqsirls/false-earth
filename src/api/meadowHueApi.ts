@@ -257,6 +257,80 @@ export async function stopMeadowHuePreview(previewId: string): Promise<MeadowHue
   return { ok: true, data: { stopped: Boolean(asRecord(result.data)?.stopped ?? true) } };
 }
 
+export type HueAmbientStage = 'gentle' | 'vivid' | 'full';
+
+export type HueAmbientSession = {
+  sessionId: string;
+  stage: HueAmbientStage;
+  durationMs: number;
+};
+
+/** Server-owned meadow scene: the client only ever names a stage, never colors. */
+export async function startMeadowHueAmbient(
+  stage: HueAmbientStage,
+): Promise<MeadowHueResult<HueAmbientSession>> {
+  const result = await meadowHueRequest<unknown>('', {
+    method: 'POST',
+    body: JSON.stringify({ action: 'ambientStart', stage }),
+  });
+  if (!result.ok) return result;
+  const record = asRecord(result.data);
+  const sessionId = asString(record?.sessionId);
+  if (!sessionId) {
+    return { ok: false, message: 'The lights could not join in right now.', code: 'AMBIENT_FAILED' };
+  }
+  return {
+    ok: true,
+    data: {
+      sessionId,
+      stage: (asString(record?.stage) as HueAmbientStage | undefined) ?? stage,
+      durationMs: asNumber(record?.durationMs) ?? 840000,
+    },
+  };
+}
+
+export async function stopMeadowHueAmbient(
+  sessionId: string,
+): Promise<MeadowHueResult<{ stopped: boolean }>> {
+  const result = await meadowHueRequest<unknown>('', {
+    method: 'POST',
+    body: JSON.stringify({ action: 'ambientStop', sessionId }),
+  });
+  if (!result.ok) return result;
+  return { ok: true, data: { stopped: Boolean(asRecord(result.data)?.stopped ?? true) } };
+}
+
+export async function accentMeadowHueAmbient(
+  sessionId: string,
+): Promise<MeadowHueResult<{ applied: boolean }>> {
+  const result = await meadowHueRequest<unknown>('', {
+    method: 'POST',
+    body: JSON.stringify({ action: 'ambientAccent', sessionId }),
+  });
+  if (!result.ok) return result;
+  return { ok: true, data: { applied: Boolean(asRecord(result.data)?.applied) } };
+}
+
+/**
+ * Tab-hide stop: keepalive fetch (survives unload, unlike plain fetch) with the
+ * Bearer header sendBeacon cannot carry. Fire-and-forget; the ~14-min server
+ * session TTL is the backstop if this never lands.
+ */
+export function stopMeadowHueAmbientOnHide(sessionId: string, headers: Record<string, string>): void {
+  if (!MEADOW_HUE_URL) return;
+  try {
+    void fetch(MEADOW_HUE_URL, {
+      method: 'POST',
+      keepalive: true,
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json', ...headers },
+      body: JSON.stringify({ action: 'ambientStop', sessionId }),
+    }).catch(() => undefined);
+  } catch {
+    // Progressive enhancement: never let a lighting stop disturb the meadow.
+  }
+}
+
 export function formatHueStatusLabel(profile: HueProfile | null): string {
   if (!profile?.connected) return 'Off';
   if (profile.disabled) return 'Paused';

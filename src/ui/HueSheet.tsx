@@ -9,11 +9,13 @@ import {
   formatHueStatusLabel,
   patchMeadowHueProfile,
   startMeadowHueConnect,
-  startMeadowHuePreview,
-  stopMeadowHuePreview,
   type HueInventoryItem,
   type HueProfile,
 } from '../api/meadowHueApi';
+import {
+  useAmbientHueStore,
+  type AmbientStageSetting,
+} from '../core/store/ambientHueStore';
 import { rememberHueConnectState } from './HueOAuthHandler';
 import {
   clearPendingHueOAuth,
@@ -59,7 +61,10 @@ export function HueSheet() {
   const [rooms, setRooms] = useState<HueInventoryItem[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isBusy, setIsBusy] = useState(false);
-  const [previewId, setPreviewId] = useState<string | null>(null);
+  const ambientStage = useAmbientHueStore((state) => state.stage);
+  const ambientBusy = useAmbientHueStore((state) => state.isBusy);
+  const ambientNotice = useAmbientHueStore((state) => state.notice);
+  const setAmbientStage = useAmbientHueStore((state) => state.setStage);
   const popupRef = useRef<Window | null>(null);
   const oauthHandledRef = useRef(false);
 
@@ -96,7 +101,6 @@ export function HueSheet() {
       setRooms([]);
       setError(null);
       setIsBusy(false);
-      setPreviewId(null);
       return;
     }
 
@@ -108,14 +112,6 @@ export function HueSheet() {
     setRooms(pendingHueRooms);
     clearPendingHueRooms();
   }, [isOpen, pendingHueRooms, clearPendingHueRooms]);
-
-  useEffect(() => {
-    if (!previewId) return undefined;
-    const timer = window.setTimeout(() => {
-      void stopMeadowHuePreview(previewId).finally(() => setPreviewId(null));
-    }, 10000);
-    return () => window.clearTimeout(timer);
-  }, [previewId]);
 
   const finishOAuthConnect = useCallback(
     async (code: string) => {
@@ -259,21 +255,14 @@ export function HueSheet() {
     window.location.assign(result.data.authUrl);
   }, []);
 
-  const handlePreview = useCallback(async () => {
-    if (!profile?.connected || profile.disabled) return;
-    setIsBusy(true);
-    setError(null);
-
-    const result = await startMeadowHuePreview();
-    setIsBusy(false);
-
-    if (!result.ok) {
-      setError(result.message);
-      return;
-    }
-
-    setPreviewId(result.data.previewId);
-  }, [profile]);
+  const handleStage = useCallback(
+    (stage: AmbientStageSetting) => {
+      if (!profile?.connected || profile.disabled) return;
+      setError(null);
+      void setAmbientStage(stage);
+    },
+    [profile, setAmbientStage],
+  );
 
   const handleSaveRoom = useCallback(
     async (room: HueInventoryItem) => {
@@ -302,6 +291,8 @@ export function HueSheet() {
     setIsBusy(true);
     setError(null);
 
+    // Lights first: restore the room before the profile forgets the bridge.
+    await setAmbientStage('off');
     const result = await patchMeadowHueProfile({ disconnect: true });
     setIsBusy(false);
 
@@ -313,7 +304,7 @@ export function HueSheet() {
     setProfile(result.data);
     setPhase('disconnected');
     setHueConnected(false);
-  }, [setHueConnected]);
+  }, [setHueConnected, setAmbientStage]);
 
   if (!isOpen) return null;
 
@@ -424,9 +415,11 @@ export function HueSheet() {
           Booster can glow your room along with the sky.
         </h2>
 
-        <p style={meadowSheetBodyStyle}>
-          Philips Hue is optional and stays gentle by default.
-        </p>
+        {phase !== 'connected' ? (
+          <p style={meadowSheetBodyStyle}>
+            Philips Hue is optional and stays gentle by default.
+          </p>
+        ) : null}
 
         <div
           style={{
@@ -558,19 +551,66 @@ export function HueSheet() {
 
         {phase === 'connected' && profile?.connected ? (
           <>
-            <button
-              type="button"
-              className="meadow-focusable"
-              disabled={isBusy || Boolean(previewId) || profile.disabled}
-              onClick={() => void handlePreview()}
-              style={{
-                ...meadowHudActionStyle,
-                marginBottom: '10px',
-                opacity: isBusy || profile.disabled ? 0.65 : 1,
-              }}
+            <div
+              role="radiogroup"
+              aria-label="Meadow lights intensity"
+              style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}
             >
-              {previewId ? '[ PREVIEWING ]' : '[ GENTLE PREVIEW ]'}
-            </button>
+              {(['off', 'gentle', 'vivid', 'full'] as AmbientStageSetting[]).map((stage) => {
+                const isActive = ambientStage === stage;
+                return (
+                  <button
+                    key={stage}
+                    type="button"
+                    role="radio"
+                    aria-checked={isActive}
+                    className="meadow-focusable"
+                    disabled={ambientBusy || profile.disabled}
+                    onClick={() => handleStage(stage)}
+                    style={{
+                      ...meadowHudActionStyle,
+                      flex: 1,
+                      padding: '10px 0',
+                      fontSize: '0.62rem',
+                      letterSpacing: '0.1em',
+                      opacity: ambientBusy || profile.disabled ? 0.65 : 1,
+                      borderColor: isActive ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.22)',
+                      background: isActive ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.45)',
+                    }}
+                  >
+                    {stage.toUpperCase()}
+                  </button>
+                );
+              })}
+            </div>
+            {ambientStage !== 'off' ? (
+              <p
+                style={{
+                  margin: '0 0 12px',
+                  fontSize: '0.68rem',
+                  lineHeight: 1.75,
+                  color: 'rgba(255,255,255,0.62)',
+                  letterSpacing: '0.03em',
+                  textAlign: 'center',
+                }}
+              >
+                Lights are drifting with the meadow.
+              </p>
+            ) : null}
+            {ambientNotice ? (
+              <p
+                style={{
+                  margin: '0 0 12px',
+                  fontSize: '0.68rem',
+                  lineHeight: 1.75,
+                  color: 'rgba(255, 210, 170, 0.9)',
+                  letterSpacing: '0.03em',
+                  textAlign: 'center',
+                }}
+              >
+                {ambientNotice}
+              </p>
+            ) : null}
             <button
               type="button"
               className="meadow-focusable"
