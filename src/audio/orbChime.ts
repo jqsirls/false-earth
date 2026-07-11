@@ -1,4 +1,5 @@
 import type { AudioListener } from 'three/webgpu'
+import { MEADOW_ORB_CHIME_DUCKED, MEADOW_ORB_CHIME_SOLO } from '../config/meadowAudio'
 
 const LOG_PREFIX = '[orb-chime]'
 const CHIME_URL = '/audio/orb-sfx.mp3'
@@ -50,9 +51,9 @@ export function playOrbChime(listener: AudioListener | null, duckUnderBgm: boole
 
     const gain = context.createGain()
     const now = context.currentTime
-    // Boosted per owner feedback (was 0.2 / 0.32): clearly audible, still
-    // ducked under the BGM, capped well below clipping.
-    const target = duckUnderBgm ? 0.42 : 0.7
+    // Owner mix 2026-07-11 (was 0.42 / 0.7): the ducked level must stay clearly
+    // present under Cosmic Lullaby; sample peaks −7.3 dB so both stay clip-free.
+    const target = duckUnderBgm ? MEADOW_ORB_CHIME_DUCKED : MEADOW_ORB_CHIME_SOLO
     gain.gain.setValueAtTime(0.0001, now)
     gain.gain.linearRampToValueAtTime(target, now + ATTACK_SECONDS)
 

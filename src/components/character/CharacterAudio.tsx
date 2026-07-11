@@ -3,7 +3,7 @@ import { useOneShotAudio } from '@core/hooks/useOneShotAudio';
 import { StepType } from './hooks/useCharacterPhysics';
 import { useGameStore } from '../../core/store/gameStore';
 import { AudioListener } from 'three/webgpu';
-import { MEADOW_FOOTSTEP_PATHS } from '../../config/meadowAudio';
+import { MEADOW_FOOTSTEP_PATHS, MEADOW_FOOTSTEP_GAIN } from '../../config/meadowAudio';
 
 export interface CharacterAudioHandle {
   playStep: (type: StepType, volume: number) => void;
@@ -22,7 +22,7 @@ export const CharacterAudio = forwardRef<CharacterAudioHandle>((_, ref) => {
 
       play({
         position: characterRef?.current?.position,
-        volume,
+        volume: volume * MEADOW_FOOTSTEP_GAIN,
         detuneRange: 200,
         refDistance: 2,
         maxDistance: 30,

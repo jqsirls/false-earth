@@ -4,6 +4,7 @@ import { useGameStore } from '../../core/store/gameStore';
 import { AudioListener } from 'three/webgpu';
 import { gameEvents } from '../../core/events';
 import * as THREE from 'three/webgpu';
+import { MEADOW_BEAM_HIT_VOLUME } from '../../config/meadowAudio';
 
 export function BeamAudio() {
   const listener = useGameStore((state) => state.audioListener);
@@ -16,7 +17,7 @@ export function BeamAudio() {
 
       play({
         position: payload.position,
-        volume: 0.5,
+        volume: MEADOW_BEAM_HIT_VOLUME,
         detuneRange: 300,
         refDistance: 5,
         maxDistance: 60,
