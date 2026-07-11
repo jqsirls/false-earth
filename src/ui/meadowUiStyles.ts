@@ -372,6 +372,46 @@ export const meadowLegalPanelMobile: CSSProperties = {
 
 
 
+/** Centered, airy sheet title — HUD look (Cousine) with breathing room. */
+
+export const meadowSheetTitleStyle: CSSProperties = {
+
+  margin: '0 0 12px',
+
+  fontSize: '0.85rem',
+
+  fontWeight: 400,
+
+  lineHeight: 1.7,
+
+  letterSpacing: '0.04em',
+
+  textAlign: 'center',
+
+};
+
+
+
+/** Centered, airy sheet body copy paired with meadowSheetTitleStyle. */
+
+export const meadowSheetBodyStyle: CSSProperties = {
+
+  margin: '0 0 20px',
+
+  fontSize: '0.7rem',
+
+  lineHeight: 1.75,
+
+  letterSpacing: '0.04em',
+
+  color: meadowModalTokens.muted,
+
+  textAlign: 'center',
+
+};
+
+
+
 export const meadowHudInputStyle: CSSProperties = {
 
   width: '100%',

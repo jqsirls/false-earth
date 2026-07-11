@@ -141,6 +141,26 @@ class MeadowBgmPlayer {
     }
   }
 
+  /** Soft pause (CTA handoff) — keeps the playlist position; resume via resumeIfPaused(). */
+  pause(): void {
+    if (!this.started || this.audio.paused) return
+    this.audio.pause()
+    notifyPlayback(false)
+  }
+
+  /** Resume a soft pause. Call from a user gesture so play() is never policy-blocked. */
+  resumeIfPaused(): void {
+    if (!this.started || !this.audio.paused) return
+    this.audio.muted = this.muted
+    const playPromise = this.audio.play()
+    if (!playPromise) return
+    void playPromise
+      .then(() => notifyPlayback(!this.muted))
+      .catch((err: unknown) => {
+        console.warn(`${LOG_PREFIX} resume play() rejected`, err)
+      })
+  }
+
   private applyCrossOrigin(resolvedUrl: string): void {
     try {
       const origin = new URL(resolvedUrl).origin
@@ -265,4 +285,12 @@ export function stopMeadowBgm(): void {
 
 export function setMeadowBgmMuted(muted: boolean): void {
   getPlayer().setMuted(muted)
+}
+
+export function pauseMeadowBgm(): void {
+  getPlayer().pause()
+}
+
+export function resumeMeadowBgmIfPaused(): void {
+  getPlayer().resumeIfPaused()
 }

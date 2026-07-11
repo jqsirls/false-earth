@@ -5,7 +5,11 @@ import { WebGPUCanvas, Bgm } from '@core';
 import { DistortedCircle } from '@core';
 import { useShortcut } from '@core/hooks/useShortcut';
 import { resumeMeadowAudioContext } from '../config/meadowAudio';
-import { setMeadowBgmMuted, subscribeMeadowBgmPlayback } from '../audio/meadowBgmPlayer';
+import {
+    resumeMeadowBgmIfPaused,
+    setMeadowBgmMuted,
+    subscribeMeadowBgmPlayback,
+} from '../audio/meadowBgmPlayer';
 import { useEffect } from 'react';
 import { MEADOW_AMBIENT_TRACKS, MEADOW_WIND_DUCK_MULTIPLIER } from '../config/meadowAudio';
 import { useIsMeadowOverlayOpen } from '../core/hooks/useIsMeadowOverlayOpen';
@@ -45,6 +49,9 @@ export default function AudioButton() {
     useEffect(() => {
         if (!isGameStarted) return;
         setMeadowBgmMuted(!isSoundOn);
+        // A CTA click soft-pauses the BGM element; turning sound back on runs
+        // inside the user's tap (or M key), so play() is never policy-blocked.
+        if (isSoundOn) resumeMeadowBgmIfPaused();
     }, [isSoundOn, isGameStarted]);
 
     // Duck wind only while Cosmic Lullaby is audibly playing — not when BGM is toggled off.

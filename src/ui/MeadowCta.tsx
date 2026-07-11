@@ -11,6 +11,7 @@ import {
   trackMeadowCtaClick,
   trackMeadowVisit,
 } from '../analytics/meadowAnalytics';
+import { pauseMeadowBgm } from '../audio/meadowBgmPlayer';
 import { meadowHudFontFamily } from './meadowUiStyles';
 
 const ctaStyle: CSSProperties = {
@@ -40,10 +41,20 @@ export function MeadowCta() {
   const isControlEnabled = useGameStore((state) => state.isControlEnabled);
   const gpuError = useGameStore((state) => state.gpuError);
   const isMobile = useGameStore((state) => state.isMobile);
+  const isSoundOn = useGameStore((state) => state.isSoundOn);
+  const setIsSoundOn = useGameStore((state) => state.setIsSoundOn);
 
   const variant = useMemo(() => detectMeadowCtaVariant(), []);
   const label = getMeadowCtaLabel(variant);
   const href = buildMeadowCtaUrl(variant);
+
+  const handleCtaClick = () => {
+    trackMeadowCtaClick(variant);
+    // Storytailor opens in a new tab; quiet the meadow's music here so the two
+    // tabs don't compete. The speaker icon flips off — one tap resumes.
+    pauseMeadowBgm();
+    if (isSoundOn) setIsSoundOn(false);
+  };
 
   useEffect(() => {
     if (!isControlEnabled || gpuError) return;
@@ -61,38 +72,33 @@ export function MeadowCta() {
   return (
     <>
       <style>{ctaFocusStyle}</style>
-      <div
+      {/* Anchored to true viewport center — independent of the left counter
+          and right lamp widths (left 50% + translateX, not a flex row). */}
+      <a
+        className="meadow-cta"
+        href={href}
+        target="_blank"
+        rel="noopener"
+        onClick={handleCtaClick}
+        aria-label={label}
         style={{
+          ...ctaStyle,
+          // Mobile: quieter than the experience itself — a tad smaller, not tiny.
+          ...(isMobile ? { fontSize: '0.7rem', padding: '8px 16px' } : null),
           position: 'fixed',
           top: 'max(20px, env(safe-area-inset-top))',
-          left: 0,
-          right: 0,
-          display: 'flex',
-          justifyContent: 'center',
-          paddingLeft: 'max(12px, env(safe-area-inset-left))',
-          paddingRight: 'max(12px, env(safe-area-inset-right))',
-          boxSizing: 'border-box',
+          left: '50%',
+          transform: 'translateX(-50%)',
           zIndex: 20,
-          pointerEvents: 'none',
+          pointerEvents: 'auto',
+          maxWidth: 'min(calc(100vw - 24px), 340px)',
+          boxSizing: 'border-box',
+          textAlign: 'center',
+          whiteSpace: 'nowrap',
         }}
       >
-        <a
-          className="meadow-cta"
-          href={href}
-          onClick={() => trackMeadowCtaClick(variant)}
-          aria-label={label}
-          style={{
-            ...ctaStyle,
-            // Mobile: quieter than the experience itself — a tad smaller, not tiny.
-            ...(isMobile ? { fontSize: '0.7rem', padding: '8px 16px' } : null),
-            pointerEvents: 'auto',
-            maxWidth: 'min(100%, 340px)',
-            textAlign: 'center',
-          }}
-        >
-          {label}
-        </a>
-      </div>
+        {label}
+      </a>
     </>
   );
 }

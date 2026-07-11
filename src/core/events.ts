@@ -12,3 +12,13 @@ export type GameEvents = {
 };
 
 export const gameEvents = mitt<GameEvents>();
+
+/** Event bus hook for programmatic production verification (Playwright) — same pattern as __MEADOW_MIX__. */
+declare global {
+  interface Window {
+    __MEADOW_EVENTS__?: typeof gameEvents;
+  }
+}
+if (typeof window !== 'undefined') {
+  window.__MEADOW_EVENTS__ = gameEvents;
+}

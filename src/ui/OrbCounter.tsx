@@ -4,8 +4,8 @@ import { gameEvents } from '../core/events';
 import { usePrefersReducedMotion } from '../core/utils/reducedMotion';
 import { meadowHudFontFamily, meadowModalTokens } from './meadowUiStyles';
 
-/** Rest opacity: dim enough to ignore, bright enough that a glance reads it. */
-const REST_OPACITY = 0.28;
+/** Rest opacity: full white (owner-approved 2026-07-11; supersedes the 28% dim rest). */
+const REST_OPACITY = 1;
 /** How long the readout holds full brightness after a collect. */
 const BRIGHT_MS = 900;
 /** Settle back to rest. */
@@ -35,8 +35,8 @@ const COUNTER_CSS = `
 
 /**
  * Session-only gather readout in the suit-HUD idiom: `GATHERED 07`, top-left.
- * Hidden until the first collect, then persistent at a dim rest opacity.
- * Each collect brightens it with one soft glitch beat, then it settles.
+ * Hidden until the first collect, then persistent at full-white rest opacity.
+ * Each collect accents it with one soft glitch beat, then it settles.
  * Perfectly static while idle. No milestones, no persistence across visits.
  */
 export function OrbCounter() {

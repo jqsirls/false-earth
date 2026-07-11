@@ -28,8 +28,11 @@ import {
   meadowHudQuietButtonStyle,
   meadowOverlayRootStyle,
   meadowSheetBackdropStyle,
+  meadowSheetBodyStyle,
   meadowSheetPanelBase,
+  meadowSheetTitleStyle,
 } from './meadowUiStyles';
+import { useHueStatusStore } from '../core/store/hueStatusStore';
 
 type HueSheetPhase =
   | 'loading'
@@ -49,6 +52,7 @@ export function HueSheet() {
   const pendingHueRooms = useMeadowAuthStore((state) => state.pendingHueRooms);
   const clearPendingHueRooms = useMeadowAuthStore((state) => state.clearPendingHueRooms);
   const panelRef = useRef<HTMLElement>(null);
+  const setHueConnected = useHueStatusStore((state) => state.setConnected);
 
   const [phase, setPhase] = useState<HueSheetPhase>('loading');
   const [profile, setProfile] = useState<HueProfile | null>(null);
@@ -82,7 +86,8 @@ export function HueSheet() {
 
     setProfile(result.data);
     setPhase(result.data.connected ? 'connected' : 'disconnected');
-  }, []);
+    setHueConnected(result.data.connected);
+  }, [setHueConnected]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -185,6 +190,7 @@ export function HueSheet() {
           popupRef.current = null;
           setProfile(result.data);
           setPhase('connected');
+          setHueConnected(true);
           setIsBusy(false);
         }
       });
@@ -195,7 +201,7 @@ export function HueSheet() {
       window.removeEventListener('storage', onStorage);
       window.clearInterval(poll);
     };
-  }, [phase, finishOAuthConnect]);
+  }, [phase, finishOAuthConnect, setHueConnected]);
 
   const handleConnect = useCallback(async () => {
     setIsBusy(true);
@@ -306,7 +312,8 @@ export function HueSheet() {
 
     setProfile(result.data);
     setPhase('disconnected');
-  }, []);
+    setHueConnected(false);
+  }, [setHueConnected]);
 
   if (!isOpen) return null;
 
@@ -413,21 +420,11 @@ export function HueSheet() {
           )}
         </div>
 
-        <h2
-          id="meadow-hue-title"
-          className="meadow-crt-title"
-          style={{
-            margin: '0 0 6px',
-            fontSize: '0.85rem',
-            fontWeight: 400,
-            lineHeight: 1.45,
-            letterSpacing: '0.04em',
-          }}
-        >
+        <h2 id="meadow-hue-title" className="meadow-crt-title" style={meadowSheetTitleStyle}>
           Booster can glow your room along with the sky.
         </h2>
 
-        <p style={{ margin: '0 0 18px', fontSize: '0.7rem', color: 'rgba(242, 245, 250, 0.45)', letterSpacing: '0.04em' }}>
+        <p style={meadowSheetBodyStyle}>
           Philips Hue is optional and stays gentle by default.
         </p>
 
@@ -452,11 +449,12 @@ export function HueSheet() {
           <p
             role="alert"
             style={{
-              margin: '0 0 14px',
+              margin: '0 0 16px',
               fontSize: '0.68rem',
-              lineHeight: 1.5,
+              lineHeight: 1.75,
               color: 'rgba(255, 210, 170, 0.9)',
               letterSpacing: '0.03em',
+              textAlign: 'center',
             }}
           >
             {error}
@@ -464,7 +462,7 @@ export function HueSheet() {
         ) : null}
 
         {phase === 'loading' || phase === 'connecting' ? (
-          <p style={{ margin: '0 0 16px', fontSize: '0.68rem', lineHeight: 1.5, color: 'rgba(255,255,255,0.55)' }}>
+          <p style={{ margin: '0 0 16px', fontSize: '0.68rem', lineHeight: 1.75, color: 'rgba(255,255,255,0.55)', letterSpacing: '0.03em', textAlign: 'center' }}>
             {phase === 'connecting'
               ? 'Finish sign-in in the Philips Hue window — this sheet updates on its own.'
               : 'Checking your lights…'}
@@ -493,14 +491,14 @@ export function HueSheet() {
         ) : null}
 
         {phase === 'not_ready' ? (
-          <p style={{ margin: '0 0 16px', fontSize: '0.68rem', color: 'rgba(255,255,255,0.55)' }}>
+          <p style={{ margin: '0 0 16px', fontSize: '0.68rem', lineHeight: 1.75, color: 'rgba(255,255,255,0.55)', letterSpacing: '0.03em', textAlign: 'center' }}>
             Room lighting is not enabled on this meadow yet.
           </p>
         ) : null}
 
         {phase === 'profile_incomplete' ? (
           <>
-            <p style={{ margin: '0 0 16px', fontSize: '0.68rem', lineHeight: 1.5, color: 'rgba(255,255,255,0.62)' }}>
+            <p style={{ margin: '0 0 16px', fontSize: '0.68rem', lineHeight: 1.75, color: 'rgba(255,255,255,0.62)', letterSpacing: '0.03em', textAlign: 'center' }}>
               Almost there — a few details for the lights.
             </p>
             <button
@@ -522,7 +520,7 @@ export function HueSheet() {
 
         {showRoomPicker ? (
           <div style={{ marginBottom: '14px' }}>
-            <p style={{ ...meadowHudLabelStyle, marginBottom: '8px' }}>Choose a room</p>
+            <p style={{ ...meadowHudLabelStyle, margin: '0 0 10px', lineHeight: 1.6, textAlign: 'center' }}>Choose a room</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {rooms.map((room) => (
                 <button
@@ -531,10 +529,7 @@ export function HueSheet() {
                   className="meadow-focusable"
                   disabled={isBusy}
                   onClick={() => void handleSaveRoom(room)}
-                  style={{
-                    ...meadowHudQuietButtonStyle,
-                    textAlign: 'left',
-                  }}
+                  style={meadowHudQuietButtonStyle}
                 >
                   {room.name}
                   {room.lightCount ? ` (${room.lightCount})` : ''}
