@@ -242,7 +242,10 @@ export function LegalModal() {
                 <p
                   key={`${content.id}-p-${sectionIndex}-${paragraphIndex}`}
                   style={{
-                    margin: paragraphIndex === section.paragraphs.length - 1 ? 0 : '0 0 12px',
+                    margin:
+                      paragraphIndex === section.paragraphs.length - 1 && !section.citations?.length
+                        ? 0
+                        : '0 0 12px',
                     fontSize: '13.5px',
                     lineHeight: 1.75,
                     maxWidth: '62ch',
@@ -253,6 +256,37 @@ export function LegalModal() {
                   {renderParagraph(paragraph)}
                 </p>
               ))}
+              {section.citations?.length ? (
+                <ul
+                  style={{
+                    margin: 0,
+                    padding: 0,
+                    listStyle: 'none',
+                    fontSize: '11.5px',
+                    lineHeight: 1.7,
+                    color: meadowModalTokens.muted,
+                    fontFamily: meadowHudFontFamily,
+                  }}
+                >
+                  {section.citations.map((citation) => (
+                    <li key={citation.url} style={{ overflowWrap: 'anywhere' }}>
+                      {'\u2192 '}
+                      <a
+                        href={citation.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          color: meadowModalTokens.accent,
+                          textDecoration: 'underline',
+                          textUnderlineOffset: '3px',
+                        }}
+                      >
+                        {citation.label}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
             </div>
           ))}
         </div>

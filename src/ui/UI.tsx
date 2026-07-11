@@ -10,6 +10,7 @@ import { HueOAuthHandler } from "./HueOAuthHandler";
 import { ControlsHint } from "./ControlsHint";
 import AudioButton from "./AudioButton";
 import { MeadowFooter } from "./MeadowFooter";
+import { OrbCounter } from "./OrbCounter";
 import { LegalModal } from "./LegalModal";
 import { useMeadowOverlayEsc } from "../core/hooks/useMeadowOverlayEsc";
 import { useIsMeadowOverlayOpen } from "../core/hooks/useIsMeadowOverlayOpen";
@@ -48,6 +49,7 @@ export function UI() {
             <HueOAuthHandler />
             <HueSheet />
             <ControlsHint />
+            <OrbCounter />
             <MeadowFooter />
             <LegalModal />
 

@@ -14,6 +14,7 @@ const FOOTER_ITEMS: Array<{ id: LegalModalId; label: string }> = [
   { id: 'privacy', label: 'Privacy' },
   { id: 'terms', label: 'Terms' },
   { id: 'credits', label: 'Credits' },
+  { id: 'research', label: 'Research' },
 ];
 
 export function MeadowFooter() {
@@ -24,6 +25,7 @@ export function MeadowFooter() {
     credits: null,
     terms: null,
     privacy: null,
+    research: null,
   });
 
   if (!isControlEnabled || gpuError) return null;

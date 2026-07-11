@@ -22,6 +22,7 @@ import { StarrySky } from './background/StarrySky';
 import { useGameStore } from '../core/store/gameStore';
 import { AsyncCompile } from '@core';
 import Rose from './Rose/Rose';
+import Orbs from './Orb/Orbs';
 import GrassWebGPU from './grass/GrassWebGPU';
 import { Character } from './character';
 import { STORYTAILOR } from '../config/storytailor';
@@ -163,6 +164,11 @@ export function WorldController() {
                     onCompileReady={setComponentReady}
                     compileDebug={debugMode}
                 />
+            )}
+
+            {/* Orbs are ambient, never load-blocking — 'orb' is intentionally not in activeTargets */}
+            {!minimalScene && (
+                <Orbs onCompileReady={setComponentReady} compileDebug={debugMode} />
             )}
 
             {!minimalScene && !grassCompileFailed && (

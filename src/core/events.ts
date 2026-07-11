@@ -5,6 +5,8 @@ export type GameEvents = {
   'beam:spawn': THREE.Vector3;
   'beam:hit': { position: THREE.Vector3; radius: number };
   'rose:spawn': { position: THREE.Vector3; count?: number; radius?: number };
+  /** Session-only gather count — counter UI + chime subscribe. */
+  'orb:gathered': { count: number };
   'game:start': void;
   'game:over': void;
 };
