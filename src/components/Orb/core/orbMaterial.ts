@@ -160,19 +160,22 @@ export function createOrbMaterial(): OrbGpuState {
   // Tinted mostly by the local gradient so the rose/blue duality survives bloom.
   const rimGlow = mix(vec3(0.85, 0.9, 1.0), bodyColor, 0.85)
     .mul(fresnel)
-    .mul(energy.mul(1.3).add(0.8));
+    .mul(energy.mul(1.5).add(1.0));
   material.colorNode = bodyColor
-    .mul(energy.mul(0.8).add(0.5))
+    .mul(energy.mul(0.7).add(0.45))
     .add(rimGlow) as any;
 
-  material.opacityNode = oneMinus(dissolve)
-    .mul(oneMinus(dissolve))
+  // Glassy translucency: the facing body stays see-through so the meadow
+  // shows through; edges and inner shells (DoubleSide) stay defined.
+  const glassAlpha = fresnel.mul(0.62).add(0.2).mul(energy.mul(0.3).add(0.8));
+  material.opacityNode = glassAlpha
+    .mul(oneMinus(dissolve).mul(oneMinus(dissolve)))
     .mul(select(hidden.greaterThan(0.5), float(0.0), float(1.0))) as any;
 
   material.transparent = true;
   material.blending = THREE.NormalBlending;
   material.depthWrite = false;
-  material.side = THREE.FrontSide;
+  material.side = THREE.DoubleSide;
   material.fog = false;
 
   return { material, baseArray, motionArray, stateArray, uMotionScale };

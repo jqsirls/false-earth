@@ -40,7 +40,7 @@ const RESPAWN_PLACEMENT_ATTEMPTS = 16;
  * tools/3d/blender_orb_glb.py. GLBs are .vercelignored — production loads
  * from the meadow CDN via resolveMeadowAsset, local dev from public/.
  */
-const ORB_MODEL_PATH = resolveMeadowAsset('/models/orb-v2.glb');
+const ORB_MODEL_PATH = resolveMeadowAsset('/models/orb-v3.glb');
 
 interface OrbsProps {
   onCompileReady?: (id: string, isReady: boolean) => void;

@@ -133,13 +133,13 @@ export const LEGAL_MODAL_CONTENT: Record<LegalModalId, LegalModalContent> = {
     sections: [
       {
         paragraphs: [
-          'The meadow is built on a small body of research about attention, play, and breath. It isn\u2019t treatment, and it doesn\u2019t claim to be \u2014 it\u2019s a quiet place, designed carefully. These are the ideas behind it.',
+          'The meadow is built on a small body of research about attention, play, and breath. It isn\u2019t treatment, and it doesn\u2019t claim to be. It\u2019s a quiet place, designed carefully. These are the ideas behind it.',
         ],
       },
       {
         heading: 'BUSY EYES, QUIETER MIND',
         paragraphs: [
-          'When visual attention is absorbed by a rich spatial task, there is less room for looping, intrusive thoughts. Oxford researchers demonstrated this with, of all things, Tetris \u2014 absorbing visuospatial play measurably crowded out unwanted imagery. It\u2019s why the meadow gives your eyes grass, wind, and drifting light rather than menus.',
+          'When visual attention is absorbed by a rich spatial task, there is less room for looping, intrusive thoughts. Oxford researchers demonstrated this with, of all things, Tetris: absorbing visuospatial play measurably crowded out unwanted imagery. It\u2019s why the meadow gives your eyes grass, wind, and drifting light rather than menus.',
         ],
         citations: [
           {
@@ -155,7 +155,7 @@ export const LEGAL_MODAL_CONTENT: Record<LegalModalId, LegalModalContent> = {
       {
         heading: 'LOW-STAKES PLAY CALMS THE BODY, NOT JUST THE MOOD',
         paragraphs: [
-          'Casual, unpressured games have been shown to reduce physiological stress \u2014 heart-rate variability improves, tension drops. Nothing in the meadow can be failed, lost, or done wrong.',
+          'Casual, unpressured games have been shown to reduce physiological stress: heart-rate variability improves, tension drops. Nothing in the meadow can be failed, lost, or done wrong.',
         ],
         citations: [
           {
@@ -191,7 +191,7 @@ export const LEGAL_MODAL_CONTENT: Record<LegalModalId, LegalModalContent> = {
       {
         heading: 'SIX BREATHS A MINUTE',
         paragraphs: [
-          'Breathing slowly \u2014 around six breaths per minute \u2014 reliably settles the nervous system. The orbs brighten and dim at that pace. If you find yourself breathing with them, that\u2019s the design working.',
+          'Breathing slowly, around six breaths per minute, reliably settles the nervous system. The orbs brighten and dim at that pace. If you find yourself breathing with them, that\u2019s the design working.',
         ],
         citations: [
           {
