@@ -56,6 +56,9 @@ export function MeadowFooter() {
           alignItems: 'center',
           justifyContent: 'center',
           gap: '4px 2px',
+          // Fixed + left:50% shrink-to-fit only gets half the viewport; without
+          // this, four links wrap to two rows on phones.
+          width: 'max-content',
           maxWidth: 'min(96vw, 720px)',
           padding: '0 12px',
           color: restColor,
