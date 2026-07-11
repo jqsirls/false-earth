@@ -3,8 +3,11 @@ import glsl from "vite-plugin-glsl";
 import { resolve } from "path";
 import basicSsl from "@vitejs/plugin-basic-ssl";
 
+/** Root deploy on booster.storytailor.com uses `/`; relative `./` stays for local preview / iframe embeds. */
+const base = process.env.VITE_BASE_PATH || "./";
+
 export default {
-  base: "./",
+  base,
   resolve: {
     alias: {
       '@core': resolve(__dirname, 'packages/three-core/src')

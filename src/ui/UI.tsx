@@ -6,6 +6,7 @@ import { MeadowCta } from "./MeadowCta";
 import { LampButton } from "./LampButton";
 import { AuthSheet } from "./AuthSheet";
 import { HueSheet } from "./HueSheet";
+import { HueOAuthHandler } from "./HueOAuthHandler";
 import { ControlsHint } from "./ControlsHint";
 import AudioButton from "./AudioButton";
 import { MeadowFooter } from "./MeadowFooter";
@@ -44,6 +45,7 @@ export function UI() {
             <MeadowCta />
             <LampButton />
             <AuthSheet />
+            <HueOAuthHandler />
             <HueSheet />
             <ControlsHint />
             <MeadowFooter />

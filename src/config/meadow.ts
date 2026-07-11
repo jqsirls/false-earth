@@ -17,6 +17,10 @@ export const MEADOW_ANALYTICS_URL =
 export const MEADOW_AUTH_URL =
   (import.meta.env.VITE_MEADOW_AUTH_URL as string | undefined) ?? '';
 
+/** Edge Function URL for meadow-hue Path A proxy. Empty until backend ships. */
+export const MEADOW_HUE_URL =
+  (import.meta.env.VITE_MEADOW_HUE_URL as string | undefined) ?? '';
+
 /** Supabase project URL for direct client OTP (future). Never ship service role here. */
 export const MEADOW_SUPABASE_URL =
   (import.meta.env.VITE_SUPABASE_URL as string | undefined) ?? '';

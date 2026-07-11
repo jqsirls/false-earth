@@ -23,7 +23,7 @@ import {
   meadowSheetPanelBase,
 } from './meadowUiStyles';
 
-type AuthStep = 'email' | 'code' | 'profile';
+type AuthStep = 'email' | 'code' | 'profile' | 'checking';
 
 const RESEND_COOLDOWN_SEC = 30;
 const OTP_LENGTH = 6;
@@ -106,6 +106,48 @@ export function AuthSheet() {
       digitRefs.current[0]?.focus();
     }
   }, [step]);
+
+  // Opened while already signed in (lamp gate / Hue sheet CONTINUE):
+  // check profile status and land directly on the profile step.
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    const session = useMeadowAuthStore.getState().session;
+    if (!session) return undefined;
+
+    let cancelled = false;
+    setStep('checking');
+
+    void (async () => {
+      const statusResult = await getProfileStatus();
+      if (cancelled) return;
+
+      if (!statusResult.ok) {
+        setError(statusResult.message);
+        setStep('profile');
+        return;
+      }
+
+      if (statusResult.status.complete) {
+        resumePendingIntent();
+        return;
+      }
+
+      const prefill = statusResult.status.prefill;
+      if (prefill.firstName) {
+        setFirstName(prefill.firstName);
+        setFirstNameRequired(false);
+      } else {
+        setFirstName('');
+        setFirstNameRequired(true);
+      }
+      setLastName(prefill.lastName ?? '');
+      setStep('profile');
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, resumePendingIntent]);
 
   if (!isOpen) return null;
 
@@ -386,6 +428,27 @@ export function AuthSheet() {
             </button>
           )}
         </div>
+
+        {step === 'checking' ? (
+          <>
+            <h2
+              id="meadow-auth-title"
+              className="meadow-crt-title"
+              style={{
+                margin: '0 0 6px',
+                fontSize: '0.85rem',
+                fontWeight: 400,
+                lineHeight: 1.45,
+                letterSpacing: '0.04em',
+              }}
+            >
+              ONE MOMENT…
+            </h2>
+            <p style={{ margin: 0, fontSize: '0.7rem', color: 'rgba(242, 245, 250, 0.45)', letterSpacing: '0.04em', lineHeight: 1.5 }}>
+              Checking your account.
+            </p>
+          </>
+        ) : null}
 
         {step === 'email' ? (
           <>

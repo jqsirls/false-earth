@@ -59,6 +59,14 @@ const MOCK_PENDING_EMAIL_KEY = 'meadow_auth_mock_pending_email';
 const MOCK_PROFILE_COMPLETE_KEY = 'meadow_auth_mock_profile_complete';
 const MOCK_PROFILE_PREFILL_KEY = 'meadow_auth_mock_profile_prefill';
 
+/** Client-held tokens — required because cross-origin HttpOnly cookies from supabase.co are blocked. */
+const CLIENT_TOKENS_KEY = 'meadow_sb_tokens';
+
+type ClientTokens = {
+  access_token: string;
+  refresh_token: string;
+};
+
 function isMockMode(): boolean {
   if (typeof window === 'undefined') return false;
   return new URLSearchParams(window.location.search).has('meadow-auth-mock');
@@ -84,6 +92,46 @@ function writeMockSession(session: MeadowSession | null): void {
     return;
   }
   sessionStorage.setItem(MOCK_SESSION_KEY, JSON.stringify(session));
+}
+
+export function readClientTokens(): ClientTokens | null {
+  if (typeof window === 'undefined') return null;
+  const raw = sessionStorage.getItem(CLIENT_TOKENS_KEY);
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as ClientTokens;
+    if (!parsed.access_token) return null;
+    return {
+      access_token: parsed.access_token,
+      refresh_token: parsed.refresh_token ?? '',
+    };
+  } catch {
+    return null;
+  }
+}
+
+function writeClientTokens(tokens: ClientTokens | null): void {
+  if (typeof window === 'undefined') return;
+  if (!tokens?.access_token) {
+    sessionStorage.removeItem(CLIENT_TOKENS_KEY);
+    return;
+  }
+  sessionStorage.setItem(CLIENT_TOKENS_KEY, JSON.stringify(tokens));
+}
+
+/** Authorization header for meadow-auth / meadow-hue when cookie session is unavailable. */
+export function meadowAuthHeaders(
+  extra?: Record<string, string>,
+): Record<string, string> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(extra ?? {}),
+  };
+  const tokens = readClientTokens();
+  if (tokens?.access_token) {
+    headers.Authorization = `Bearer ${tokens.access_token}`;
+  }
+  return headers;
 }
 
 function notReady(): MeadowOtpSendResult {
@@ -116,13 +164,14 @@ async function postAuth<T extends MeadowOtpSendResult | MeadowAuthResult>(
   try {
     const response = await fetch(MEADOW_AUTH_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: meadowAuthHeaders(),
       credentials: 'include',
       body: JSON.stringify(body),
     });
 
     const payload = (await response.json()) as {
       session?: MeadowSession;
+      tokens?: { access_token?: string; refresh_token?: string };
       ok?: boolean;
       message?: string;
       error?: string;
@@ -144,6 +193,12 @@ async function postAuth<T extends MeadowOtpSendResult | MeadowAuthResult>(
           ok: false,
           message: payload.message ?? 'That code did not match. Try again or resend.',
         } as T;
+      }
+      if (payload.tokens?.access_token) {
+        writeClientTokens({
+          access_token: payload.tokens.access_token,
+          refresh_token: payload.tokens.refresh_token ?? '',
+        });
       }
       return { ok: true, session: payload.session } as T;
     }
@@ -244,7 +299,7 @@ export async function getProfileStatus(): Promise<MeadowProfileStatusResult> {
   try {
     const response = await fetch(MEADOW_AUTH_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: meadowAuthHeaders(),
       credentials: 'include',
       body: JSON.stringify({ action: 'profileStatus' }),
     });
@@ -316,7 +371,7 @@ export async function completeProfile(
   try {
     const response = await fetch(MEADOW_AUTH_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: meadowAuthHeaders(),
       credentials: 'include',
       body: JSON.stringify({
         action: 'completeProfile',
@@ -355,12 +410,14 @@ export async function signOut(): Promise<void> {
     return;
   }
 
+  writeClientTokens(null);
+
   if (!MEADOW_AUTH_URL) return;
 
   try {
     await fetch(MEADOW_AUTH_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: meadowAuthHeaders(),
       credentials: 'include',
       body: JSON.stringify({ action: 'signOut' }),
     });
@@ -381,6 +438,7 @@ export async function getSession(): Promise<MeadowSession | null> {
   try {
     const response = await fetch(`${MEADOW_AUTH_URL}?action=getSession`, {
       method: 'GET',
+      headers: meadowAuthHeaders(),
       credentials: 'include',
     });
 
