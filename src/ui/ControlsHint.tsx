@@ -85,7 +85,11 @@ export function ControlsHint() {
       style={{
         position: 'fixed',
         left: '50%',
-        bottom: 'max(52px, calc(20px + env(safe-area-inset-bottom)))',
+        // Mobile: sit tight above the footer links so hint + divider + links
+        // read as one quiet centered cluster.
+        bottom: isMobile
+          ? 'calc(max(8px, env(safe-area-inset-bottom)) + 44px)'
+          : 'max(52px, calc(20px + env(safe-area-inset-bottom)))',
         transform: 'translateX(-50%)',
         zIndex: 15,
         pointerEvents: 'none',
@@ -102,18 +106,30 @@ export function ControlsHint() {
       }}
     >
       {isMobile ? (
-        <p
-          style={{
-            margin: 0,
-            textAlign: 'center',
-            fontSize: '0.75rem',
-            lineHeight: 1.5,
-            letterSpacing: '0.04em',
-            color: 'rgba(255,255,255,0.72)',
-          }}
-        >
-          Move with the joystick on the left. Drag on the right to look around. Double-tap to fly.
-        </p>
+        <>
+          {/* Flight is the one non-obvious mechanic; joystick/drag are self-evident. */}
+          <p
+            style={{
+              margin: 0,
+              textAlign: 'center',
+              fontSize: '0.75rem',
+              lineHeight: 1.5,
+              letterSpacing: '0.06em',
+              color: 'rgba(255,255,255,0.72)',
+            }}
+          >
+            Double tap to fly
+          </p>
+          <span
+            aria-hidden
+            style={{
+              display: 'block',
+              width: '24px',
+              height: '1px',
+              background: 'rgba(255,255,255,0.25)',
+            }}
+          />
+        </>
       ) : (
         <>
           <div

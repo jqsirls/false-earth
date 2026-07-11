@@ -290,6 +290,18 @@ export function LegalModal() {
             </div>
           ))}
         </div>
+
+        <p
+          style={{
+            margin: '16px 0 0',
+            fontSize: '11px',
+            letterSpacing: '0.06em',
+            color: meadowModalTokens.muted,
+            fontFamily: meadowHudFontFamily,
+          }}
+        >
+          © 2026 Storytailor Inc.
+        </p>
       </section>
 
       <style>{`

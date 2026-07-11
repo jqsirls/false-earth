@@ -11,6 +11,7 @@ import {
   trackMeadowCtaClick,
   trackMeadowVisit,
 } from '../analytics/meadowAnalytics';
+import { meadowHudFontFamily } from './meadowUiStyles';
 
 const ctaStyle: CSSProperties = {
   display: 'inline-flex',
@@ -22,7 +23,7 @@ const ctaStyle: CSSProperties = {
   background: 'rgba(0,0,0,0.45)',
   color: '#fff',
   textDecoration: 'none',
-  fontFamily: 'Inter, system-ui, sans-serif',
+  fontFamily: meadowHudFontFamily,
   fontSize: '0.8rem',
   letterSpacing: '0.08em',
   textTransform: 'uppercase',
@@ -38,6 +39,7 @@ const ctaFocusStyle = `
 export function MeadowCta() {
   const isControlEnabled = useGameStore((state) => state.isControlEnabled);
   const gpuError = useGameStore((state) => state.gpuError);
+  const isMobile = useGameStore((state) => state.isMobile);
 
   const variant = useMemo(() => detectMeadowCtaVariant(), []);
   const label = getMeadowCtaLabel(variant);
@@ -81,6 +83,8 @@ export function MeadowCta() {
           aria-label={label}
           style={{
             ...ctaStyle,
+            // Mobile: quieter than the experience itself — a tad smaller, not tiny.
+            ...(isMobile ? { fontSize: '0.7rem', padding: '8px 16px' } : null),
             pointerEvents: 'auto',
             maxWidth: 'min(100%, 340px)',
             textAlign: 'center',

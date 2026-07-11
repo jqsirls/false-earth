@@ -9,7 +9,9 @@ import { setMeadowBgmMuted, subscribeMeadowBgmPlayback } from '../audio/meadowBg
 import { useEffect } from 'react';
 import { MEADOW_AMBIENT_TRACKS, MEADOW_WIND_DUCK_MULTIPLIER } from '../config/meadowAudio';
 import { useIsMeadowOverlayOpen } from '../core/hooks/useIsMeadowOverlayOpen';
-import { meadowFocusCss, meadowHudFontFamily, meadowIconPillStyle } from './meadowUiStyles';
+import VolumeUpOutlinedIcon from '@mui/icons-material/VolumeUpOutlined';
+import VolumeOffOutlinedIcon from '@mui/icons-material/VolumeOffOutlined';
+import { meadowFocusCss, meadowIconPillStyle } from './meadowUiStyles';
 
 export default function AudioButton() {
     const listener = useGameStore(s => s.audioListener);
@@ -69,15 +71,15 @@ export default function AudioButton() {
                         right: 'max(20px, env(safe-area-inset-right))',
                         zIndex: 20,
                         pointerEvents: 'auto',
-                        fontFamily: meadowHudFontFamily,
-                        fontSize: '0.65rem',
-                        letterSpacing: '0.12em',
-                        textTransform: 'uppercase',
                         color: isSoundOn ? '#fff' : 'rgba(255,255,255,0.5)',
                         cursor: 'pointer',
                     }}
                 >
-                    MUSIC {isSoundOn ? 'ON' : 'OFF'}
+                    {isSoundOn ? (
+                        <VolumeUpOutlinedIcon sx={{ fontSize: 20, color: 'inherit' }} />
+                    ) : (
+                        <VolumeOffOutlinedIcon sx={{ fontSize: 20, color: 'inherit' }} />
+                    )}
                 </button>
             </>
         )}

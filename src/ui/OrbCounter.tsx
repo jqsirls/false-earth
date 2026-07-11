@@ -16,10 +16,11 @@ const COUNTER_CSS = `
   top: calc(max(12px, env(safe-area-inset-top)) + 8px);
   left: calc(max(12px, env(safe-area-inset-left)) + 8px);
 }
-/* Narrow screens: the CTA pill spans most of the top strip, so sit below it. */
+/* Narrow screens: the CTA pill spans most of the top strip, so sit below it
+   (CTA is smaller on mobile now, so the drop is tighter). */
 @media (max-width: 560px) {
   .orb-counter-readout {
-    top: calc(max(12px, env(safe-area-inset-top)) + 64px);
+    top: calc(max(12px, env(safe-area-inset-top)) + 56px);
   }
 }
 @keyframes orb-counter-glitch {

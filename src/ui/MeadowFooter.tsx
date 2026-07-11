@@ -58,8 +58,7 @@ export function MeadowFooter() {
           userSelect: 'none',
         }}
       >
-        <span style={{ padding: '12px 4px' }}>© 2026 Storytailor Inc.</span>
-        <span aria-hidden style={{ opacity: 0.45 }}>·</span>
+        {/* © line lives in the legal modals now — the persistent HUD keeps links only. */}
         {FOOTER_ITEMS.map((item, index) => (
           <span key={item.id} style={{ display: 'inline-flex', alignItems: 'center' }}>
             <button
