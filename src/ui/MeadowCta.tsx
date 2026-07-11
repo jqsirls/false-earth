@@ -12,6 +12,7 @@ import {
   trackMeadowVisit,
 } from '../analytics/meadowAnalytics';
 import { pauseMeadowBgm } from '../audio/meadowBgmPlayer';
+import { mintStoryHandoff } from '../api/meadowAuthApi';
 import { meadowHudFontFamily } from './meadowUiStyles';
 
 const ctaStyle: CSSProperties = {
@@ -50,6 +51,9 @@ export function MeadowCta() {
 
   const handleCtaClick = () => {
     trackMeadowCtaClick(variant);
+    // Renew the session handoff cookie so the app tab can adopt the sign-in.
+    // Fire-and-forget: navigation must never wait on it.
+    void mintStoryHandoff();
     // Storytailor opens in a new tab; quiet the meadow's music here so the two
     // tabs don't compete. The speaker icon flips off — one tap resumes.
     pauseMeadowBgm();

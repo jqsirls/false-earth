@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { MeadowSession } from '../../api/meadowAuthApi';
 import type { HueInventoryItem } from '../../api/meadowHueApi';
-import { getSession } from '../../api/meadowAuthApi';
+import { getSession, mintStoryHandoff } from '../../api/meadowAuthApi';
 
 export type MeadowAuthIntent = 'hue_connect' | null;
 
@@ -35,11 +35,13 @@ export const useMeadowAuthStore = create<MeadowAuthState>((set, get) => ({
   isHydrated: false,
   pendingHueRooms: [],
 
-  setSession: (session) =>
+  setSession: (session) => {
     set({
       session,
       isAuthenticated: Boolean(session),
-    }),
+    });
+    if (session) void mintStoryHandoff();
+  },
 
   openAuthSheet: (intent = null) =>
     set({
@@ -82,6 +84,7 @@ export const useMeadowAuthStore = create<MeadowAuthState>((set, get) => ({
       isAuthenticated: Boolean(session),
       isHydrated: true,
     });
+    if (session) void mintStoryHandoff();
   },
 
   setPendingHueRooms: (rooms) => set({ pendingHueRooms: rooms }),

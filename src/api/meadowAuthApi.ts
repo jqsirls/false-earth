@@ -250,6 +250,43 @@ export async function meadowAuthedFetch(
   return doFetch();
 }
 
+/**
+ * Story handoff — carries the signed-in meadow user toward the Storytailor app
+ * (v3/app hosts) via a short-lived root-domain cookie holding `userId.nonce`
+ * (never tokens). The app exchanges it once for a fresh session pair.
+ */
+const HANDOFF_COOKIE = 'st_meadow_handoff';
+const HANDOFF_COOKIE_MAX_AGE_S = 5 * 60;
+
+function onStorytailorDomain(): boolean {
+  if (typeof window === 'undefined') return false;
+  return /(?:^|\.)storytailor\.com$/i.test(window.location.hostname);
+}
+
+function clearStoryHandoffCookie(): void {
+  if (!onStorytailorDomain() || typeof document === 'undefined') return;
+  document.cookie = `${HANDOFF_COOKIE}=; Domain=.storytailor.com; Path=/; Max-Age=0; Secure; SameSite=Lax`;
+}
+
+/** Mint (or renew) the handoff cookie. Best-effort, fire-and-forget safe. */
+export async function mintStoryHandoff(): Promise<void> {
+  if (isMockMode() || !MEADOW_AUTH_URL || !onStorytailorDomain()) return;
+  if (!readClientTokens()?.access_token) return;
+
+  try {
+    const response = await meadowAuthedFetch(MEADOW_AUTH_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'mintHandoff' }),
+    });
+    if (!response.ok) return;
+    const payload = (await response.json()) as { ok?: boolean; handoff?: string };
+    if (!payload.ok || !payload.handoff) return;
+    document.cookie = `${HANDOFF_COOKIE}=${encodeURIComponent(payload.handoff)}; Domain=.storytailor.com; Path=/; Max-Age=${HANDOFF_COOKIE_MAX_AGE_S}; Secure; SameSite=Lax`;
+  } catch {
+    // Handoff is progressive enhancement — the app still offers normal sign-in.
+  }
+}
+
 /** Authorization header for meadow-auth / meadow-hue when cookie session is unavailable. */
 export function meadowAuthHeaders(
   extra?: Record<string, string>,
@@ -538,6 +575,7 @@ export async function signOut(): Promise<void> {
   }
 
   writeClientTokens(null);
+  clearStoryHandoffCookie();
 
   if (!MEADOW_AUTH_URL) return;
 
