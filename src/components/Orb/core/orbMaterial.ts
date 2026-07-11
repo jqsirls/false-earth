@@ -8,6 +8,7 @@ import {
   float,
   fract,
   instanceIndex,
+  mix,
   normalWorld,
   normalGeometry,
   normalize,
@@ -20,6 +21,7 @@ import {
   smoothstep,
   uniform,
   uniformArray,
+  varying,
   vec2,
   vec3,
 } from 'three/tsl';
@@ -52,10 +54,12 @@ export interface OrbGpuState {
 }
 
 /**
- * Soft glowing orb — additive, emissive-look, no textures. Position is fully
- * shader-computed per instance (instanceMatrix stays identity): seeded slow
- * drift, 6-cycles/min asymmetric breathing pulse (covert ~0.1Hz breath pacer),
- * soft spin, terrain-following hover, and a soft outward dissolve on collect.
+ * Sculpted glowing orb (owner's Abstract_Spherical_Shape GLB) — pearlescent
+ * rose-to-blue gradient with a bright fresnel halo that feeds the bloom pass.
+ * Position is fully shader-computed per instance (instanceMatrix stays
+ * identity): seeded slow drift, 6-cycles/min asymmetric breathing pulse
+ * (covert ~0.1Hz breath pacer), soft spin, terrain-following hover, and an
+ * instant soft "poof" on first touch (airy outward/upward puff, ~0.55s).
  *
  * Drift formulas MUST mirror orbMotion.ts (CPU collect check).
  */
@@ -95,19 +99,23 @@ export function createOrbMaterial(): OrbGpuState {
   const pulse = smoothstep(float(0.0), float(ORB_PULSE_RISE_FRACTION), pulsePhase)
     .mul(oneMinus(smoothstep(float(ORB_PULSE_RISE_FRACTION), float(1.0), pulsePhase)));
 
-  // --- Dissolve on collect (mode 0): soft outward scatter drifting up ---
+  // --- Poof on first touch (mode 0): instant, airy — fast start, soft settle ---
   const collected = oneMinus(state.x);
   const dissolve = clamp(t.sub(state.y).div(ORB_DISSOLVE_SECONDS), 0.0, 1.0).mul(collected);
   const hidden = collected.mul(smoothstep(float(0.985), float(1.0), dissolve));
+
+  // Decelerating ease: bursts immediately on contact, then drifts to rest.
+  const inv: any = oneMinus(dissolve);
+  const poof = oneMinus(inv.mul(inv));
 
   const vertexHash = fract(
     sin(dot(positionGeometry, vec3(12.9898, 78.233, 37.719))).mul(43758.5453),
   );
   const scatter = normalGeometry
-    .mul(dissolve)
-    .mul(vertexHash.mul(0.6).add(0.25))
+    .mul(poof)
+    .mul(vertexHash.mul(1.1).add(0.35))
     .mul(uMotionScale);
-  const rise = dissolve.mul(0.6).mul(uMotionScale);
+  const rise = poof.mul(0.5).mul(uMotionScale);
 
   // --- Soft spin ≤ 0.2 rev/s ---
   const spinAngle = t.mul(seed.mul(0.6).add(0.6)).mul(uMotionScale);
@@ -119,7 +127,7 @@ export function createOrbMaterial(): OrbGpuState {
 
   const scale = state.z
     .mul(pulse.mul(0.12).add(0.9))
-    .mul(dissolve.mul(0.5).add(1.0))
+    .mul(poof.mul(0.45).add(1.0))
     .mul(oneMinus(hidden));
 
   const terrainHeightFn = getTerrainHeight(uTerrainAmp, uTerrainFreq, uTerrainSeed);
@@ -134,21 +142,35 @@ export function createOrbMaterial(): OrbGpuState {
   const material = new THREE.MeshBasicNodeMaterial();
   material.positionNode = worldPos;
 
-  // --- Soft glow: bright warm core, feathered rim, breathing intensity ---
+  // --- Pearlescent rose→blue gradient across the sculpt (reference look) ---
+  // Gradient rides the spun local axis so the iridescence turns with the orb.
+  const vSpun = varying(spun) as any;
+  // Diagonal rose→blue split like the reference render (rose low-left, blue up-right).
+  const gradT = clamp(vSpun.x.add(vSpun.y.mul(0.7)).mul(0.6).add(0.5), 0.0, 1.0);
+  const rose = vec3(1.0, 0.28, 0.42);
+  const blue = vec3(0.22, 0.5, 1.0);
+  const bodyColor = mix(rose, blue, gradT);
+
   const viewDir = normalize(cameraPosition.sub(positionWorld));
   const facing = abs(dot(normalize(normalWorld), viewDir));
-  const glow = pow(facing, 1.7);
+  const fresnel = pow(oneMinus(facing), 2.0);
   const energy = pulse.mul(0.45).add(0.55);
 
-  const warm = vec3(1.0, 0.86, 0.6);
-  material.colorNode = warm.mul(energy.mul(0.65).add(0.55));
-  material.opacityNode = glow
-    .mul(energy)
+  // Rim pushes past 1.0 so the bloom pass wraps a halo around the sculpt.
+  // Tinted mostly by the local gradient so the rose/blue duality survives bloom.
+  const rimGlow = mix(vec3(0.85, 0.9, 1.0), bodyColor, 0.85)
+    .mul(fresnel)
+    .mul(energy.mul(1.3).add(0.8));
+  material.colorNode = bodyColor
+    .mul(energy.mul(0.8).add(0.5))
+    .add(rimGlow) as any;
+
+  material.opacityNode = oneMinus(dissolve)
     .mul(oneMinus(dissolve))
-    .mul(select(hidden.greaterThan(0.5), float(0.0), float(0.85)));
+    .mul(select(hidden.greaterThan(0.5), float(0.0), float(1.0))) as any;
 
   material.transparent = true;
-  material.blending = THREE.AdditiveBlending;
+  material.blending = THREE.NormalBlending;
   material.depthWrite = false;
   material.side = THREE.FrontSide;
   material.fog = false;

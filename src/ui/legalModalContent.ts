@@ -1,4 +1,4 @@
-export type LegalModalId = 'credits' | 'terms' | 'privacy' | 'research';
+export type LegalModalId = 'terms' | 'privacy' | 'research';
 
 export type LegalModalCitation = {
   label: string;
@@ -19,19 +19,6 @@ export type LegalModalContent = {
 };
 
 export const LEGAL_MODAL_CONTENT: Record<LegalModalId, LegalModalContent> = {
-  credits: {
-    id: 'credits',
-    title: 'CREDITS',
-    sections: [
-      {
-        paragraphs: [
-          'Built on False Earth by Ming-Jyun Hung, used under the MIT License.',
-          'Booster, all characters, artwork, and world design are property of Storytailor Inc.',
-          'Original music composed and produced by JQ Sirls.',
-        ],
-      },
-    ],
-  },
   terms: {
     id: 'terms',
     title: 'TERMS OF USE',
@@ -63,7 +50,7 @@ export const LEGAL_MODAL_CONTENT: Record<LegalModalId, LegalModalContent> = {
       {
         heading: 'OURS AND YOURS',
         paragraphs: [
-          'Booster, the characters, artwork, music, and design belong to Storytailor Inc. You may not copy, sell, or redistribute them. The Meadow is built in part on open-source software, credited in Credits.',
+          'Booster, the characters, artwork, music, and design belong to Storytailor Inc. You may not copy, sell, or redistribute them. The Meadow is built in part on open-source software, credited in Attribution below.',
         ],
       },
       {
@@ -87,6 +74,14 @@ export const LEGAL_MODAL_CONTENT: Record<LegalModalId, LegalModalContent> = {
       {
         heading: 'QUESTIONS',
         paragraphs: ['hello@storytailor.com'],
+      },
+      {
+        heading: 'ATTRIBUTION',
+        paragraphs: [
+          'Built on False Earth by Ming-Jyun Hung, used under the MIT License.',
+          'Booster, all characters, artwork, and world design are property of Storytailor Inc.',
+          'Original music composed and produced by JQ Sirls.',
+        ],
       },
     ],
   },
@@ -135,89 +130,90 @@ export const LEGAL_MODAL_CONTENT: Record<LegalModalId, LegalModalContent> = {
   research: {
     id: 'research',
     title: 'RESEARCH',
-    lastUpdated: 'July 2026',
     sections: [
       {
         paragraphs: [
-          'The Meadow looks simple on purpose. Most of its choices — the slow pace, the soft light, the absence of scores — follow published research on how calm spaces, gentle play, and steady breathing help people settle. Here is that research in plain language, with links if you want to go deeper.',
-          'The Meadow is a place to rest, not a treatment. If you are struggling, please talk to someone you trust or a professional.',
+          'The meadow is built on a small body of research about attention, play, and breath. It isn\u2019t treatment, and it doesn\u2019t claim to be \u2014 it\u2019s a quiet place, designed carefully. These are the ideas behind it.',
         ],
       },
       {
-        heading: 'A WORLD THAT FILLS YOUR EYES QUIETS THE MIND',
+        heading: 'BUSY EYES, QUIETER MIND',
         paragraphs: [
-          'When your eyes and hands are gently occupied by a visual task, there is less room for looping, intrusive thoughts. Researchers at Oxford found that visually absorbing games can reduce unwanted mental images. The Meadow is built to be visually absorbing in a soft way — grass, wind, and light that ask for your attention without demanding it.',
+          'When visual attention is absorbed by a rich spatial task, there is less room for looping, intrusive thoughts. Oxford researchers demonstrated this with, of all things, Tetris \u2014 absorbing visuospatial play measurably crowded out unwanted imagery. It\u2019s why the meadow gives your eyes grass, wind, and drifting light rather than menus.',
         ],
         citations: [
           {
-            label: 'Holmes, James, Kilford & Deeprose (2010), PLOS ONE',
+            label: 'Holmes et al., 2009, PLOS ONE',
             url: 'https://journals.plos.org/plosone/article?id=10.1371%2Fjournal.pone.0004153',
           },
           {
-            label: 'Iyadurai et al. (2018), Molecular Psychiatry',
+            label: 'Iyadurai et al., 2018',
             url: 'https://pmc.ncbi.nlm.nih.gov/articles/PMC5822451/',
           },
         ],
       },
       {
-        heading: 'LOW-STAKES PLAY LOWERS STRESS IN THE BODY',
+        heading: 'LOW-STAKES PLAY CALMS THE BODY, NOT JUST THE MOOD',
         paragraphs: [
-          'Studies of casual games — the kind with nothing to lose — have measured real drops in physiological stress while playing. Nothing in the Meadow can be failed, lost, or done wrong; wandering is the whole game.',
+          'Casual, unpressured games have been shown to reduce physiological stress \u2014 heart-rate variability improves, tension drops. Nothing in the meadow can be failed, lost, or done wrong.',
         ],
         citations: [
           {
-            label: 'Russoniello, O\u2019Brien & Parks (2009)',
+            label: 'Russoniello, O\u2019Brien & Parks, 2009',
             url: 'https://doi.org/10.3233/978-1-60750-017-9-189',
           },
         ],
       },
       {
-        heading: 'GENTLE IMAGERY WORKS BETTER THAN COUNTING SHEEP',
+        heading: 'VIVID IMAGERY BEATS COUNTING SHEEP',
         paragraphs: [
-          'People told to imagine a calm, engaging scene fell asleep faster than people told to count or to simply distract themselves. An interesting place settles the mind better than a blank one — which is why the Meadow is a real place, with roses and stars, rather than an empty screen.',
+          'People told to simply count fell asleep no faster than people told to do nothing; people who imagined an engaging, pleasant scene settled sooner. That\u2019s why the orbs drift and glow instead of stacking into a score.',
         ],
         citations: [
           {
-            label: 'Harvey & Payne (2002), Behaviour Research and Therapy',
+            label: 'Harvey & Payne, 2002',
             url: 'https://doi.org/10.1016/s0005-7967(01)00012-2',
           },
         ],
       },
       {
-        heading: 'A LITTLE GENTLE PLAY LIFTS MOOD QUICKLY',
+        heading: 'GENTLE, REPETITIVE PLAY LIFTS MOOD QUICKLY',
         paragraphs: [
-          'A large Oxford study of a calm, repetitive game found that mood reliably improved during play, with most of the lift arriving in the first fifteen minutes. The Meadow is shaped for exactly that kind of visit: short, unhurried, and complete whenever you choose to leave.',
+          'A recent Oxford study of a famously calm game found mood rises during play, with most of the benefit arriving in the first fifteen minutes. A short visit is enough; the meadow doesn\u2019t ask for more.',
         ],
         citations: [
           {
-            label: 'University of Oxford (2024), PowerWash Simulator study',
+            label: 'University of Oxford, 2024',
             url: 'https://www.ox.ac.uk/news/2024-09-25-new-study-reveals-positive-mood-changes-during-video-game-play',
           },
         ],
       },
       {
-        heading: 'SLOW BREATHING CALMS THE NERVOUS SYSTEM',
+        heading: 'SIX BREATHS A MINUTE',
         paragraphs: [
-          'Breathing at around six breaths per minute is one of the best-studied ways to settle the body\u2019s stress response. The glowing orbs drifting through the Meadow brighten and dim at that same slow rhythm — six cycles per minute, a little quicker to brighten and slower to fade. You don\u2019t have to do anything with them. If your breath happens to fall in with their glow, that\u2019s the idea.',
+          'Breathing slowly \u2014 around six breaths per minute \u2014 reliably settles the nervous system. The orbs brighten and dim at that pace. If you find yourself breathing with them, that\u2019s the design working.',
         ],
         citations: [
           {
-            label: 'Lehrer & Gevirtz (2014), Frontiers in Psychology',
+            label: 'Lehrer & Gevirtz, 2014, Frontiers in Psychology',
             url: 'https://www.frontiersin.org/journals/psychology/articles/10.3389/fpsyg.2014.00756/full',
           },
         ],
       },
       {
-        heading: 'NO PRESSURE IS THE POINT',
+        heading: 'NO STREAKS, NO SCORES, NOTHING OWED',
         paragraphs: [
-          'Decades of research on motivation show that rewards, scores, and streaks can crowd out the quiet enjoyment they were meant to encourage. So the Meadow keeps none of them. Gathering orbs earns nothing and unlocks nothing; the count fades away and resets every visit. What remains is the reason to be here at all: because it feels good to be.',
+          'Decades of motivation research show that pressure and external rewards crowd out the quiet, self-chosen kind of engagement. So the count fades, nothing persists between visits, and the meadow never asks you to come back.',
         ],
         citations: [
           {
-            label: 'Ryan & Deci (2000), Self-Determination Theory',
+            label: 'Ryan & Deci, 2000',
             url: 'https://selfdeterminationtheory.org/SDT/documents/2000_RyanDeci_SDT.pdf',
           },
         ],
+      },
+      {
+        paragraphs: ['That\u2019s the whole design. Stay as long as you like.'],
       },
     ],
   },

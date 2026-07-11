@@ -18,9 +18,9 @@ export const ORB_GROUND_HOVER_MAX = 1.05;
 export const ORB_SKY_HOVER_MIN = 2.4;
 export const ORB_SKY_HOVER_MAX = 3.4;
 
-/** Core sphere radius (meters); sky orbs are slightly larger / more forgiving. */
-export const ORB_GROUND_SIZE = 0.16;
-export const ORB_SKY_SIZE = 0.22;
+/** Sculpted-orb radius (meters); sky orbs are slightly larger / more forgiving. */
+export const ORB_GROUND_SIZE = 0.24;
+export const ORB_SKY_SIZE = 0.32;
 
 /** Collect radii (XZ meters) — generous, calm, no precision demand. */
 export const ORB_GROUND_COLLECT_RADIUS = 1.15;
@@ -30,8 +30,8 @@ export const ORB_COLLECT_VERTICAL_TOLERANCE = 1.5;
 /** Approx character body-center height above ground (before flight lift). */
 export const CHARACTER_CENTER_HEIGHT = 0.95;
 
-/** Dissolve duration on collect (seconds, uTime clock). */
-export const ORB_DISSOLVE_SECONDS = 1.8;
+/** Poof duration on first touch (seconds, uTime clock) — instant, soft, airy. */
+export const ORB_DISSOLVE_SECONDS = 0.55;
 
 /** Respawn delay range (seconds) — constant global population, never instant. */
 export const ORB_RESPAWN_MIN_SECONDS = 30;

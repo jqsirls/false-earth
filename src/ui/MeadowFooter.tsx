@@ -13,7 +13,6 @@ import {
 const FOOTER_ITEMS: Array<{ id: LegalModalId; label: string }> = [
   { id: 'privacy', label: 'Privacy' },
   { id: 'terms', label: 'Terms' },
-  { id: 'credits', label: 'Credits' },
   { id: 'research', label: 'Research' },
 ];
 
@@ -22,7 +21,6 @@ export function MeadowFooter() {
   const gpuError = useGameStore((state) => state.gpuError);
   const openLegalModal = useMeadowUiStore((state) => state.openLegalModal);
   const triggerRefs = useRef<Record<LegalModalId, HTMLButtonElement | null>>({
-    credits: null,
     terms: null,
     privacy: null,
     research: null,

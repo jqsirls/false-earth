@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
+import { useGLTF } from '@react-three/drei';
 import * as THREE from 'three/webgpu';
 import { AsyncCompile } from '@core';
 import { useGameStore } from '../../core/store/gameStore';
@@ -8,6 +9,7 @@ import { uTime } from '../../core/shaders/uniforms';
 import { usePrefersReducedMotion } from '../../core/utils/reducedMotion';
 import { playOrbChime, prepareOrbChime } from '../../audio/orbChime';
 import { getDefaultCompileTimeoutMs } from '../../core/utils/browserCaps';
+import { resolveMeadowAsset } from '../../config/meadowAssets';
 import { createOrbMaterial } from './core/orbMaterial';
 import { orbDrift, orbOmegaFromRandom } from './core/orbMotion';
 import {
@@ -32,6 +34,13 @@ import {
 
 const MIN_ORB_SPACING = 6;
 const RESPAWN_PLACEMENT_ATTEMPTS = 16;
+
+/**
+ * Owner's sculpted orb (Abstract_Spherical_Shape), decimated via
+ * tools/3d/blender_orb_glb.py. GLBs are .vercelignored — production loads
+ * from the meadow CDN via resolveMeadowAsset, local dev from public/.
+ */
+const ORB_MODEL_PATH = resolveMeadowAsset('/models/orb-v2.glb');
 
 interface OrbsProps {
   onCompileReady?: (id: string, isReady: boolean) => void;
@@ -72,6 +81,17 @@ export default function Orbs({ onCompileReady, compileDebug = false }: OrbsProps
   const reducedMotion = usePrefersReducedMotion();
   const { camera } = useThree();
 
+  const gltf = useGLTF(ORB_MODEL_PATH);
+  const orbGeometry = useMemo(() => {
+    let found: THREE.BufferGeometry | null = null;
+    gltf.scene.traverse((node) => {
+      if (!found && (node as THREE.Mesh).isMesh) {
+        found = (node as THREE.Mesh).geometry as THREE.BufferGeometry;
+      }
+    });
+    return found as THREE.BufferGeometry | null;
+  }, [gltf]);
+
   const system = useMemo(() => {
     const gpu = createOrbMaterial();
     const candidate = { x: 0, z: 0 };
@@ -101,14 +121,16 @@ export default function Orbs({ onCompileReady, compileDebug = false }: OrbsProps
       gpu.stateArray[i].set(1, -1000, isSkyOrb(i) ? ORB_SKY_SIZE : ORB_GROUND_SIZE, 0);
     }
 
-    const geometry = new THREE.IcosahedronGeometry(1, 2);
+    // Fallback icosphere only if the GLB somehow has no mesh.
+    const geometry = orbGeometry ?? new THREE.IcosahedronGeometry(1, 2);
+    const ownsGeometry = !orbGeometry;
     const mesh = new THREE.InstancedMesh(geometry, gpu.material, ORB_COUNT);
     mesh.frustumCulled = false;
     mesh.castShadow = false;
     mesh.receiveShadow = false;
 
-    return { gpu, mesh, geometry };
-  }, []);
+    return { gpu, mesh, geometry, ownsGeometry };
+  }, [orbGeometry]);
 
   useEffect(() => {
     system.gpu.uMotionScale.value = reducedMotion ? 0 : 1;
@@ -120,7 +142,7 @@ export default function Orbs({ onCompileReady, compileDebug = false }: OrbsProps
 
   useEffect(() => {
     return () => {
-      system.geometry.dispose();
+      if (system.ownsGeometry) system.geometry.dispose();
       system.gpu.material.dispose();
     };
   }, [system]);
@@ -165,6 +187,21 @@ export default function Orbs({ onCompileReady, compileDebug = false }: OrbsProps
           z: v.z,
           active: system.gpu.stateArray[i].x >= 0.5,
         })),
+      summon: (index: number, x: number, z: number, hover = 1.0) => {
+        const base = system.gpu.baseArray[index];
+        if (!base) return false;
+        base.x = x;
+        base.z = z;
+        base.y = hover;
+        system.gpu.stateArray[index].set(
+          1,
+          -1000,
+          isSkyOrb(index) ? ORB_SKY_SIZE : ORB_GROUND_SIZE,
+          0,
+        );
+        respawnAtRef.current[index] = -1;
+        return true;
+      },
     };
     (window as unknown as Record<string, unknown>).__meadowOrbs = debugApi;
     return () => {
