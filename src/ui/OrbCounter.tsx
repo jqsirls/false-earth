@@ -4,79 +4,103 @@ import { gameEvents } from '../core/events';
 import { usePrefersReducedMotion } from '../core/utils/reducedMotion';
 import { meadowHudFontFamily, meadowModalTokens } from './meadowUiStyles';
 
-/** Quiet delay after a collect before the count fades in. */
-const APPEAR_DELAY_MS = 3000;
-const FADE_IN_MS = 700;
-const HOLD_MS = 3200;
-const FADE_OUT_MS = 1400;
+/** Rest opacity: dim enough to ignore, bright enough that a glance reads it. */
+const REST_OPACITY = 0.28;
+/** How long the readout holds full brightness after a collect. */
+const BRIGHT_MS = 900;
+/** Settle back to rest. */
+const SETTLE_MS = 700;
+
+const COUNTER_CSS = `
+.orb-counter-readout {
+  top: calc(max(12px, env(safe-area-inset-top)) + 8px);
+  left: calc(max(12px, env(safe-area-inset-left)) + 8px);
+}
+/* Narrow screens: the CTA pill spans most of the top strip, so sit below it. */
+@media (max-width: 560px) {
+  .orb-counter-readout {
+    top: calc(max(12px, env(safe-area-inset-top)) + 64px);
+  }
+}
+@keyframes orb-counter-glitch {
+  0% { opacity: 1; transform: translateX(0); clip-path: inset(0 0 0 0); }
+  18% { opacity: 0.65; transform: translateX(1px); clip-path: inset(15% 0 40% 0); }
+  32% { opacity: 1; transform: translateX(-1px); clip-path: inset(55% 0 10% 0); }
+  48% { opacity: 0.8; transform: translateX(0.5px); clip-path: inset(0 0 65% 0); }
+  62% { opacity: 1; transform: translateX(0); clip-path: inset(0 0 0 0); }
+  100% { opacity: 1; transform: translateX(0); clip-path: inset(0 0 0 0); }
+}
+`;
 
 /**
- * Session-only gather counter — word-based ("7 gathered"), unnamed orbs.
- * Nothing while idle, nothing until the 2nd collect, no milestones,
- * no persistence, no animation emphasis. Fades in ~3s after a collect,
- * then fully out.
+ * Session-only gather readout in the suit-HUD idiom: `GATHERED 07`, top-left.
+ * Hidden until the first collect, then persistent at a dim rest opacity.
+ * Each collect brightens it with one soft glitch beat, then it settles.
+ * Perfectly static while idle. No milestones, no persistence across visits.
  */
 export function OrbCounter() {
   const isControlEnabled = useGameStore((state) => state.isControlEnabled);
   const reducedMotion = usePrefersReducedMotion();
 
   const [count, setCount] = useState(0);
-  const [visible, setVisible] = useState(false);
-  const timersRef = useRef<number[]>([]);
+  const [bright, setBright] = useState(false);
+  const [glitchKey, setGlitchKey] = useState(0);
+  const timerRef = useRef<number | null>(null);
 
   useEffect(() => {
-    const clearTimers = () => {
-      timersRef.current.forEach((id) => window.clearTimeout(id));
-      timersRef.current = [];
-    };
-
     const onGathered = ({ count: gathered }: { count: number }) => {
       setCount(gathered);
-      if (gathered < 2) return;
-
-      clearTimers();
-      setVisible(false);
-      timersRef.current.push(
-        window.setTimeout(() => {
-          setVisible(true);
-          timersRef.current.push(
-            window.setTimeout(() => setVisible(false), FADE_IN_MS + HOLD_MS),
-          );
-        }, APPEAR_DELAY_MS),
-      );
+      setBright(true);
+      setGlitchKey((k) => k + 1);
+      if (timerRef.current !== null) window.clearTimeout(timerRef.current);
+      timerRef.current = window.setTimeout(() => setBright(false), BRIGHT_MS);
     };
 
     gameEvents.on('orb:gathered', onGathered);
     return () => {
       gameEvents.off('orb:gathered', onGathered);
-      clearTimers();
+      if (timerRef.current !== null) window.clearTimeout(timerRef.current);
     };
   }, []);
 
-  if (!isControlEnabled || count < 2) return null;
+  if (!isControlEnabled || count < 1) return null;
+
+  const label = `GATHERED ${String(count).padStart(2, '0')}`;
 
   return (
-    <div
-      aria-live="polite"
-      style={{
-        position: 'fixed',
-        left: '50%',
-        bottom: 'calc(max(8px, env(safe-area-inset-bottom)) + 44px)',
-        transform: 'translateX(-50%)',
-        zIndex: 12,
-        pointerEvents: 'none',
-        userSelect: 'none',
-        color: meadowModalTokens.muted,
-        fontFamily: meadowHudFontFamily,
-        fontSize: '0.7rem',
-        letterSpacing: '0.1em',
-        opacity: visible ? 1 : 0,
-        transition: reducedMotion
-          ? 'none'
-          : `opacity ${visible ? FADE_IN_MS : FADE_OUT_MS}ms ease`,
-      }}
-    >
-      {count} gathered
-    </div>
+    <>
+      <style>{COUNTER_CSS}</style>
+      <div
+        aria-live="polite"
+        className="orb-counter-readout"
+        style={{
+          position: 'fixed',
+          zIndex: 12,
+          pointerEvents: 'none',
+          userSelect: 'none',
+          color: meadowModalTokens.accent,
+          fontFamily: meadowHudFontFamily,
+          fontSize: '0.7rem',
+          letterSpacing: '0.14em',
+          opacity: bright ? 1 : REST_OPACITY,
+          transition: reducedMotion
+            ? 'none'
+            : `opacity ${bright ? 120 : SETTLE_MS}ms ease`,
+        }}
+      >
+        <span
+          key={glitchKey}
+          style={{
+            display: 'inline-block',
+            animation:
+              !reducedMotion && glitchKey > 0
+                ? 'orb-counter-glitch 420ms steps(1, end) 1'
+                : 'none',
+          }}
+        >
+          {label}
+        </span>
+      </div>
+    </>
   );
 }

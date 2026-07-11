@@ -50,7 +50,9 @@ export function playOrbChime(listener: AudioListener | null, duckUnderBgm: boole
 
     const gain = context.createGain()
     const now = context.currentTime
-    const target = duckUnderBgm ? 0.2 : 0.32
+    // Boosted per owner feedback (was 0.2 / 0.32): clearly audible, still
+    // ducked under the BGM, capped well below clipping.
+    const target = duckUnderBgm ? 0.42 : 0.7
     gain.gain.setValueAtTime(0.0001, now)
     gain.gain.linearRampToValueAtTime(target, now + ATTACK_SECONDS)
 
