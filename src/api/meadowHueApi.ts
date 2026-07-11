@@ -1,5 +1,5 @@
 import { MEADOW_HUE_URL } from '../config/meadow';
-import { meadowAuthHeaders } from './meadowAuthApi';
+import { meadowAuthedFetch } from './meadowAuthApi';
 
 export type HueIntensityPreset = 'off' | 'gentle' | 'standard' | 'bold';
 export type HueBridgeState = 'unlinked' | 'linking' | 'linked' | 'error' | 'offline';
@@ -121,13 +121,9 @@ async function meadowHueRequest<T>(
   }
 
   try {
-    const response = await fetch(`${MEADOW_HUE_URL}${path}`, {
-      credentials: 'include',
+    const response = await meadowAuthedFetch(`${MEADOW_HUE_URL}${path}`, {
       ...init,
-      headers: {
-        ...meadowAuthHeaders(),
-        ...(init?.headers ?? {}),
-      },
+      headers: (init?.headers ?? {}) as Record<string, string>,
     });
 
     const body = (await response.json()) as ApiEnvelope<T> & {

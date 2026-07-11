@@ -62,6 +62,9 @@ const MOCK_PROFILE_PREFILL_KEY = 'meadow_auth_mock_profile_prefill';
 /** Client-held tokens — required because cross-origin HttpOnly cookies from supabase.co are blocked. */
 const CLIENT_TOKENS_KEY = 'meadow_sb_tokens';
 
+/** Refresh proactively when the access token is within this margin of expiry. */
+const REFRESH_MARGIN_MS = 2 * 60 * 1000;
+
 type ClientTokens = {
   access_token: string;
   refresh_token: string;
@@ -94,9 +97,7 @@ function writeMockSession(session: MeadowSession | null): void {
   sessionStorage.setItem(MOCK_SESSION_KEY, JSON.stringify(session));
 }
 
-export function readClientTokens(): ClientTokens | null {
-  if (typeof window === 'undefined') return null;
-  const raw = sessionStorage.getItem(CLIENT_TOKENS_KEY);
+function parseTokens(raw: string | null): ClientTokens | null {
   if (!raw) return null;
   try {
     const parsed = JSON.parse(raw) as ClientTokens;
@@ -110,13 +111,143 @@ export function readClientTokens(): ClientTokens | null {
   }
 }
 
+/**
+ * Persistent session lives in localStorage so sign-in survives tab close and
+ * revisits. Legacy sessionStorage tokens (pre-persistence) migrate on read.
+ */
+export function readClientTokens(): ClientTokens | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const persisted = parseTokens(localStorage.getItem(CLIENT_TOKENS_KEY));
+    if (persisted) return persisted;
+
+    const legacy = parseTokens(sessionStorage.getItem(CLIENT_TOKENS_KEY));
+    if (legacy) {
+      writeClientTokens(legacy);
+      sessionStorage.removeItem(CLIENT_TOKENS_KEY);
+      return legacy;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 function writeClientTokens(tokens: ClientTokens | null): void {
   if (typeof window === 'undefined') return;
-  if (!tokens?.access_token) {
-    sessionStorage.removeItem(CLIENT_TOKENS_KEY);
-    return;
+  try {
+    if (!tokens?.access_token) {
+      localStorage.removeItem(CLIENT_TOKENS_KEY);
+      sessionStorage.removeItem(CLIENT_TOKENS_KEY);
+      return;
+    }
+    localStorage.setItem(CLIENT_TOKENS_KEY, JSON.stringify(tokens));
+  } catch {
+    // Storage blocked (private mode edge cases) — session degrades to in-memory.
   }
-  sessionStorage.setItem(CLIENT_TOKENS_KEY, JSON.stringify(tokens));
+}
+
+/** Epoch ms expiry from the access token JWT payload; null when undecodable. */
+function accessTokenExpiryMs(accessToken: string): number | null {
+  const parts = accessToken.split('.');
+  if (parts.length !== 3) return null;
+  try {
+    const payload = JSON.parse(
+      atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')),
+    ) as { exp?: number };
+    return typeof payload.exp === 'number' ? payload.exp * 1000 : null;
+  } catch {
+    return null;
+  }
+}
+
+let refreshInFlight: Promise<boolean> | null = null;
+
+/**
+ * Exchange the stored refresh token for a new pair via the meadow-auth proxy.
+ * Concurrent callers share one in-flight refresh. On a definitive rejection
+ * (401) the session is cleared so the UI shows the signed-out state quietly.
+ */
+export async function refreshClientTokens(): Promise<boolean> {
+  if (refreshInFlight) return refreshInFlight;
+
+  refreshInFlight = (async () => {
+    const tokens = readClientTokens();
+    if (!tokens?.refresh_token || !MEADOW_AUTH_URL) return false;
+
+    try {
+      const response = await fetch(MEADOW_AUTH_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ action: 'refresh', refresh_token: tokens.refresh_token }),
+      });
+
+      if (response.status === 401) {
+        writeClientTokens(null);
+        return false;
+      }
+      if (!response.ok) {
+        // Transient failure (network/5xx): keep tokens for a later retry.
+        return false;
+      }
+
+      const payload = (await response.json()) as {
+        tokens?: { access_token?: string; refresh_token?: string };
+      };
+      if (!payload.tokens?.access_token) return false;
+
+      writeClientTokens({
+        access_token: payload.tokens.access_token,
+        refresh_token: payload.tokens.refresh_token ?? tokens.refresh_token,
+      });
+      return true;
+    } catch {
+      return false;
+    }
+  })();
+
+  try {
+    return await refreshInFlight;
+  } finally {
+    refreshInFlight = null;
+  }
+}
+
+/** Proactively refresh when the access token is missing/near expiry. */
+export async function ensureFreshTokens(): Promise<void> {
+  const tokens = readClientTokens();
+  if (!tokens?.access_token || !tokens.refresh_token) return;
+  const expiry = accessTokenExpiryMs(tokens.access_token);
+  if (expiry !== null && expiry - Date.now() > REFRESH_MARGIN_MS) return;
+  await refreshClientTokens();
+}
+
+/**
+ * Authenticated fetch for meadow services: refreshes ahead of expiry, and on a
+ * 401 attempts one refresh + retry before surfacing the response.
+ */
+export async function meadowAuthedFetch(
+  input: string,
+  init: Omit<RequestInit, 'headers'> & { headers?: Record<string, string> },
+): Promise<Response> {
+  await ensureFreshTokens();
+
+  const doFetch = () =>
+    fetch(input, {
+      ...init,
+      credentials: 'include',
+      headers: meadowAuthHeaders(init.headers),
+    });
+
+  const response = await doFetch();
+  if (response.status !== 401 || !readClientTokens()?.refresh_token) {
+    return response;
+  }
+
+  const refreshed = await refreshClientTokens();
+  if (!refreshed) return response;
+  return doFetch();
 }
 
 /** Authorization header for meadow-auth / meadow-hue when cookie session is unavailable. */
@@ -297,10 +428,8 @@ export async function getProfileStatus(): Promise<MeadowProfileStatusResult> {
   }
 
   try {
-    const response = await fetch(MEADOW_AUTH_URL, {
+    const response = await meadowAuthedFetch(MEADOW_AUTH_URL, {
       method: 'POST',
-      headers: meadowAuthHeaders(),
-      credentials: 'include',
       body: JSON.stringify({ action: 'profileStatus' }),
     });
 
@@ -369,10 +498,8 @@ export async function completeProfile(
   }
 
   try {
-    const response = await fetch(MEADOW_AUTH_URL, {
+    const response = await meadowAuthedFetch(MEADOW_AUTH_URL, {
       method: 'POST',
-      headers: meadowAuthHeaders(),
-      credentials: 'include',
       body: JSON.stringify({
         action: 'completeProfile',
         firstName,
@@ -436,10 +563,8 @@ export async function getSession(): Promise<MeadowSession | null> {
   }
 
   try {
-    const response = await fetch(`${MEADOW_AUTH_URL}?action=getSession`, {
+    const response = await meadowAuthedFetch(`${MEADOW_AUTH_URL}?action=getSession`, {
       method: 'GET',
-      headers: meadowAuthHeaders(),
-      credentials: 'include',
     });
 
     if (!response.ok) return null;
