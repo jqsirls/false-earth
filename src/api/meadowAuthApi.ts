@@ -12,8 +12,52 @@ export type MeadowAuthResult =
 
 export type MeadowOtpSendResult = { ok: true } | { ok: false; message: string };
 
+export type MeadowProfileStatus =
+  | { complete: true }
+  | {
+      complete: false;
+      requiredFields: string[];
+      prefill: { firstName?: string; lastName?: string };
+    };
+
+export type MeadowProfileStatusResult =
+  | { ok: true; status: MeadowProfileStatus }
+  | { ok: false; message: string };
+
+export type MeadowCompleteProfileInput = {
+  firstName: string;
+  lastName?: string;
+  birthday: string;
+  userType: string;
+};
+
+export type MeadowCompleteProfileResult = { ok: true } | { ok: false; message: string };
+
+/** Path A BA-019 adult-only userType enum (AuthRoutes ADULT_USER_TYPES). */
+export const MEADOW_USER_TYPE_OPTIONS = [
+  { value: 'parent', label: 'Parent' },
+  { value: 'guardian', label: 'Guardian' },
+  { value: 'grandparent', label: 'Grandparent' },
+  { value: 'aunt_uncle', label: 'Aunt / Uncle' },
+  { value: 'older_sibling', label: 'Older sibling' },
+  { value: 'foster_caregiver', label: 'Foster caregiver' },
+  { value: 'teacher', label: 'Teacher' },
+  { value: 'librarian', label: 'Librarian' },
+  { value: 'afterschool_leader', label: 'After-school leader' },
+  { value: 'childcare_provider', label: 'Childcare provider' },
+  { value: 'nanny', label: 'Nanny' },
+  { value: 'child_life_specialist', label: 'Child life specialist' },
+  { value: 'therapist', label: 'Therapist' },
+  { value: 'medical_professional', label: 'Medical professional' },
+  { value: 'coach_mentor', label: 'Coach / Mentor' },
+  { value: 'enthusiast', label: 'Enthusiast' },
+  { value: 'other', label: 'Other' },
+] as const;
+
 const MOCK_SESSION_KEY = 'meadow_auth_mock_session';
 const MOCK_PENDING_EMAIL_KEY = 'meadow_auth_mock_pending_email';
+const MOCK_PROFILE_COMPLETE_KEY = 'meadow_auth_mock_profile_complete';
+const MOCK_PROFILE_PREFILL_KEY = 'meadow_auth_mock_profile_prefill';
 
 function isMockMode(): boolean {
   if (typeof window === 'undefined') return false;
@@ -35,6 +79,8 @@ function writeMockSession(session: MeadowSession | null): void {
   if (typeof window === 'undefined') return;
   if (!session) {
     sessionStorage.removeItem(MOCK_SESSION_KEY);
+    sessionStorage.removeItem(MOCK_PROFILE_COMPLETE_KEY);
+    sessionStorage.removeItem(MOCK_PROFILE_PREFILL_KEY);
     return;
   }
   sessionStorage.setItem(MOCK_SESSION_KEY, JSON.stringify(session));
@@ -143,13 +189,163 @@ export async function verifyOtp(email: string, code: string): Promise<MeadowAuth
     if (pending && pending !== trimmedEmail) {
       return { ok: false, message: 'That code did not match. Try again or resend.' };
     }
+    // Mock: code must be 000000
+    if (trimmedCode !== '000000') {
+      return { ok: false, message: 'That code did not match. Try again or resend.' };
+    }
     const session = mockSessionForEmail(trimmedEmail);
     writeMockSession(session);
+    sessionStorage.setItem(MOCK_PROFILE_COMPLETE_KEY, '0');
+    // Prefill names for "existing member" simulation when email contains "member"
+    if (/member/i.test(trimmedEmail)) {
+      sessionStorage.setItem(
+        MOCK_PROFILE_PREFILL_KEY,
+        JSON.stringify({ firstName: 'Jordan', lastName: 'Lee' }),
+      );
+    } else {
+      sessionStorage.removeItem(MOCK_PROFILE_PREFILL_KEY);
+    }
     sessionStorage.removeItem(MOCK_PENDING_EMAIL_KEY);
     return { ok: true, session };
   }
 
   return postAuth({ action: 'verifyOtp', email: trimmedEmail, code: trimmedCode });
+}
+
+export async function getProfileStatus(): Promise<MeadowProfileStatusResult> {
+  if (isMockMode()) {
+    if (!readMockSession()) {
+      return { ok: false, message: 'Sign in again to continue.' };
+    }
+    if (sessionStorage.getItem(MOCK_PROFILE_COMPLETE_KEY) === '1') {
+      return { ok: true, status: { complete: true } };
+    }
+    let prefill: { firstName?: string; lastName?: string } = {};
+    try {
+      const raw = sessionStorage.getItem(MOCK_PROFILE_PREFILL_KEY);
+      if (raw) prefill = JSON.parse(raw) as { firstName?: string; lastName?: string };
+    } catch {
+      prefill = {};
+    }
+    return {
+      ok: true,
+      status: {
+        complete: false,
+        requiredFields: ['userType', 'firstName', 'ageVerification'],
+        prefill,
+      },
+    };
+  }
+
+  if (!MEADOW_AUTH_URL) {
+    return { ok: false, message: "Account connection isn't ready yet" };
+  }
+
+  try {
+    const response = await fetch(MEADOW_AUTH_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ action: 'profileStatus' }),
+    });
+
+    const payload = (await response.json()) as {
+      complete?: boolean;
+      requiredFields?: string[];
+      prefill?: { firstName?: string; lastName?: string };
+      message?: string;
+    };
+
+    if (!response.ok) {
+      return {
+        ok: false,
+        message: payload.message ?? 'We could not check your profile right now.',
+      };
+    }
+
+    if (payload.complete === true) {
+      return { ok: true, status: { complete: true } };
+    }
+
+    return {
+      ok: true,
+      status: {
+        complete: false,
+        requiredFields: payload.requiredFields ?? ['userType', 'firstName', 'ageVerification'],
+        prefill: payload.prefill ?? {},
+      },
+    };
+  } catch {
+    return {
+      ok: false,
+      message: 'We could not reach the account service. Check your connection and try again.',
+    };
+  }
+}
+
+export async function completeProfile(
+  input: MeadowCompleteProfileInput,
+): Promise<MeadowCompleteProfileResult> {
+  const firstName = input.firstName.trim();
+  const lastName = input.lastName?.trim() ?? '';
+  const birthday = input.birthday.trim();
+  const userType = input.userType.trim();
+
+  if (!firstName) {
+    return { ok: false, message: 'Enter your first name.' };
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(birthday)) {
+    return { ok: false, message: 'Enter a valid birthday.' };
+  }
+  if (!MEADOW_USER_TYPE_OPTIONS.some((option) => option.value === userType)) {
+    return { ok: false, message: 'Choose how you use Storytailor.' };
+  }
+
+  if (isMockMode()) {
+    if (!readMockSession()) {
+      return { ok: false, message: 'Sign in again to continue.' };
+    }
+    sessionStorage.setItem(MOCK_PROFILE_COMPLETE_KEY, '1');
+    return { ok: true };
+  }
+
+  if (!MEADOW_AUTH_URL) {
+    return { ok: false, message: "Account connection isn't ready yet" };
+  }
+
+  try {
+    const response = await fetch(MEADOW_AUTH_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        action: 'completeProfile',
+        firstName,
+        lastName,
+        birthday,
+        userType,
+      }),
+    });
+
+    const payload = (await response.json()) as {
+      ok?: boolean;
+      message?: string;
+    };
+
+    if (!response.ok || payload.ok === false) {
+      return {
+        ok: false,
+        message: payload.message ?? 'We could not save your details right now. Please try again.',
+      };
+    }
+
+    return { ok: true };
+  } catch {
+    return {
+      ok: false,
+      message: 'We could not reach the account service. Check your connection and try again.',
+    };
+  }
 }
 
 export async function signOut(): Promise<void> {

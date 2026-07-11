@@ -1,7 +1,13 @@
 import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type KeyboardEvent } from 'react';
 import { useGameStore } from '../core/store/gameStore';
 import { useMeadowAuthStore } from '../core/store/meadowAuthStore';
-import { sendOtp, verifyOtp } from '../api/meadowAuthApi';
+import {
+  completeProfile,
+  getProfileStatus,
+  MEADOW_USER_TYPE_OPTIONS,
+  sendOtp,
+  verifyOtp,
+} from '../api/meadowAuthApi';
 import { usePrefersReducedMotion } from '../core/utils/reducedMotion';
 import { useFocusTrap } from '../core/hooks/useFocusTrap';
 import {
@@ -17,10 +23,29 @@ import {
   meadowSheetPanelBase,
 } from './meadowUiStyles';
 
-type AuthStep = 'email' | 'code';
+type AuthStep = 'email' | 'code' | 'profile';
 
 const RESEND_COOLDOWN_SEC = 30;
 const OTP_LENGTH = 6;
+
+function pad2(value: number): string {
+  return String(value).padStart(2, '0');
+}
+
+function buildBirthday(year: string, month: string, day: string): string | null {
+  if (!/^\d{4}$/.test(year) || !/^\d{1,2}$/.test(month) || !/^\d{1,2}$/.test(day)) {
+    return null;
+  }
+  const y = Number(year);
+  const m = Number(month);
+  const d = Number(day);
+  if (m < 1 || m > 12 || d < 1 || d > 31) return null;
+  const date = new Date(y, m - 1, d);
+  if (date.getFullYear() !== y || date.getMonth() !== m - 1 || date.getDate() !== d) {
+    return null;
+  }
+  return `${year}-${pad2(m)}-${pad2(d)}`;
+}
 
 export function AuthSheet() {
   const isMobile = useGameStore((state) => state.isMobile);
@@ -36,6 +61,15 @@ export function AuthSheet() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [resendCooldown, setResendCooldown] = useState(0);
+
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [birthYear, setBirthYear] = useState('');
+  const [birthMonth, setBirthMonth] = useState('');
+  const [birthDay, setBirthDay] = useState('');
+  const [userType, setUserType] = useState('');
+  const [firstNameRequired, setFirstNameRequired] = useState(true);
+
   const panelRef = useRef<HTMLElement>(null);
   const digitRefs = useRef<Array<HTMLInputElement | null>>([]);
 
@@ -49,6 +83,13 @@ export function AuthSheet() {
       setError(null);
       setIsSubmitting(false);
       setResendCooldown(0);
+      setFirstName('');
+      setLastName('');
+      setBirthYear('');
+      setBirthMonth('');
+      setBirthDay('');
+      setUserType('');
+      setFirstNameRequired(true);
     }
   }, [isOpen]);
 
@@ -101,6 +142,34 @@ export function AuthSheet() {
     </p>
   );
 
+  const afterVerifySuccess = async () => {
+    const statusResult = await getProfileStatus();
+    if (!statusResult.ok) {
+      setError(statusResult.message);
+      return;
+    }
+
+    if (statusResult.status.complete) {
+      resumePendingIntent();
+      return;
+    }
+
+    const prefill = statusResult.status.prefill;
+    if (prefill.firstName) {
+      setFirstName(prefill.firstName);
+      setFirstNameRequired(false);
+    } else {
+      setFirstName('');
+      setFirstNameRequired(true);
+    }
+    setLastName(prefill.lastName ?? '');
+    setBirthYear('');
+    setBirthMonth('');
+    setBirthDay('');
+    setUserType('');
+    setStep('profile');
+  };
+
   const handleSendCode = async (event?: FormEvent) => {
     event?.preventDefault();
     setError(null);
@@ -124,9 +193,8 @@ export function AuthSheet() {
     setIsSubmitting(true);
 
     const result = await verifyOtp(email.trim(), code);
-    setIsSubmitting(false);
-
     if (!result.ok) {
+      setIsSubmitting(false);
       setError(result.message);
       setDigits(Array(OTP_LENGTH).fill(''));
       digitRefs.current[0]?.focus();
@@ -134,6 +202,46 @@ export function AuthSheet() {
     }
 
     setSession(result.session);
+    await afterVerifySuccess();
+    setIsSubmitting(false);
+  };
+
+  const handleCompleteProfile = async (event: FormEvent) => {
+    event.preventDefault();
+    setError(null);
+
+    const birthday = buildBirthday(birthYear.trim(), birthMonth.trim(), birthDay.trim());
+    if (!birthday) {
+      setError('Enter a valid birthday.');
+      return;
+    }
+    if (firstNameRequired && !firstName.trim()) {
+      setError('Enter your first name.');
+      return;
+    }
+    if (!firstName.trim()) {
+      setError('Enter your first name.');
+      return;
+    }
+    if (!userType) {
+      setError('Choose how you use Storytailor.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    const result = await completeProfile({
+      firstName: firstName.trim(),
+      lastName: lastName.trim() || undefined,
+      birthday,
+      userType,
+    });
+    setIsSubmitting(false);
+
+    if (!result.ok) {
+      setError(result.message);
+      return;
+    }
+
     resumePendingIntent();
   };
 
@@ -186,6 +294,17 @@ export function AuthSheet() {
     setDigits(Array(OTP_LENGTH).fill(''));
     setError(null);
     setResendCooldown(0);
+  };
+
+  const selectStyle: CSSProperties = {
+    ...meadowHudInputStyle,
+    appearance: 'none' as const,
+    backgroundImage:
+      'linear-gradient(45deg, transparent 50%, rgba(242,245,250,0.7) 50%), linear-gradient(135deg, rgba(242,245,250,0.7) 50%, transparent 50%)',
+    backgroundPosition: 'calc(100% - 16px) calc(50% - 2px), calc(100% - 11px) calc(50% - 2px)',
+    backgroundSize: '5px 5px, 5px 5px',
+    backgroundRepeat: 'no-repeat',
+    paddingRight: '28px',
   };
 
   return (
@@ -330,7 +449,9 @@ export function AuthSheet() {
               </button>
             </form>
           </>
-        ) : (
+        ) : null}
+
+        {step === 'code' ? (
           <>
             <h2
               id="meadow-auth-title"
@@ -431,7 +552,161 @@ export function AuthSheet() {
               </button>
             </div>
           </>
-        )}
+        ) : null}
+
+        {step === 'profile' ? (
+          <>
+            <h2
+              id="meadow-auth-title"
+              className="meadow-crt-title"
+              style={{
+                margin: '0 0 6px',
+                fontSize: '0.85rem',
+                fontWeight: 400,
+                lineHeight: 1.45,
+                letterSpacing: '0.04em',
+              }}
+            >
+              A few details so we can turn on the lights.
+            </h2>
+
+            <p style={{ margin: '0 0 18px', fontSize: '0.7rem', color: 'rgba(242, 245, 250, 0.45)', letterSpacing: '0.04em', lineHeight: 1.5 }}>
+              One quick step — then Booster can light the room.
+            </p>
+
+            <form onSubmit={handleCompleteProfile} style={{ display: 'grid', gap: '14px' }}>
+              {(firstNameRequired || !firstName) ? (
+                <label style={{ display: 'grid', gap: '6px' }}>
+                  <span style={meadowHudLabelStyle}>First name</span>
+                  <input
+                    className="meadow-focusable"
+                    type="text"
+                    autoComplete="given-name"
+                    required
+                    value={firstName}
+                    onChange={(event) => setFirstName(event.target.value)}
+                    style={meadowHudInputStyle}
+                  />
+                </label>
+              ) : (
+                <p style={{ margin: 0, fontSize: '0.7rem', color: 'rgba(242, 245, 250, 0.55)', letterSpacing: '0.04em' }}>
+                  Hi, {firstName}.
+                </p>
+              )}
+
+              <label style={{ display: 'grid', gap: '6px' }}>
+                <span style={meadowHudLabelStyle}>Last name (optional)</span>
+                <input
+                  className="meadow-focusable"
+                  type="text"
+                  autoComplete="family-name"
+                  value={lastName}
+                  onChange={(event) => setLastName(event.target.value)}
+                  style={meadowHudInputStyle}
+                />
+              </label>
+
+              <fieldset style={{ margin: 0, padding: 0, border: 'none', display: 'grid', gap: '6px' }}>
+                <legend style={meadowHudLabelStyle}>Birthday</legend>
+                <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr 0.8fr', gap: '8px' }}>
+                  <label style={{ display: 'grid', gap: '4px' }}>
+                    <span style={{ ...meadowHudLabelStyle, fontSize: '0.58rem' }}>Year</span>
+                    <input
+                      className="meadow-focusable"
+                      type="text"
+                      inputMode="numeric"
+                      autoComplete="bday-year"
+                      placeholder="YYYY"
+                      maxLength={4}
+                      required
+                      value={birthYear}
+                      onChange={(event) => setBirthYear(event.target.value.replace(/\D/g, '').slice(0, 4))}
+                      style={meadowHudInputStyle}
+                    />
+                  </label>
+                  <label style={{ display: 'grid', gap: '4px' }}>
+                    <span style={{ ...meadowHudLabelStyle, fontSize: '0.58rem' }}>Month</span>
+                    <input
+                      className="meadow-focusable"
+                      type="text"
+                      inputMode="numeric"
+                      autoComplete="bday-month"
+                      placeholder="MM"
+                      maxLength={2}
+                      required
+                      value={birthMonth}
+                      onChange={(event) => setBirthMonth(event.target.value.replace(/\D/g, '').slice(0, 2))}
+                      style={meadowHudInputStyle}
+                    />
+                  </label>
+                  <label style={{ display: 'grid', gap: '4px' }}>
+                    <span style={{ ...meadowHudLabelStyle, fontSize: '0.58rem' }}>Day</span>
+                    <input
+                      className="meadow-focusable"
+                      type="text"
+                      inputMode="numeric"
+                      autoComplete="bday-day"
+                      placeholder="DD"
+                      maxLength={2}
+                      required
+                      value={birthDay}
+                      onChange={(event) => setBirthDay(event.target.value.replace(/\D/g, '').slice(0, 2))}
+                      style={meadowHudInputStyle}
+                    />
+                  </label>
+                </div>
+              </fieldset>
+
+              <label style={{ display: 'grid', gap: '6px' }}>
+                <span style={meadowHudLabelStyle}>I am a…</span>
+                <select
+                  className="meadow-focusable"
+                  required
+                  value={userType}
+                  onChange={(event) => setUserType(event.target.value)}
+                  style={selectStyle}
+                >
+                  <option value="" disabled>
+                    Choose one
+                  </option>
+                  {MEADOW_USER_TYPE_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              {error ? (
+                <p role="alert" style={{ margin: 0, fontSize: '0.75rem', color: '#f9a8a8', letterSpacing: '0.03em' }}>
+                  {error}
+                </p>
+              ) : null}
+
+              <button
+                type="submit"
+                className="meadow-focusable"
+                disabled={isSubmitting}
+                style={{
+                  ...meadowHudActionStyle,
+                  opacity: isSubmitting ? 0.65 : 1,
+                  cursor: isSubmitting ? 'wait' : 'pointer',
+                }}
+              >
+                {isSubmitting ? 'ONE MOMENT…' : 'Continue'}
+              </button>
+
+              <button
+                type="button"
+                className="meadow-focusable"
+                onClick={closeAuthSheet}
+                style={meadowHudQuietButtonStyle}
+              >
+                Not now
+              </button>
+            </form>
+          </>
+        ) : null}
       </section>
     </div>
   );

@@ -1,16 +1,16 @@
 # Meadow Backend Ask — Identity (Supabase OTP + Memberstack enrichment)
 
-**Status:** APPROVED — edge functions deployed 2026-07-10 (`MEADOW_AUTH_ENABLED` still `false` until inbox proof)  
+**Status:** APPROVED — OTP + enrichment deployed 2026-07-10; **profile-completion delta APPROVED 2026-07-11** ("let's build")  
 **Supersedes:** `docs/MEADOW_BACKEND_ASK_P2.md` (Memberstack password bridge — **SUPERSEDED**)  
 **Hosting:** Experience at `https://booster.storytailor.com`; assets at `https://assets.storytailor.dev/meadow/` (see `docs/MEADOW_DEPLOYMENT.md`).  
 **Authority:** `docs/MEADOW_IDENTITY_PRD.md`  
-**Green backend:** OFF-LIMITS until `STORYTAILOR_ALLOW_BACKEND_CHANGE` is set by a human for the implementing commit.
+**Green backend:** OFF-LIMITS until `STORYTAILOR_ALLOW_BACKEND_CHANGE` is set by a human for the implementing commit. Edge function source lives under monorepo `supabase/functions/` — deploy now; leave uncommitted for human override.
 
 ---
 
 ## Summary
 
-Ship **Supabase Auth email OTP** as the only Meadow sign-in method. Memberstack is **never** in the auth path. After every successful OTP verification, a **non-blocking server job** enriches the Supabase user from Memberstack Admin API and optionally **write-through** creates a Memberstack member for net-new Meadow signups.
+Ship **Supabase Auth email OTP** as the only Meadow sign-in method. Memberstack is **never** in the auth path. After every successful OTP verification, a **non-blocking server job** enriches the Supabase user from Memberstack Admin API (lookup + name cache). **Write-through create is deferred** until Path A profile completion so Memberstack members are never nameless. Hue eligibility requires Path A profile complete — collected **in-modal** via `profileStatus` / `completeProfile` on `meadow-auth` (never redirect to storytailor.com).
 
 The meadow frontend (`experiences/false-earth`) calls either:
 
@@ -26,21 +26,34 @@ Until deployed, the UI uses local mock via `?meadow-auth-mock=1`.
 ```mermaid
 sequenceDiagram
   participant M as Meadow client
+  participant A as meadow-auth
   participant S as Supabase Auth
-  participant E as meadow-enrich edge
+  participant P as Path A API
+  participant E as meadow-enrich
   participant MS as Memberstack Admin API
 
-  M->>S: signInWithOtp(email)
-  S-->>M: 6-digit code email (only email in flow)
-  M->>S: verifyOtp(email, code)
-  S-->>M: session (JWT)
-  M->>E: POST /enrich (Bearer session) async
+  M->>A: verifyOtp
+  A->>S: verifyOtp
+  S-->>A: session cookie
+  A->>E: enrich (lookup only)
   E->>MS: GET /members/{email}
   alt member found
-    E->>S: update app_metadata (memberstack_id, v2_member)
-  else member not found + WRITETHROUGH_ENABLED
-    E->>MS: POST create member (random discarded password)
-    E->>S: update app_metadata (writethrough, v2_member)
+    E->>S: app_metadata + cache ms_first_name/ms_last_name
+  else not found
+    E->>S: pending_writethrough=true (no create yet)
+  end
+  A-->>M: session
+  M->>A: profileStatus
+  A->>P: POST /auth/oauth/exchange
+  alt PROFILE_INCOMPLETE
+    A-->>M: incomplete + prefills
+    M->>A: completeProfile (names, birthday, userType)
+    A->>P: POST /auth/complete-profile
+    A->>E: enrich (names + finish write-through)
+    E->>MS: POST create with customFields + Enthusiast
+    A-->>M: ok → resume Hue
+  else complete
+    A-->>M: complete → resume Hue
   end
 ```
 
@@ -48,7 +61,7 @@ sequenceDiagram
 
 ## Edge functions (Supabase project `lendybmmnlqelrhkhdyc`)
 
-### `meadow-auth` (optional OTP proxy)
+### `meadow-auth` (OTP proxy + profile gate)
 
 Thin proxy if direct client OTP is undesirable (rate limits, origin lockdown).
 
@@ -64,6 +77,24 @@ Thin proxy if direct client OTP is undesirable (rate limits, origin lockdown).
 | `verifyOtp` | `{ "action": "verifyOtp", "email": "...", "code": "123456" }` | `200` `{ "session": { "userId", "email" } }` |
 | `signOut` | `{ "action": "signOut" }` | `200` (clear cookie if cookie mode) |
 | `getSession` | `GET ?action=getSession` | `{ "session": ... \| null }` |
+| `profileStatus` | `POST { "action": "profileStatus" }` (session cookie) | `{ "complete": true }` **or** `{ "complete": false, "requiredFields": [...], "prefill": { "firstName?", "lastName?" } }` |
+| `completeProfile` | `POST { "action": "completeProfile", "firstName", "lastName?", "birthday": "YYYY-MM-DD", "userType" }` | `200` `{ "ok": true }` — proxies Path A `POST /auth/complete-profile`, then triggers deferred write-through |
+
+**`profileStatus`:** probes Path A `POST /auth/oauth/exchange` with the Supabase access token from the session cookie. Prefills prefer Memberstack-cached names (`app_metadata.ms_first_name` / `ms_last_name`), then `public.users` skeleton names when present.
+
+**`completeProfile`:** body maps to Path A:
+
+```json
+{
+  "accessToken": "<supabase-access-token>",
+  "firstName": "...",
+  "lastName": "...",
+  "userType": "<ADULT_USER_TYPES slug>",
+  "ageVerification": { "method": "birthday", "value": "YYYY-MM-DD" }
+}
+```
+
+Path A receives the **real** `userType` from the Meadow dropdown (17-value adult enum). Memberstack always gets `user-role: Enthusiast` on write-through — roles are independent.
 
 Internally calls Supabase Auth Admin or anon client with service role for OTP dispatch. **Never** expose service role to meadow bundle.
 
@@ -71,14 +102,14 @@ Internally calls Supabase Auth Admin or anon client with service role for OTP di
 
 ### `meadow-enrich` (post-auth job)
 
-Fires after every successful OTP verification (client fire-and-forget or Supabase Auth hook).
+Fires after every successful OTP verification (lookup) and again after `completeProfile` (write-through finish).
 
 | Env var | Default | Behavior |
 |---------|---------|----------|
 | `ENRICHMENT_ENABLED` | `true` | When `false`, skip Memberstack GET; auth unaffected |
 | `WRITETHROUGH_ENABLED` | `true` | When `false`, skip Memberstack create for new users |
 
-**Flow**
+**Flow (OTP / lookup)**
 
 1. Validate Supabase JWT from `Authorization: Bearer`.
 2. If `ENRICHMENT_ENABLED !== true` → `200` no-op.
@@ -89,11 +120,18 @@ Fires after every successful OTP verification (client fire-and-forget or Supabas
    - `v2_member: true`
    - `enriched_at` (ISO timestamp)
    - `writethrough: false`
-5. **Not found** and `WRITETHROUGH_ENABLED === true`:
-   - `POST` create Memberstack member with **random cryptographically strong password** (generated, used once, **never stored or logged**)
+   - `pending_writethrough: false`
+   - `ms_first_name` / `ms_last_name` from `customFields["first-name"]` / `customFields["last-name"]` when present
+5. **Not found:** do **not** create yet. Set `pending_writethrough: true`, `v2_member: false`, `origin: "meadow"`, `enriched_at`. Failures: log + retry with backoff. **Never** return Memberstack errors to client.
+
+**Flow (post-profile / write-through finish)** — body includes `firstName` (and optional `lastName`) after `completeProfile`:
+
+1. If member already linked → leave existing V2 `user-role` alone (do not overwrite).
+2. If `pending_writethrough` and `WRITETHROUGH_ENABLED`:
+   - `POST` create Memberstack member with random discarded password
    - `metaData.source: "meadow"`
-   - Update `app_metadata`: `memberstack_id`, `v2_member: false`, `writethrough: true`, `enriched_at`
-6. Failures: log + retry with backoff (queue or cron). **Never** return errors to client; session already issued.
+   - `customFields: { "first-name", "last-name"?, "user-role": "Enthusiast" }`
+   - Clear `pending_writethrough`, set `writethrough: true`, `memberstack_id`
 
 ### `meadow-memberstack-webhook`
 
@@ -115,8 +153,21 @@ Fires after every successful OTP verification (client fire-and-forget or Supabas
 | `v2_member` | `boolean` | `true` if Memberstack member existed at first enrich |
 | `enriched_at` | `string` (ISO) | Last successful enrichment timestamp |
 | `writethrough` | `boolean` | `true` if Memberstack member was created by Meadow |
+| `pending_writethrough` | `boolean` | `true` after OTP when no MS member yet — create deferred until profile |
+| `ms_first_name` / `ms_last_name` | `string` nullable | Cached from MS customFields for profile prefills |
 
-`profiles` table: unchanged from main Meadow PRD.
+`profiles` / Path A `public.users`: written by `complete-profile` with real `user_type`.
+
+---
+
+## Role split (Path A vs Memberstack)
+
+| System | Field | Value |
+|--------|-------|-------|
+| Path A | `userType` | User-selected adult enum slug (parent, therapist, enthusiast, …) |
+| Memberstack | `customFields["user-role"]` | Always `"Enthusiast"` on Meadow write-through |
+
+V2 role taxonomy is coarse; Enthusiast is the general bucket until V3 launch. Do not mirror Path A `userType` into Memberstack.
 
 ---
 
@@ -136,6 +187,7 @@ Fires after every successful OTP verification (client fire-and-forget or Supabas
 |------|-----------------|-------------------|-------|
 | Email-code sign-in | 1 (code) | 0 | **1** |
 | Write-through create | 0 | 0 | **0** |
+| Profile completion | 0 | 0 | **0** |
 | Hue connect | 0 | 0 | **0** |
 
 Any PR that increases a cell above these limits **fails review**.
@@ -157,9 +209,9 @@ Before `WRITETHROUGH_ENABLED=true` in production:
 
 | File | Role |
 |------|------|
-| `src/api/meadowAuthApi.ts` | `sendOtp`, `verifyOtp`, `signOut`, `getSession` → `VITE_MEADOW_AUTH_URL` or mock |
+| `src/api/meadowAuthApi.ts` | `sendOtp`, `verifyOtp`, `signOut`, `getSession`, `getProfileStatus`, `completeProfile` → `VITE_MEADOW_AUTH_URL` or mock |
 | `src/config/meadow.ts` | `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` placeholders for future direct OTP |
-| `src/ui/AuthSheet.tsx` | PRD §4 OTP UI (email → code, no OAuth/password) |
+| `src/ui/AuthSheet.tsx` | PRD §4 OTP UI + §4.6 profile step (email → code → profile if needed) |
 | `src/core/store/meadowAuthStore.ts` | Session + Hue intent resume |
 
 **Env**
@@ -173,7 +225,7 @@ VITE_SUPABASE_URL=https://<project-ref>.supabase.co
 VITE_SUPABASE_ANON_KEY=<anon-key>
 ```
 
-**Local mock:** `?meadow-auth-mock=1` on meadow URL.
+**Local mock:** `?meadow-auth-mock=1` on meadow URL — supports profile step (incomplete until `completeProfile`).
 
 ---
 
@@ -190,15 +242,16 @@ VITE_SUPABASE_ANON_KEY=<anon-key>
 ## Out of scope
 
 - Google / Apple OAuth at Meadow (V3 launch)
-- Path A full JWT issuance to meadow for story APIs
+- Path A full JWT issuance to meadow for story APIs (Hue proxy exchanges per request)
 - Org / StorytailorID / Care Circle flows
-- Hue OAuth implementation (P3 — separate backend ask)
+- Hue OAuth implementation (P3 — separate; `meadow-hue` already proxies Path A)
 
 ---
 
 ## Approval checklist
 
 - [x] Product approves `docs/MEADOW_IDENTITY_PRD.md` architecture (2026-07-10)
+- [x] Profile-completion delta approved (2026-07-11 — in-modal, Path A userType dropdown, MS Enthusiast)
 - [ ] Memberstack Admin secret + webhook secret provisioned (server only)
 - [ ] Supabase OTP email template branded (hello@ or booster@ — open question §8.2)
 - [ ] Day-one sandbox write-through test passed
@@ -207,12 +260,12 @@ VITE_SUPABASE_ANON_KEY=<anon-key>
 
 ---
 
-## Implementation status (2026-07-10)
+## Implementation status (2026-07-11)
 
 | Artifact | Location | Deployed |
 |----------|----------|----------|
-| `meadow-auth` | `supabase/functions/meadow-auth/` | ✅ `lendybmmnlqelrhkhdyc` (kill switch default OFF → **503**) |
-| `meadow-enrich` | `supabase/functions/meadow-enrich/` | ✅ JWT-gated; returns **401** without user session |
+| `meadow-auth` | `supabase/functions/meadow-auth/` | ✅ + `profileStatus` / `completeProfile` |
+| `meadow-enrich` | `supabase/functions/meadow-enrich/` | ✅ deferred write-through + name cache |
 | `meadow-memberstack-webhook` | `supabase/functions/meadow-memberstack-webhook/` | ✅ returns **503** until `MEMBERSTACK_WEBHOOK_SECRET` set |
 | Webhook idempotency table | `public.meadow_webhook_events` | ✅ applied to prod |
 
@@ -299,8 +352,22 @@ curl -s -X POST "$MEADOW_AUTH_URL" \
   -d '{"action":"verifyOtp","email":"meadow-test@storytailor.dev","code":"123456"}'
 # Expect session JSON
 
+# Profile status (cookie session)
+curl -s -X POST "$MEADOW_AUTH_URL" \
+  -H 'Content-Type: application/json' \
+  -b cookies.txt \
+  -d '{"action":"profileStatus"}'
+# Expect complete:true OR complete:false + prefill
+
+# Complete profile
+curl -s -X POST "$MEADOW_AUTH_URL" \
+  -H 'Content-Type: application/json' \
+  -b cookies.txt \
+  -d '{"action":"completeProfile","firstName":"JQ","birthday":"1990-01-15","userType":"enthusiast"}'
+# Expect ok:true
+
 # Enrichment (async — check app_metadata within 60s)
 # memberstack_id present for existing V2 member; writethrough tag for new user
 ```
 
-Frontend: `npm run dev` → START → lamp icon → auth sheet → `?meadow-auth-mock=1` → enter email → code `000000` → Hue sheet opens if intent set.
+Frontend: `npm run dev` → START → lamp icon → auth sheet → `?meadow-auth-mock=1` → enter email → code `000000` → profile step → submit → Hue sheet opens if intent set.

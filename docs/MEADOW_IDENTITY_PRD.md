@@ -3,7 +3,7 @@
 ## V3 Auth, Soft-Launched Early
 
 **Owner:** JQ Sirls  
-**Status:** Draft v1  
+**Status:** Active — OTP live; in-modal profile completion for Hue eligibility (2026-07-11)  
 **Date:** July 2026  
 **Audience:** Cursor / dev team  
 **Scope:** Authentication and identity only. Hue mechanics, CTA, and modals live in `PRD_BOOSTERS_MEADOW.md` and `PRD_MEADOW_MODALS.md`.
@@ -55,6 +55,8 @@ Purpose: a brand-new Meadow signup also exists in Memberstack, so the "Make a st
 - Memberstack member creation requires a password (documented behavior in REST, Node, and dashboard). The write-through supplies a **random, cryptographically strong, immediately discarded password**. It is never stored, logged, or shown. The member will only ever authenticate via passwordless code or Google, so the password is dead weight by design; at V3, anyone wanting a password uses reset.
 - **Email safety, confirmed against Memberstack docs:** Memberstack does not send welcome emails natively (they require webhook/Zapier wiring we simply do not add for this source), and verification emails do not send when passwordless auth is enabled, which is our configuration. Therefore write-through creation sends **zero** emails.
 - Tag created members (`metaData.source: "meadow"`) so V2 analytics can distinguish them.
+- **Timing (Hue profile gate):** do **not** create a nameless Memberstack member on OTP alone. Enrichment after OTP **looks up** only; if no member exists, mark `pending_writethrough` and **defer create** until Path A profile completion (§4.6). On create (or create-then-PATCH): set `customFields["first-name"]`, `customFields["last-name"]` (when present), and **always** `customFields["user-role"] = "Enthusiast"` — V2 roles are a coarse bucket until V3; Path A stores the real `userType` separately.
+- **Race / migration framing:** OTP session is valid for Meadow grass immediately; Hue connect requires Path A profile complete. Existing V2 members who already have names in Memberstack prefill the profile step; they still supply birthday (+ `userType` dropdown) once so Path A age audit exists. Net-new Meadow users fill names + birthday + role, then write-through runs with names.
 - **Dev verification task (day one of the sprint, ~10 minutes):** in the Memberstack sandbox, create a member via Admin REST with a random password, then complete a passwordless-code login as that member. Pass = proceed. Fail = flip `WRITETHROUGH_ENABLED` off and open the support ticket. Do not wait on support to start building.
 
 ### 2.5 Kill switches (ops hygiene, both default ON)
@@ -112,6 +114,34 @@ No surprise accounts; no extra friction. The guardrail metric from the main PRD 
 
 Return the user exactly where they were (mid-Hue-connect, or standing in the grass). Never a dashboard, never a welcome screen.
 
+**Carve-out:** when Path A profile is incomplete, the auth sheet stays open for the one-time profile step (§4.6) before Hue resume. That step is still *in the Meadow auth sheet* — never a redirect to storytailor.com, never a separate welcome/dashboard surface.
+
+### 4.6 One-time profile step (Hue eligibility)
+
+Path A Hue exchange returns `PROFILE_INCOMPLETE` until adult profile + age verification exist. Collect that **in-modal after OTP**, never off-site.
+
+**When:** after successful `verifyOtp`, client calls `profileStatus`. If complete → close sheet and resume Hue intent (§4.5). If incomplete → show profile step in the same auth sheet.
+
+**Fields**
+
+| Audience | Collect |
+|----------|---------|
+| Existing Memberstack member (names from enrichment) | Birthday (full ISO), Path A `userType` dropdown; `firstName` only if missing |
+| New signup / skeleton | `firstName` (required), `lastName` (optional), birthday, `userType` dropdown |
+
+**Birthday:** prefer full ISO — `ageVerification.method: "birthday"`, `value: "YYYY-MM-DD"`.
+
+**Path A `userType`:** Meadow shows a dropdown of the live V3 adult enum (17 slugs from Path A `ADULT_USER_TYPES`). User picks their real role; that value is sent to `POST /auth/complete-profile`.
+
+**Memberstack write-through role:** always `customFields["user-role"] = "Enthusiast"`, regardless of Path A `userType`. Do not surface Memberstack/V2/V3 jargon in UI.
+
+**Copy (calm mono CRT, matching auth sheet):**
+
+- Header: **"A few details so we can turn on the lights."**
+- No Memberstack, V2, or V3 language.
+
+**Submit:** `completeProfile` → Path A `POST /auth/complete-profile` with Supabase access token from session cookie → then deferred Memberstack write-through with names + Enthusiast → close sheet and resume Hue intent.
+
 ---
 
 ## 5. V3 continuity
@@ -125,8 +155,8 @@ Return the user exactly where they were (mid-Hue-connect, or standing in the gra
 
 ## 6. Data model (delta to main PRD)
 
-- `auth.users.app_metadata`: `memberstack_id`, `origin` (`meadow`), `v2_member` (bool), `enriched_at`, `writethrough` (bool).
-- `profiles`: unchanged from main PRD.
+- `auth.users.app_metadata`: `memberstack_id`, `origin` (`meadow`), `v2_member` (bool), `enriched_at`, `writethrough` (bool), `pending_writethrough` (bool — set when OTP enrich finds no MS member and defers create), `ms_first_name` / `ms_last_name` (cached from Memberstack `customFields` for profile prefills).
+- `profiles` / `public.users`: Path A owns `first_name`, `last_name`, `user_type` after `complete-profile`.
 - Secrets: Memberstack secret key and Supabase service-role key in the server secret store only (Supabase Vault / AWS Secrets Manager). Never client-side, never in the repo.
 
 ---
@@ -141,6 +171,7 @@ Return the user exactly where they were (mid-Hue-connect, or standing in the gra
 - **AC6:** The transparency line renders on the auth sheet in all states.
 - **AC7:** No Memberstack error, name, or state is ever visible in the client.
 - **AC8:** No OAuth provider buttons render anywhere in the Meadow auth UI; email code is the only visible method.
+- **AC9:** After OTP, if Path A profile is incomplete, the auth sheet shows the in-modal profile step (never redirects to storytailor.com). On submit, Path A receives the chosen `userType` + birthday; Memberstack write-through (when needed) includes names and `user-role: Enthusiast`. Hue intent resumes only after profile is complete.
 
 ---
 
