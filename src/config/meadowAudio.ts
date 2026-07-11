@@ -19,7 +19,7 @@ export const MEADOW_FOOTSTEP_PATHS = [
 /** Upstream false-earth ambient wind bed — bundled same-origin, layered under Cosmic Lullaby BGM. */
 export const MEADOW_AMBIENT_TRACKS = [
   { id: 'grass_field', url: '/audio/grass_field.mp3', volume: 1.5 },
-  { id: 'noise', url: '/audio/noise.m4a', volume: 0.1 },
+  { id: 'noise', url: '/audio/noise.mp3', volume: 0.1 },
 ] as const
 
 /** Wind/ambient duck when Cosmic Lullaby BGM is playing (40% reduction). */
