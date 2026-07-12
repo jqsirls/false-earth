@@ -19,8 +19,10 @@ export const solveCam = (
   group: Group,
   camera: Camera,
   s: PhysicsState,
-  delta: number
+  delta: number,
+  options: { isFlying?: boolean } = {},
 ) => {
+  const isFlying = options.isFlying ?? false;
 
   const moveForward = input.isPressed('MoveForward')
   const moveBackward = input.isPressed('MoveBackward')
@@ -73,7 +75,7 @@ export const solveCam = (
 
     // C. Move Forward
     // In TPV, we always move positive Z (Forward) relative to the model
-    const maxSpeed = run ? s.runSpeed : s.walkSpeed;
+    const maxSpeed = isFlying ? s.flightSpeed : (run ? s.runSpeed : s.walkSpeed);
     targetSpeed = maxSpeed * Math.min(inputLen, 1.0);
   }
 

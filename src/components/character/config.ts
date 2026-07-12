@@ -6,6 +6,8 @@
 export const CHARACTER_CONFIG = {
   walkSpeed: 1.0,
   runSpeed: 3.5,
+  flightSpeed: 4.0,
+  flightHoverLift: 2.5,
   rotateSpeed: 2.5,
   speedLerp: 0.1,
   rotationLerp: 0.15,
@@ -76,11 +78,13 @@ export interface PhysicsState {
   walkWeight: number;
   runWeight: number;
   backWeight: number;
+  flightWeight: number;
 
   // Config Parameters
   walkSpeed: number;
   runSpeed: number;
   backSpeed: number;
+  flightSpeed: number;
   rotateSpeed: number; // Base rotation speed
 
   // Smoothing Factors
@@ -96,9 +100,11 @@ export const INITIAL_PHYSICS_STATE: PhysicsState = {
   walkWeight: 0.0,
   runWeight: 0.0,
   backWeight: 0.0,
-  walkSpeed: 1.0,
-  runSpeed: 3.5,
+  flightWeight: 0.0,
+  walkSpeed: CHARACTER_CONFIG.walkSpeed,
+  runSpeed: CHARACTER_CONFIG.runSpeed,
   backSpeed: 0.6,
+  flightSpeed: CHARACTER_CONFIG.flightSpeed,
   rotateSpeed: 2.5,
   speedLerpFactor: 0.1,
   rotationLerpFactor: 0.15,
