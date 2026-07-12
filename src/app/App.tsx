@@ -1,4 +1,5 @@
 import { Environment, PerformanceMonitor, useGLTF } from "@react-three/drei";
+import { Leva } from "leva";
 import { LevaWrapper, AudioManager, KeyboardMapper, KTX2Preloader, preloadVATAssets } from "@core";
 import { Canvas, useLoader } from "@react-three/fiber";
 import { useEffect, Suspense, useMemo, useState } from "react";
@@ -106,11 +107,16 @@ export default function App() {
     }, [setGpuError]);
 
     return <>
-        {/* Leva settings panel is a dev tool only: without ?debug it must not
-            mount at all (the [H] zen shortcut also toggles LevaWrapper's own
-            hidden state, which was exposing the collapsed bar to users). Leva
-            control hooks (useControls) work headless without the panel. */}
-        {isDebugMode() && <LevaWrapper collapsed={true} initialHidden={true} />}
+        {/* Leva settings panel is a dev tool only (?debug=1 / ?debug=true).
+            Without debug we still mount <Leva hidden /> — it renders nothing
+            but suppresses leva's useControls auto-mount fallback, which uses
+            the legacy ReactDOM.render removed in React 19 and crashes the
+            scene. LevaWrapper (debug only) additionally binds [H] to toggle
+            the panel, which was exposing the collapsed bar to users entering
+            zen mode. */}
+        {isDebugMode()
+            ? <LevaWrapper collapsed={true} initialHidden={true} />
+            : <Leva hidden />}
         <DeviceDetector />
         <UI />
         <KeyboardMapper input={input} keyMap={keyBindings} />
