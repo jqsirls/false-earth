@@ -239,8 +239,9 @@ export function LoadingScreen() {
                         </div>
 
                         {/* Optional session timer: collapsed disclosure (owner-approved).
-                            Rest state is one quiet word; tapping unfolds the presets.
-                            A selection collapses back to an echo like `TIMER 30 MIN`.
+                            Rest state is `SET TIME LIMIT`; tapping unfolds the presets.
+                            A selection collapses back to an echo like `TIME LIMIT 30 MIN`;
+                            NONE returns to the plain `SET TIME LIMIT` rest state.
                             No underlines anywhere (meadow links never underline). */}
                         <div
                             data-meadow-timer-row
@@ -290,7 +291,7 @@ export function LoadingScreen() {
                                     type="button"
                                     onClick={() => setIsTimerExpanded(true)}
                                     aria-expanded={false}
-                                    aria-label="Session timer options"
+                                    aria-label="Set a session time limit"
                                     style={{
                                         background: 'transparent',
                                         border: 'none',

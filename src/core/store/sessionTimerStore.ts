@@ -7,16 +7,16 @@ export const SESSION_TIMER_CHOICES_MIN = [15, 30, 60, 120] as const;
 
 /** Quiet labels inside the expanded row: minutes implied, hours abbreviated. */
 export function sessionTimerLabel(minutes: number | null): string {
-  if (minutes === null) return 'OFF';
+  if (minutes === null) return 'NONE';
   if (minutes % 60 === 0) return `${minutes / 60}H`;
   return `${minutes}`;
 }
 
-/** Collapsed echo under START: `TIMER`, `TIMER 30 MIN`, `TIMER 1H`. */
+/** Collapsed echo under START: `SET TIME LIMIT`, `TIME LIMIT 30 MIN`, `TIME LIMIT 1H`. */
 export function sessionTimerEchoLabel(minutes: number | null): string {
-  if (minutes === null) return 'TIMER';
-  if (minutes % 60 === 0) return `TIMER ${minutes / 60}H`;
-  return `TIMER ${minutes} MIN`;
+  if (minutes === null) return 'SET TIME LIMIT';
+  if (minutes % 60 === 0) return `TIME LIMIT ${minutes / 60}H`;
+  return `TIME LIMIT ${minutes} MIN`;
 }
 export const SESSION_TIMER_EXTENSION_MIN = 10;
 
