@@ -1,6 +1,16 @@
 import { create } from 'zustand';
 
-export const SESSION_TIMER_CHOICES_MIN = [10, 20, 30] as const;
+// Owner-approved presets (calculator modal was considered and rejected as
+// overbuilt): 15/30 for wind-downs, 1H/2H for adults running the meadow
+// ambiently (bath, resting, Hue lights on in a room).
+export const SESSION_TIMER_CHOICES_MIN = [15, 30, 60, 120] as const;
+
+/** Quiet labels: minutes implied on the short options, hours abbreviated. */
+export function sessionTimerLabel(minutes: number | null): string {
+  if (minutes === null) return 'NO TIMER';
+  if (minutes % 60 === 0) return `${minutes / 60}H`;
+  return `${minutes}`;
+}
 export const SESSION_TIMER_EXTENSION_MIN = 10;
 
 interface SessionTimerState {

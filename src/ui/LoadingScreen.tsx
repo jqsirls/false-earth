@@ -1,7 +1,7 @@
 import { useProgress } from "@react-three/drei";
 import { useEffect, useRef, useState, useMemo } from "react";
 import { useGameStore } from "../core/store/gameStore";
-import { useSessionTimerStore, SESSION_TIMER_CHOICES_MIN } from "../core/store/sessionTimerStore";
+import { useSessionTimerStore, SESSION_TIMER_CHOICES_MIN, sessionTimerLabel } from "../core/store/sessionTimerStore";
 import { meadowHudFontFamily } from "./meadowUiStyles";
 import { MEADOW_LOGO_ALT, MEADOW_LOGO_PATH, MEADOW_PLAYLIST_TRACKS, resolveMeadowAsset } from "../config/meadow";
 import { resumeMeadowAudioContext } from "../config/meadowAudio";
@@ -35,6 +35,7 @@ export function LoadingScreen() {
     const setIsSoundOn = useGameStore((state) => state.setIsSoundOn);
     const audioListener = useGameStore((state) => state.audioListener);
     const gpuError = useGameStore((state) => state.gpuError);
+    const isMobile = useGameStore((state) => state.isMobile);
     const selectedMinutes = useSessionTimerStore((state) => state.selectedMinutes);
     const setSelectedMinutes = useSessionTimerStore((state) => state.setSelectedMinutes);
     const startTimer = useSessionTimerStore((state) => state.startTimer);
@@ -236,18 +237,19 @@ export function LoadingScreen() {
                             }} />
                         </div>
 
-                        {/* Optional session timer — quiet HUD row, no persuasion copy. */}
+                        {/* Optional session timer: quiet HUD row, no persuasion copy.
+                            Presets were the chosen path (calculator modal rejected). */}
                         <div
                             data-meadow-timer-row
                             style={{
                                 display: 'flex',
                                 justifyContent: 'center',
                                 alignItems: 'center',
-                                gap: '18px',
+                                gap: isMobile ? '10px' : '16px',
                                 marginTop: '26px',
                                 fontFamily: meadowHudFontFamily,
-                                fontSize: '0.62rem',
-                                letterSpacing: '0.12em',
+                                fontSize: isMobile ? '0.72rem' : '0.8rem',
+                                letterSpacing: isMobile ? '0.09em' : '0.12em',
                                 opacity: isReadyToStart ? 1 : 0,
                                 transition: 'opacity 0.5s',
                                 pointerEvents: isReadyToStart ? 'auto' : 'none',
@@ -274,7 +276,7 @@ export function LoadingScreen() {
                                             textUnderlineOffset: '4px',
                                         }}
                                     >
-                                        {minutes === null ? 'NO TIMER' : `${minutes} MIN`}
+                                        {sessionTimerLabel(minutes)}
                                     </button>
                                 );
                             })}

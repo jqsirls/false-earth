@@ -63,10 +63,14 @@ export function MeadowCursor() {
       if (el) {
         el.style.transform = `translate3d(${e.clientX}px, ${e.clientY}px, 0)`;
       }
-      if (!hasPositionRef.current) {
-        hasPositionRef.current = true;
-        setVisible(true);
-      }
+      hasPositionRef.current = true;
+      // Always restore on move: Chrome fires pointerout with a null
+      // relatedTarget when the hovered element is REMOVED (splash unmount,
+      // sheet close), not only when the pointer leaves the window. Without
+      // this the dot hides permanently mid-session while cursor:none stays,
+      // leaving the user with no cursor at all. React bails out when the
+      // value is unchanged, so this costs nothing per move.
+      setVisible(true);
     };
 
     const applyHoverState = (target: Element | null) => {
@@ -93,9 +97,18 @@ export function MeadowCursor() {
       });
     };
 
-    // Hide gracefully when the pointer leaves the window.
+    // Hide gracefully when the pointer leaves the window. A null
+    // relatedTarget ALSO happens when the hovered element is removed from
+    // the DOM (Chrome), so additionally require the coordinates to be at or
+    // beyond the viewport edge before hiding.
     const onPointerOut = (e: PointerEvent) => {
-      if (!e.relatedTarget) setVisible(false);
+      if (e.relatedTarget) return;
+      const outsideViewport =
+        e.clientX <= 0 ||
+        e.clientY <= 0 ||
+        e.clientX >= window.innerWidth - 1 ||
+        e.clientY >= window.innerHeight - 1;
+      if (outsideViewport) setVisible(false);
     };
     const onPointerEnter = () => {
       if (hasPositionRef.current) setVisible(true);
@@ -147,9 +160,17 @@ export function MeadowCursor() {
             width: `${CURSOR_SIZE}px`,
             height: `${CURSOR_SIZE}px`,
             borderRadius: '50%',
-            background: 'rgba(255, 255, 255, 0.7)',
-            boxShadow:
-              '0 0 10px 2px rgba(255, 255, 255, 0.35), 0 0 24px 8px rgba(255, 255, 255, 0.16)',
+            boxSizing: 'border-box',
+            // Frosted-glass lens, not a filled disc: near-transparent fill,
+            // strong backdrop blur does the visual work, hairline rim keeps
+            // the edge findable. A solid 70% fill read as a "full moon" and
+            // competed with the collectible orbs.
+            background: 'rgba(255, 255, 255, 0.12)',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            border: '1px solid rgba(255, 255, 255, 0.4)',
+            // Whisper of glow only — visible in motion, quiet when parked.
+            boxShadow: '0 0 8px 1px rgba(255, 255, 255, 0.12)',
             transform: `scale(${condensed ? CONDENSED_SCALE : 1})`,
             transition: reducedMotion
               ? 'none'
