@@ -19,7 +19,7 @@ import { BODY_TEXTURE_PATHS, DETAIL_TEXTURE_PATHS, MODEL_PATHS } from '../compon
 import { JQ_LOCOMOTION_ANIM_PATHS, getJqPartTexturePaths } from '../components/character/jqConfig';
 import { STORYTAILOR } from '../config/storytailor';
 import { CanvasErrorBoundary } from './CanvasErrorBoundary';
-import { getInitialDpr, getMaxDpr, isMemoryConstrainedGpu, shouldPreloadVatRoses } from '../core/utils/browserCaps';
+import { getInitialDpr, getMaxDpr, isDebugMode, isMemoryConstrainedGpu, shouldPreloadVatRoses } from '../core/utils/browserCaps';
 import { MEADOW_FOOTSTEP_PATHS } from '../config/meadowAudio';
 import { resolveMeadowAsset } from '../config/meadow';
 import { configureCdnTextureLoader } from '../core/utils/cdnTextureLoader';
@@ -106,7 +106,11 @@ export default function App() {
     }, [setGpuError]);
 
     return <>
-        <LevaWrapper collapsed={true} initialHidden={true} />
+        {/* Leva settings panel is a dev tool only: without ?debug it must not
+            mount at all (the [H] zen shortcut also toggles LevaWrapper's own
+            hidden state, which was exposing the collapsed bar to users). Leva
+            control hooks (useControls) work headless without the panel. */}
+        {isDebugMode() && <LevaWrapper collapsed={true} initialHidden={true} />}
         <DeviceDetector />
         <UI />
         <KeyboardMapper input={input} keyMap={keyBindings} />

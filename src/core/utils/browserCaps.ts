@@ -97,6 +97,16 @@ export function shouldUseMinimalScene(): boolean {
   return shouldUseMobileLiteScene() || shouldUseSafariMinimalScene();
 }
 
+/**
+ * Dev/verification-only debug mode (?debug=1 or ?debug=true). Gates the leva
+ * settings panel mount — without it the panel must never exist in the DOM
+ * (zen-mode [H] was unhiding it for regular users).
+ */
+export function isDebugMode(): boolean {
+  const raw = readSearchParam('debug');
+  return raw === '1' || raw === 'true';
+}
+
 /** Roses on by default; opt out with ?no-roses=1. Disabled in minimal/lite scenes. */
 export function shouldEnableRoses(): boolean {
   if (shouldUseMinimalScene()) return false;
