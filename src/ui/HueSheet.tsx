@@ -102,6 +102,7 @@ export function HueSheet() {
   const ambientBusy = useAmbientHueStore((state) => state.isBusy);
   const ambientNotice = useAmbientHueStore((state) => state.notice);
   const setAmbientStage = useAmbientHueStore((state) => state.setStage);
+  const releaseAmbientSession = useAmbientHueStore((state) => state.releaseSession);
   const popupRef = useRef<Window | null>(null);
   const oauthHandledRef = useRef(false);
 
@@ -329,7 +330,9 @@ export function HueSheet() {
     setError(null);
 
     // Lights first: restore the room before the profile forgets the bridge.
-    await setAmbientStage('off');
+    // Disconnect is a leave-the-meadow path (restore), NOT the OFF stage button
+    // (which turns the lights off) — keep that distinction.
+    await releaseAmbientSession();
     const result = await patchMeadowHueProfile({ disconnect: true });
     setIsBusy(false);
 
@@ -341,7 +344,7 @@ export function HueSheet() {
     setProfile(result.data);
     setPhase('disconnected');
     setHueConnected(false);
-  }, [setHueConnected, setAmbientStage]);
+  }, [setHueConnected, releaseAmbientSession]);
 
   if (!isOpen) return null;
 

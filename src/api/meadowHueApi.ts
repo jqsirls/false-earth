@@ -289,12 +289,25 @@ export async function startMeadowHueAmbient(
   };
 }
 
+export type HueAmbientStopMode = 'restore' | 'lights_off';
+
+/**
+ * Stop semantics: 'restore' (default) returns the room to its pre-session state —
+ * the leave-the-meadow paths (tab hide, sign-out, Hue disconnect). 'lights_off' is
+ * the explicit OFF stage button: the user asked for the lights to be OFF, so the
+ * server fades every session light off (~2s) instead of restoring.
+ */
 export async function stopMeadowHueAmbient(
   sessionId: string,
+  mode: HueAmbientStopMode = 'restore',
 ): Promise<MeadowHueResult<{ stopped: boolean }>> {
   const result = await meadowHueRequest<unknown>('', {
     method: 'POST',
-    body: JSON.stringify({ action: 'ambientStop', sessionId }),
+    body: JSON.stringify({
+      action: 'ambientStop',
+      sessionId,
+      ...(mode === 'lights_off' ? { mode } : {}),
+    }),
   });
   if (!result.ok) return result;
   return { ok: true, data: { stopped: Boolean(asRecord(result.data)?.stopped ?? true) } };

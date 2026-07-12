@@ -9,6 +9,7 @@ import {
   stopMeadowHueAmbient,
   stopMeadowHueAmbientOnHide,
   type HueAmbientStage,
+  type HueAmbientStopMode,
 } from '../../api/meadowHueApi';
 import { meadowAuthHeaders } from '../../api/meadowAuthApi';
 
@@ -45,6 +46,12 @@ interface AmbientHueState {
   /** Plain human copy for the sheet (e.g. no color lights) — never an error code. */
   notice: string | null;
   setStage: (stage: AmbientStageSetting) => Promise<void>;
+  /**
+   * Restore-mode stop for leave-the-meadow paths (Hue disconnect, sign-out):
+   * the room returns to its pre-session state. The OFF stage button does NOT
+   * use this — OFF means "lights off" (see setStage).
+   */
+  releaseSession: () => Promise<void>;
 }
 
 let heartbeatTimer: number | null = null;
@@ -135,13 +142,18 @@ async function startSession(stage: HueAmbientStage): Promise<void> {
   }, HEARTBEAT_MS);
 }
 
-async function stopSession(silent = false): Promise<void> {
+/**
+ * Stop semantics (owner intent): the explicit OFF stage button means "turn the
+ * lights OFF" ('lights_off' — a gentle ~2s fade to off), while leaving the meadow
+ * (tab hide, sign-out, Hue disconnect) means "put my room back" ('restore').
+ */
+async function stopSession(mode: HueAmbientStopMode, silent = false): Promise<void> {
   clearHeartbeat();
   clearActivityTimer();
   const { sessionId } = useAmbientHueStore.getState();
   useAmbientHueStore.setState({ stage: 'off', sessionId: null, isBusy: false, notice: null });
   if (!sessionId) return;
-  const result = await stopMeadowHueAmbient(sessionId).catch(() => null);
+  const result = await stopMeadowHueAmbient(sessionId, mode).catch(() => null);
   if (!silent && (!result || !result.ok)) {
     // Best effort: the server session TTL restores the room within minutes.
   }
@@ -157,11 +169,15 @@ export const useAmbientHueStore = create<AmbientHueState>((set, get) => ({
     bindAmbientHueListeners();
     set({ isBusy: true, notice: null });
     if (stage === 'off') {
-      await stopSession();
+      // OFF is a command, not a dismissal: the room's lights go off.
+      await stopSession('lights_off');
       return;
     }
     set({ stage });
     await startSession(stage);
+  },
+  releaseSession: async () => {
+    await stopSession('restore', true);
   },
 }));
 
@@ -215,7 +231,8 @@ export function bindAmbientHueListeners(): void {
 
   useMeadowAuthStore.subscribe((state, prev) => {
     if (prev.session && !state.session) {
-      void stopSession(true);
+      // Sign-out is a leave-the-meadow path: restore the room, don't black it out.
+      void stopSession('restore', true);
     }
   });
 }
