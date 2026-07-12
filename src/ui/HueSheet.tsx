@@ -37,8 +37,14 @@ import {
 import { useHueStatusStore } from '../core/store/hueStatusStore';
 import { BuyLightsLink, BUY_LIGHTS_URL } from './BuyLightsLink';
 import {
-  MEADOW_GLOW_AURORA_GRADIENT,
+  MEADOW_GLOW_COOL_CYCLE,
+  MEADOW_GLOW_COOL_STATIC,
+  MEADOW_GLOW_MID_CYCLE,
+  MEADOW_GLOW_MID_STATIC,
   MEADOW_GLOW_NIGHT_GRADIENT,
+  MEADOW_GLOW_WARM_CYCLE,
+  MEADOW_GLOW_WARM_STATIC,
+  meadowGlowColorKeyframes,
 } from '../config/meadowGlowRamp';
 
 /**
@@ -394,19 +400,36 @@ export function HueSheet() {
           from { opacity: 0; }
           to { opacity: 1; }
         }
-        @keyframes meadowHueAuroraBreath {
-          0% { opacity: 0; }
-          50% { opacity: var(--meadow-aurora-peak, 0.6); }
-          100% { opacity: 0; }
+        ${meadowGlowColorKeyframes('meadowHueGlowCool', MEADOW_GLOW_COOL_CYCLE)}
+        ${meadowGlowColorKeyframes('meadowHueGlowMid', MEADOW_GLOW_MID_CYCLE)}
+        ${meadowGlowColorKeyframes('meadowHueGlowWarm', MEADOW_GLOW_WARM_CYCLE)}
+        @keyframes meadowHueGlowDrift {
+          from { transform: translate3d(-4%, 2%, 0) scale(1); }
+          to { transform: translate3d(4%, -3%, 0) scale(1.08); }
         }
-        .meadow-hue-glow-aurora {
-          animation: meadowHueAuroraBreath 21s ease-in-out infinite;
-          will-change: opacity;
+        .meadow-hue-glow-blob {
+          position: absolute;
+          border-radius: 50%;
+          filter: blur(26px);
+          mix-blend-mode: screen;
+          will-change: background-color, transform;
+        }
+        .meadow-hue-glow-blob-cool {
+          animation: meadowHueGlowCool 63s linear infinite,
+            meadowHueGlowDrift 21s ease-in-out -3s infinite alternate;
+        }
+        .meadow-hue-glow-blob-mid {
+          animation: meadowHueGlowMid 47s linear infinite,
+            meadowHueGlowDrift 21s ease-in-out -10s infinite alternate-reverse;
+        }
+        .meadow-hue-glow-blob-warm {
+          animation: meadowHueGlowWarm 53s linear infinite,
+            meadowHueGlowDrift 21s ease-in-out -16s infinite alternate;
         }
         @media (prefers-reduced-motion: reduce) {
           .meadow-hue-panel { animation: meadowHueFadeIn 1ms linear !important; }
-          /* Static soft glow at the stage's intensity — inline opacity applies. */
-          .meadow-hue-glow-aurora { animation: none !important; }
+          /* Static 2-3 hue gradient — inline per-blob colors + opacity apply. */
+          .meadow-hue-glow-blob { animation: none !important; }
         }
       `}</style>
 
@@ -418,8 +441,9 @@ export function HueSheet() {
       />
 
       <div style={glowWrapperStyle}>
-        {/* Meadow-light glow behind the sheet — canonical night-sky ramp:
-            night blues at rest, aurora tail at each breath peak. Pure CSS. */}
+        {/* Meadow-light glow behind the sheet — cascade grammar: 2-3 adjacent
+            ramp hues anchored at different edges, each drifting along the arc.
+            Pure CSS; footprint unchanged (hugs the sheet, vignettes to dark). */}
         <div
           aria-hidden="true"
           data-testid="meadow-hue-glow"
@@ -433,8 +457,8 @@ export function HueSheet() {
             transition: 'opacity 2000ms ease',
             pointerEvents: 'none',
             zIndex: 0,
-            '--meadow-aurora-peak': AURORA_PEAK[glowStage],
-          } as CSSProperties}
+            overflow: 'hidden',
+          }}
         >
           <div
             style={{
@@ -444,16 +468,43 @@ export function HueSheet() {
               background: MEADOW_GLOW_NIGHT_GRADIENT,
             }}
           />
+          {/* Cool: steel blue → ice bleeding from the left edge. */}
           <div
-            className="meadow-hue-glow-aurora"
-            data-testid="meadow-hue-glow-aurora"
+            className="meadow-hue-glow-blob meadow-hue-glow-blob-cool"
+            data-testid="meadow-hue-glow-blob-cool"
             style={{
-              position: 'absolute',
-              inset: 0,
-              borderRadius: 'inherit',
-              background: MEADOW_GLOW_AURORA_GRADIENT,
-              // Reduced motion disables the breath keyframes; this static
-              // opacity then holds the stage's aurora intensity.
+              left: '-30%',
+              top: '8%',
+              width: '75%',
+              height: '84%',
+              backgroundColor: MEADOW_GLOW_COOL_STATIC,
+              opacity: 0.9,
+            }}
+          />
+          {/* Mid: ice → periwinkle → violet along the lower edge. */}
+          <div
+            className="meadow-hue-glow-blob meadow-hue-glow-blob-mid"
+            data-testid="meadow-hue-glow-blob-mid"
+            style={{
+              left: '18%',
+              bottom: '-34%',
+              width: '70%',
+              height: '72%',
+              backgroundColor: MEADOW_GLOW_MID_STATIC,
+              opacity: 0.35 + 0.5 * AURORA_PEAK[glowStage],
+            }}
+          />
+          {/* Warm: violet → rose → cream warming the upper right corner;
+              deeper stages reach further into the warm tail. */}
+          <div
+            className="meadow-hue-glow-blob meadow-hue-glow-blob-warm"
+            data-testid="meadow-hue-glow-blob-warm"
+            style={{
+              right: '-26%',
+              top: '-22%',
+              width: '68%',
+              height: '76%',
+              backgroundColor: MEADOW_GLOW_WARM_STATIC,
               opacity: AURORA_PEAK[glowStage],
             }}
           />
