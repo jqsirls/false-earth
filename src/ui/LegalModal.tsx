@@ -247,6 +247,21 @@ export function LegalModal() {
                   {section.heading}
                 </h3>
               ) : null}
+              {section.subheading ? (
+                <p
+                  className="meadow-crt-section"
+                  style={{
+                    margin: '0 0 14px',
+                    fontSize: '12px',
+                    fontWeight: 700,
+                    letterSpacing: '0.12em',
+                    textTransform: 'uppercase',
+                    fontFamily: meadowHudFontFamily,
+                  }}
+                >
+                  {section.subheading}
+                </p>
+              ) : null}
               {section.paragraphs.map((paragraph, paragraphIndex) => (
                 <p
                   key={`${content.id}-p-${sectionIndex}-${paragraphIndex}`}

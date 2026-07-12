@@ -7,6 +7,7 @@ export type LegalModalCitation = {
 
 export type LegalModalSection = {
   heading?: string;
+  subheading?: string;
   paragraphs: string[];
   citations?: LegalModalCitation[];
 };
@@ -23,6 +24,21 @@ export const LEGAL_MODAL_CONTENT: Record<LegalModalId, LegalModalContent> = {
     id: 'about',
     title: 'ABOUT',
     sections: [
+      {
+        heading: 'CADET FILE',
+        subheading: 'BOOSTER STARLING \u00b7 SPECIES UNKNOWN',
+        paragraphs: [
+          'Before there were maps, there were stories. The old ones say every star began as a story someone told into the dark, and that long before the first ships ever flew, there were beings who walked between worlds gathering those stories the way children gather fireflies. They were called Storytailor. No one has ever seen their faces. Some say they wove the first constellations by hand. Some say they only listen, and that listening is the whole secret. But wherever imagination burns, they are near, tending it like a fire that must never be allowed to go out.',
+          'It was the Storytailor who founded O.R.B.I.T., a fellowship of cadets drawn from every corner of the sky. Not the strongest, and never the loudest. The ancient ones chose differently. They chose the ones who told stories to empty rooms, who built ships out of scrap and believed they would fly, who kept a light on for no reason anyone else could see.',
+          'Which is how they found Booster.',
+          'Booster grew up on a small planet most maps had already forgotten, where the nights were long and the stars felt closer than anyone else. There was no family to speak of, so Booster made one. Stories whispered to the dark. Little ships built from salvage and stubbornness. A promise, kept nightly, that somewhere up there someone was listening.',
+          'Someone was.',
+          'The recruiting officer never said how long the ancient ones had been watching. Only that the youngest cadet in the history of O.R.B.I.T. should probably stop crying and try on the suit. For a while, life was marching songs and missions, a patch worn proudly on one shoulder, and the particular happiness of belonging somewhere at last.',
+          'Then something quiet moved through the stars. It did not roar or burn. It simply dimmed things, the way a room goes gray when a candle gutters, and when it had passed, the fellowship was gone. Every cadet, every teacher, every song. Except one.',
+          'Booster was the one who kept going. The suit is scuffed now. The visor never opens, and no one has ever seen the face behind it. Maybe that is the point. Anyone could be Booster.',
+          'They still hum the old marching songs when they think no one is listening. They still keep a pinch of meteorite dust from every world in one pocket, because the ancient ones taught that no story should be left behind. And between journeys they rest here, in the grass, under the sky, keeping the fire lit until the fellowship flies again.',
+        ],
+      },
       {
         paragraphs: [
           'This is a quiet meadow at the edge of the sky. There is nothing to win here and nothing to finish. You can walk, fly, gather the drifting lights, or just stand in the grass and listen to the wind.',
