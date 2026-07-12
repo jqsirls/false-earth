@@ -36,6 +36,10 @@ import {
 } from './meadowUiStyles';
 import { useHueStatusStore } from '../core/store/hueStatusStore';
 import { BuyLightsLink, BUY_LIGHTS_URL } from './BuyLightsLink';
+import {
+  MEADOW_GLOW_AURORA_GRADIENT,
+  MEADOW_GLOW_NIGHT_GRADIENT,
+} from '../config/meadowGlowRamp';
 
 /**
  * Ambient glow intensity per stage — mirrors the room lights behind the sheet.
@@ -44,9 +48,21 @@ import { BuyLightsLink, BUY_LIGHTS_URL } from './BuyLightsLink';
  */
 const GLOW_OPACITY: Record<AmbientStageSetting, number> = {
   off: 0,
-  gentle: 0.28,
-  vivid: 0.55,
-  full: 0.8,
+  gentle: 0.32,
+  vivid: 0.58,
+  full: 0.82,
+};
+
+/**
+ * How far each breath reaches into the aurora tail of the ramp. GENTLE mostly
+ * lives in the night blues with faint aurora hints; FULL breathes deep into
+ * the pinks and cream.
+ */
+const AURORA_PEAK: Record<AmbientStageSetting, number> = {
+  off: 0,
+  gentle: 0.35,
+  vivid: 0.65,
+  full: 1,
 };
 
 type HueSheetPhase =
@@ -378,18 +394,19 @@ export function HueSheet() {
           from { opacity: 0; }
           to { opacity: 1; }
         }
-        @keyframes meadowHueGlowDrift {
-          0% { filter: blur(30px) hue-rotate(0deg); }
-          50% { filter: blur(30px) hue-rotate(45deg); }
-          100% { filter: blur(30px) hue-rotate(0deg); }
+        @keyframes meadowHueAuroraBreath {
+          0% { opacity: 0; }
+          50% { opacity: var(--meadow-aurora-peak, 0.6); }
+          100% { opacity: 0; }
         }
-        .meadow-hue-glow {
-          animation: meadowHueGlowDrift 21s ease-in-out infinite;
-          will-change: filter, opacity;
+        .meadow-hue-glow-aurora {
+          animation: meadowHueAuroraBreath 21s ease-in-out infinite;
+          will-change: opacity;
         }
         @media (prefers-reduced-motion: reduce) {
           .meadow-hue-panel { animation: meadowHueFadeIn 1ms linear !important; }
-          .meadow-hue-glow { animation: none !important; }
+          /* Static soft glow at the stage's intensity — inline opacity applies. */
+          .meadow-hue-glow-aurora { animation: none !important; }
         }
       `}</style>
 
@@ -401,26 +418,46 @@ export function HueSheet() {
       />
 
       <div style={glowWrapperStyle}>
-        {/* Meadow-light glow behind the sheet — deep blue → lavender → rose,
-            breathing at the lights' slow rhythm. Pure CSS; no re-renders. */}
+        {/* Meadow-light glow behind the sheet — canonical night-sky ramp:
+            night blues at rest, aurora tail at each breath peak. Pure CSS. */}
         <div
           aria-hidden="true"
-          className="meadow-hue-glow"
           data-testid="meadow-hue-glow"
           data-glow-stage={glowStage}
           style={{
             position: 'absolute',
             inset: '-22px',
             borderRadius: '28px',
-            background:
-              'linear-gradient(140deg, rgba(30, 58, 138, 0.95) 0%, rgba(139, 124, 246, 0.85) 45%, rgba(232, 115, 158, 0.9) 100%)',
             filter: 'blur(30px)',
             opacity: glowOpacity,
             transition: 'opacity 2000ms ease',
             pointerEvents: 'none',
             zIndex: 0,
-          }}
-        />
+            '--meadow-aurora-peak': AURORA_PEAK[glowStage],
+          } as CSSProperties}
+        >
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              borderRadius: 'inherit',
+              background: MEADOW_GLOW_NIGHT_GRADIENT,
+            }}
+          />
+          <div
+            className="meadow-hue-glow-aurora"
+            data-testid="meadow-hue-glow-aurora"
+            style={{
+              position: 'absolute',
+              inset: 0,
+              borderRadius: 'inherit',
+              background: MEADOW_GLOW_AURORA_GRADIENT,
+              // Reduced motion disables the breath keyframes; this static
+              // opacity then holds the stage's aurora intensity.
+              opacity: AURORA_PEAK[glowStage],
+            }}
+          />
+        </div>
         <section
         ref={panelRef}
         className="meadow-hue-panel meadow-crt-panel meadow-crt-warmup meadow-focusable"
