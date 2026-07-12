@@ -172,9 +172,12 @@ export function MeadowCursor() {
             // Whisper of glow only — visible in motion, quiet when parked.
             boxShadow: '0 0 8px 1px rgba(255, 255, 255, 0.12)',
             transform: `scale(${condensed ? CONDENSED_SCALE : 1})`,
+            // Soft, liquid state changes (owner: 180ms felt harsh). Position
+            // follow stays direct — only size and fade ease. Reduced motion
+            // keeps instant snaps.
             transition: reducedMotion
               ? 'none'
-              : 'transform 180ms ease, opacity 180ms ease',
+              : 'transform 500ms cubic-bezier(0.4, 0, 0.2, 1), opacity 500ms cubic-bezier(0.4, 0, 0.2, 1)',
             opacity: visible && !overTextField ? 1 : 0,
           }}
         />
