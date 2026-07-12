@@ -2,7 +2,6 @@
 
 import { useGameStore } from '../core/store/gameStore';
 import { WebGPUCanvas, Bgm } from '@core';
-import { DistortedCircle } from '@core';
 import { useShortcut } from '@core/hooks/useShortcut';
 import { resumeMeadowAudioContext } from '../config/meadowAudio';
 import {
@@ -28,7 +27,6 @@ export default function AudioButton() {
     const setMeadowBgmPlaying = useGameStore((state) => state.setMeadowBgmPlaying);
     const isOverlayOpen = useIsMeadowOverlayOpen();
 
-    const radius = 10;
     const size = 45;
 
     const toggleSound = () => {
@@ -74,9 +72,9 @@ export default function AudioButton() {
                     style={{
                         ...meadowIconPillStyle,
                         position: 'fixed',
-                        // Top-LEFT region, below the centered CTA strip; the lamp keeps
-                        // the top-right alone. The ORBS readout sits beside this pill.
-                        top: 'calc(max(20px, env(safe-area-inset-top)) + 52px)',
+                        // Top-LEFT corner on the same optical line as the centered CTA
+                        // and the top-right lamp (all share the icon-pill height).
+                        top: 'max(20px, env(safe-area-inset-top))',
                         left: 'max(20px, env(safe-area-inset-left))',
                         zIndex: 20,
                         pointerEvents: 'auto',
@@ -92,6 +90,9 @@ export default function AudioButton() {
                 </button>
             </>
         )}
+        {/* The visible bottom-right circle is gone on both platforms (desktop
+            keeps [M] MUSIC as its control; mobile keeps the speaker pill). The
+            canvas stays mounted invisibly because it hosts the wind Bgm. */}
         <WebGPUCanvas
             width={size}
             height={size}
@@ -100,43 +101,16 @@ export default function AudioButton() {
                 bottom: 0,
                 right: 0,
                 zIndex: 20,
-                // Mobile gets the labeled MUSIC pill instead; keep the canvas
-                // mounted (it hosts the wind Bgm) but hide the circle visual.
-                opacity: isMobile ? 0 : 1,
-                pointerEvents: isMobile ? 'none' : 'auto',
+                opacity: 0,
+                pointerEvents: 'none',
             }}
         >
-            <mesh
-                onClick={toggleSound}
-                onPointerOver={() => {
-                    document.body.style.cursor = 'pointer';
-                }}
-                onPointerOut={() => {
-                    document.body.style.cursor = 'auto';
-                }}
-                visible={false}
-            >
-                <circleGeometry args={[radius * 1.2, 32]} />
-                <meshBasicMaterial />
-            </mesh>
-
             <Bgm
                 listener={listener}
                 active={isGameStarted}
                 tracks={[...MEADOW_AMBIENT_TRACKS]}
                 volumeScale={windVolumeScale}
             />
-
-            <group>
-                {[12.35, 0.58, 3.67].map((seed, i) => (
-                    <DistortedCircle
-                        key={i}
-                        radius={radius}
-                        distortionStrength={isSoundOn ? 1 : 0}
-                        seed={seed}
-                    />
-                ))}
-            </group>
         </WebGPUCanvas>
         </>
     );

@@ -6,6 +6,14 @@ export const meadowFontFamily = 'Inter, system-ui, sans-serif';
 
 export const meadowHudFontFamily = 'Cousine, monospace';
 
+/**
+ * Shared height for every element on the top HUD strip (ORBS readout, CTA
+ * pill, speaker pill, lamp pill) so their vertical centers sit on one
+ * optical line. Matches the icon pill's natural height (20px icon +
+ * 10px vertical padding + 1px border each side).
+ */
+export const MEADOW_TOP_STRIP_HEIGHT_PX = 42;
+
 
 
 /** PRD §3.1 modal tokens */
@@ -75,6 +83,10 @@ export const meadowIconPillStyle: CSSProperties = {
   ...meadowPillStyle,
 
   padding: '10px 14px',
+
+  height: `${MEADOW_TOP_STRIP_HEIGHT_PX}px`,
+
+  boxSizing: 'border-box',
 
   textTransform: 'none',
 

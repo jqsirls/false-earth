@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { useGameStore } from '../core/store/gameStore';
 
-const Key = ({ children }: { children: ReactNode }) => (
+export const HintKey = ({ children }: { children: ReactNode }) => (
   <span
     style={{
       display: 'inline-flex',
@@ -56,8 +56,8 @@ const MouseIcon = () => (
   </span>
 );
 
-const InstructionRow = ({ input, label }: { input: ReactNode; label: string }) => (
-  <div style={{ display: 'flex', alignItems: 'center' }}>
+export const HintRow = ({ input, label }: { input: ReactNode; label: string }) => (
+  <div style={{ display: 'flex', alignItems: 'center', whiteSpace: 'nowrap' }}>
     {input}
     <span
       style={{
@@ -73,23 +73,24 @@ const InstructionRow = ({ input, label }: { input: ReactNode; label: string }) =
   </div>
 );
 
+/**
+ * Desktop-only persistent control row. Mobile carries no persistent hint:
+ * the joystick/drag are self-evident and flight gets the one-time centered
+ * intro (IntroFlightHint) instead.
+ */
 export function ControlsHint() {
   const isControlEnabled = useGameStore((state) => state.isControlEnabled);
   const isMobile = useGameStore((state) => state.isMobile);
   const gpuError = useGameStore((state) => state.gpuError);
 
-  if (!isControlEnabled || gpuError) return null;
+  if (!isControlEnabled || gpuError || isMobile) return null;
 
   return (
     <div
       style={{
         position: 'fixed',
         left: '50%',
-        // Mobile: sit tight above the footer links so hint + divider + links
-        // read as one quiet centered cluster.
-        bottom: isMobile
-          ? 'calc(max(8px, env(safe-area-inset-bottom)) + 44px)'
-          : 'max(52px, calc(20px + env(safe-area-inset-bottom)))',
+        bottom: 'max(56px, calc(24px + env(safe-area-inset-bottom)))',
         transform: 'translateX(-50%)',
         zIndex: 15,
         pointerEvents: 'none',
@@ -98,77 +99,51 @@ export function ControlsHint() {
         flexDirection: 'column',
         alignItems: 'center',
         gap: '10px',
-        maxWidth: 'min(96vw, 720px)',
+        maxWidth: '96vw',
         padding: '0 16px',
         color: '#ccc',
         fontFamily: 'Cousine, monospace',
         fontSize: '0.8rem',
       }}
     >
-      {isMobile ? (
-        <>
-          {/* Flight is the one non-obvious mechanic; joystick/drag are self-evident. */}
-          <p
-            style={{
-              margin: 0,
-              textAlign: 'center',
-              fontSize: '0.75rem',
-              lineHeight: 1.5,
-              letterSpacing: '0.06em',
-              color: 'rgba(255,255,255,0.72)',
-            }}
-          >
-            Double tap to fly
-          </p>
-          <span
-            aria-hidden
-            style={{
-              display: 'block',
-              width: '24px',
-              height: '1px',
-              background: 'rgba(255,255,255,0.25)',
-            }}
-          />
-        </>
-      ) : (
-        <>
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center',
-              gap: '24px',
-              flexWrap: 'wrap',
-              opacity: 0.85,
-            }}
-          >
-            <InstructionRow
-              input={
-                <>
-                  <Key>W</Key>
-                  <Key>A</Key>
-                  <Key>S</Key>
-                  <Key>D</Key>
-                </>
-              }
-              label="MOVE"
-            />
-            <InstructionRow input={<Key>SHIFT</Key>} label="RUN" />
-            <InstructionRow input={<MouseIcon />} label="DRAG TO LOOK" />
-            <InstructionRow
-              input={
-                <>
-                  <Key>DBL</Key>
-                  <Key>TAP</Key>
-                </>
-              }
-              label="FLY"
-            />
-            <InstructionRow input={<Key>M</Key>} label="MUSIC" />
-            <InstructionRow input={<Key>H</Key>} label="HIDE" />
-          </div>
-        </>
-      )}
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          gap: '16px',
+          // One line, always: chips condensed (DRAG, not DRAG TO LOOK) so the
+          // full row fits without wrapping.
+          flexWrap: 'nowrap',
+          whiteSpace: 'nowrap',
+          opacity: 0.85,
+        }}
+      >
+        <HintRow
+          input={
+            <>
+              <HintKey>W</HintKey>
+              <HintKey>A</HintKey>
+              <HintKey>S</HintKey>
+              <HintKey>D</HintKey>
+            </>
+          }
+          label="MOVE"
+        />
+        <HintRow input={<HintKey>SHIFT</HintKey>} label="RUN" />
+        <HintRow input={<MouseIcon />} label="DRAG" />
+        <HintRow
+          input={
+            <>
+              <HintKey>DBL</HintKey>
+              <HintKey>TAP</HintKey>
+            </>
+          }
+          label="FLY"
+        />
+        <HintRow input={<HintKey>M</HintKey>} label="MUSIC" />
+        <HintRow input={<HintKey>H</HintKey>} label="HIDE" />
+      </div>
     </div>
   );
 }

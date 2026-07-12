@@ -13,7 +13,7 @@ import { ControlsHint } from "./ControlsHint";
 import AudioButton from "./AudioButton";
 import { MeadowFooter } from "./MeadowFooter";
 import { OrbCounter } from "./OrbCounter";
-import { TimerPeek } from "./TimerPeek";
+import { IntroFlightHint } from "./IntroFlightHint";
 import { LegalModal } from "./LegalModal";
 import { MeadowCursor } from "./MeadowCursor";
 import { SessionEnd } from "./SessionEnd";
@@ -92,7 +92,7 @@ export function UI() {
                 <ControlsHint />
                 <OrbCounter />
                 <MeadowFooter />
-                <TimerPeek />
+                <IntroFlightHint />
 
                 <div style={{
                     position: 'absolute',

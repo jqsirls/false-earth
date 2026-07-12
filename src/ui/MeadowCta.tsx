@@ -13,13 +13,16 @@ import {
 } from '../analytics/meadowAnalytics';
 import { pauseMeadowBgm } from '../audio/meadowBgmPlayer';
 import { mintStoryHandoff } from '../api/meadowAuthApi';
-import { meadowHudFontFamily } from './meadowUiStyles';
+import { MEADOW_TOP_STRIP_HEIGHT_PX, meadowHudFontFamily } from './meadowUiStyles';
 
 const ctaStyle: CSSProperties = {
   display: 'inline-flex',
   alignItems: 'center',
   justifyContent: 'center',
-  padding: '10px 20px',
+  // Same height as the icon pills so the whole top strip shares one optical
+  // centerline; the label centers vertically via alignItems.
+  height: `${MEADOW_TOP_STRIP_HEIGHT_PX}px`,
+  padding: '0 20px',
   borderRadius: '999px',
   border: '1px solid rgba(255,255,255,0.22)',
   background: 'rgba(0,0,0,0.45)',
@@ -88,7 +91,7 @@ export function MeadowCta() {
         style={{
           ...ctaStyle,
           // Mobile: quieter than the experience itself — a tad smaller, not tiny.
-          ...(isMobile ? { fontSize: '0.7rem', padding: '8px 16px' } : null),
+          ...(isMobile ? { fontSize: '0.7rem', padding: '0 16px' } : null),
           position: 'fixed',
           top: 'max(20px, env(safe-area-inset-top))',
           left: '50%',

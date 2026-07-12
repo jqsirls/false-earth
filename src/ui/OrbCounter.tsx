@@ -13,19 +13,24 @@ const SETTLE_MS = 700;
 
 const COUNTER_CSS = `
 .orb-counter-readout {
-  top: calc(max(12px, env(safe-area-inset-top)) + 8px);
-  left: calc(max(12px, env(safe-area-inset-left)) + 8px);
+  /* One optical line with the CTA pill and lamp: the readout is a 42px-tall
+     flex band matching the top-strip pill height, text vertically centered. */
+  top: max(20px, env(safe-area-inset-top));
+  left: max(20px, env(safe-area-inset-left));
+  height: 42px;
+  display: flex;
+  align-items: center;
   /* Desktop: readable at a glance (owner 2026-07-11 — users couldn't find it). */
   font-size: 1.05rem;
 }
-/* Narrow screens: the CTA pill spans most of the top strip and the speaker
-   pill now anchors the top-left corner below it, so the readout sits beside
-   the speaker pill (vertically centered against it). Mobile keeps the
+/* Narrow screens: the speaker pill owns the top-left corner of the strip, so
+   the readout drops to its own quiet line just below it. Mobile keeps the
    original quieter size — the HUD strip is denser there. */
 @media (max-width: 560px) {
   .orb-counter-readout {
-    top: calc(max(20px, env(safe-area-inset-top)) + 66px);
-    left: calc(max(20px, env(safe-area-inset-left)) + 60px);
+    top: calc(max(20px, env(safe-area-inset-top)) + 54px);
+    left: calc(max(20px, env(safe-area-inset-left)) + 4px);
+    height: auto;
     font-size: 0.7rem;
   }
 }

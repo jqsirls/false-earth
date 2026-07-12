@@ -9,6 +9,8 @@ import {
   meadowHudFontFamily,
   meadowModalTokens,
 } from './meadowUiStyles';
+import { TimerCountdownText } from './TimerCountdown';
+import { useSessionTimerStore } from '../core/store/sessionTimerStore';
 
 const FOOTER_ITEMS: Array<{ id: LegalModalId; label: string }> = [
   { id: 'about', label: 'About' },
@@ -22,6 +24,7 @@ export function MeadowFooter() {
   const isMobile = useGameStore((state) => state.isMobile);
   const gpuError = useGameStore((state) => state.gpuError);
   const openLegalModal = useMeadowUiStore((state) => state.openLegalModal);
+  const timerArmed = useSessionTimerStore((state) => state.endsAt !== null);
   const triggerRefs = useRef<Record<LegalModalId, HTMLButtonElement | null>>({
     about: null,
     terms: null,
@@ -47,7 +50,8 @@ export function MeadowFooter() {
         style={{
           position: 'fixed',
           left: '50%',
-          bottom: 'max(8px, env(safe-area-inset-bottom))',
+          // 24px breathing room from the bottom edge (owner call, 2026-07-12).
+          bottom: 'max(24px, env(safe-area-inset-bottom))',
           transform: 'translateX(-50%)',
           zIndex: 14,
           pointerEvents: 'auto',
@@ -69,6 +73,30 @@ export function MeadowFooter() {
         }}
       >
         {/* © line lives in the legal modals now — the persistent HUD keeps links only. */}
+        {/* Live session countdown (owner placement, 2026-07-12): mobile gets its
+            own centered line above the links; desktop leads the row inline
+            (`01:02 · About · …`). Renders nothing when no timer is armed. */}
+        {/* Wrapper gated on the (rarely-changing) armed state so an untimed
+            session gets no empty flex row; the 1s tick stays isolated inside
+            TimerCountdownText. */}
+        {timerArmed ? (
+          isMobile ? (
+            <span
+              style={{
+                width: '100%',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <TimerCountdownText style={{ color: restColor }} />
+            </span>
+          ) : (
+            <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+              <TimerCountdownText trailingSeparator style={{ color: restColor }} />
+            </span>
+          )
+        ) : null}
         {FOOTER_ITEMS.map((item, index) => (
           <span key={item.id} style={{ display: 'inline-flex', alignItems: 'center' }}>
             <button
