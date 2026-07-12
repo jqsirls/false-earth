@@ -3,7 +3,7 @@ import { useMeadowAuthStore } from '../store/meadowAuthStore';
 import { useMeadowUiStore } from '../store/meadowUiStore';
 
 /**
- * ESC stacking: legal modal → auth sheet → hue sheet → pointer lock release.
+ * ESC stacking: legal modal → auth sheet → hue sheet.
  */
 export function useMeadowOverlayEsc() {
   const legalModal = useMeadowUiStore((state) => state.legalModal);
@@ -38,11 +38,6 @@ export function useMeadowOverlayEsc() {
         event.preventDefault();
         event.stopPropagation();
         closeHueSheet();
-        return;
-      }
-
-      if (document.pointerLockElement) {
-        document.exitPointerLock();
       }
     };
 

@@ -1,6 +1,8 @@
 import { useProgress } from "@react-three/drei";
 import { useEffect, useRef, useState, useMemo } from "react";
 import { useGameStore } from "../core/store/gameStore";
+import { useSessionTimerStore, SESSION_TIMER_CHOICES_MIN } from "../core/store/sessionTimerStore";
+import { meadowHudFontFamily } from "./meadowUiStyles";
 import { MEADOW_LOGO_ALT, MEADOW_LOGO_PATH, MEADOW_PLAYLIST_TRACKS, resolveMeadowAsset } from "../config/meadow";
 import { resumeMeadowAudioContext } from "../config/meadowAudio";
 import { prepareMeadowBgm, startMeadowBgm, setMeadowBgmMuted, whenMeadowBgmPrepared } from "../audio/meadowBgmPlayer";
@@ -33,6 +35,9 @@ export function LoadingScreen() {
     const setIsSoundOn = useGameStore((state) => state.setIsSoundOn);
     const audioListener = useGameStore((state) => state.audioListener);
     const gpuError = useGameStore((state) => state.gpuError);
+    const selectedMinutes = useSessionTimerStore((state) => state.selectedMinutes);
+    const setSelectedMinutes = useSessionTimerStore((state) => state.setSelectedMinutes);
+    const startTimer = useSessionTimerStore((state) => state.startTimer);
     const gpuErrorInfo = useMemo(() => formatGpuError(gpuError), [gpuError]);
 
     const [isReadyToStart, setIsReadyToStart] = useState(false);
@@ -92,6 +97,7 @@ export function LoadingScreen() {
         startMeadowBgm();
         setMeadowBgmMuted(false);
         setIsSoundOn(true);
+        startTimer();
         setIsGameStarted(true);
         void resumeMeadowAudioContext(audioListener).catch(() => {});
 
@@ -228,6 +234,50 @@ export function LoadingScreen() {
                                 background: 'rgba(255,255,255,0.45)',
                                 transition: 'width 0.2s',
                             }} />
+                        </div>
+
+                        {/* Optional session timer — quiet HUD row, no persuasion copy. */}
+                        <div
+                            data-meadow-timer-row
+                            style={{
+                                display: 'flex',
+                                justifyContent: 'center',
+                                alignItems: 'center',
+                                gap: '18px',
+                                marginTop: '26px',
+                                fontFamily: meadowHudFontFamily,
+                                fontSize: '0.62rem',
+                                letterSpacing: '0.12em',
+                                opacity: isReadyToStart ? 1 : 0,
+                                transition: 'opacity 0.5s',
+                                pointerEvents: isReadyToStart ? 'auto' : 'none',
+                            }}
+                        >
+                            {[null, ...SESSION_TIMER_CHOICES_MIN].map((minutes) => {
+                                const isSelected = selectedMinutes === minutes;
+                                return (
+                                    <button
+                                        key={minutes ?? 'none'}
+                                        type="button"
+                                        onClick={() => setSelectedMinutes(minutes)}
+                                        aria-pressed={isSelected}
+                                        style={{
+                                            background: 'transparent',
+                                            border: 'none',
+                                            padding: '6px 2px',
+                                            fontFamily: 'inherit',
+                                            fontSize: 'inherit',
+                                            letterSpacing: 'inherit',
+                                            cursor: 'pointer',
+                                            color: isSelected ? '#fff' : 'rgba(255,255,255,0.45)',
+                                            textDecoration: isSelected ? 'underline' : 'none',
+                                            textUnderlineOffset: '4px',
+                                        }}
+                                    >
+                                        {minutes === null ? 'NO TIMER' : `${minutes} MIN`}
+                                    </button>
+                                );
+                            })}
                         </div>
                     </>
                 )}

@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react';
 import { useGameStore } from '../core/store/gameStore';
-import { meadowModalTokens } from './meadowUiStyles';
 
 const Key = ({ children }: { children: ReactNode }) => (
   <span
@@ -155,7 +154,7 @@ export function ControlsHint() {
               label="MOVE"
             />
             <InstructionRow input={<Key>SHIFT</Key>} label="RUN" />
-            <InstructionRow input={<MouseIcon />} label="LOOK" />
+            <InstructionRow input={<MouseIcon />} label="DRAG TO LOOK" />
             <InstructionRow
               input={
                 <>
@@ -167,18 +166,6 @@ export function ControlsHint() {
             />
             <InstructionRow input={<Key>M</Key>} label="MUSIC" />
           </div>
-          <p
-            style={{
-              margin: 0,
-              fontSize: '0.65rem',
-              letterSpacing: '0.06em',
-              // Desktop-only branch — brightened with the footer (owner 2026-07-11).
-              color: meadowModalTokens.mutedBright,
-              textAlign: 'center',
-            }}
-          >
-            To show your cursor, press the esc button.
-          </p>
         </>
       )}
     </div>

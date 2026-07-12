@@ -51,6 +51,11 @@ class MeadowBgmPlayer {
     })
   }
 
+  /** True when Cosmic Lullaby is audibly playing right now. */
+  get isAudiblyPlaying(): boolean {
+    return this.started && !this.muted && !this.audio.paused
+  }
+
   /** Begin fetching track 1 during the loading screen (no play yet). */
   prepare(): void {
     if (this.prepared || this.urls.length === 0) return
@@ -293,4 +298,19 @@ export function pauseMeadowBgm(): void {
 
 export function resumeMeadowBgmIfPaused(): void {
   getPlayer().resumeIfPaused()
+}
+
+/** Readonly hook for programmatic production verification — same pattern as __MEADOW_EVENTS__. */
+declare global {
+  interface Window {
+    __MEADOW_BGM__?: { readonly playing: boolean }
+  }
+}
+
+if (typeof window !== 'undefined') {
+  window.__MEADOW_BGM__ = {
+    get playing() {
+      return getPlayer().isAudiblyPlaying
+    },
+  }
 }

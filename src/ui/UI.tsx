@@ -12,6 +12,8 @@ import AudioButton from "./AudioButton";
 import { MeadowFooter } from "./MeadowFooter";
 import { OrbCounter } from "./OrbCounter";
 import { LegalModal } from "./LegalModal";
+import { MeadowCursor } from "./MeadowCursor";
+import { SessionEnd } from "./SessionEnd";
 import { useMeadowOverlayEsc } from "../core/hooks/useMeadowOverlayEsc";
 import { useIsMeadowOverlayOpen } from "../core/hooks/useIsMeadowOverlayOpen";
 import { TouchJoystick } from "../core/input/TouchJoystick";
@@ -52,6 +54,8 @@ export function UI() {
             <OrbCounter />
             <MeadowFooter />
             <LegalModal />
+            <SessionEnd />
+            <MeadowCursor />
 
             <div style={{
                 position: 'absolute',

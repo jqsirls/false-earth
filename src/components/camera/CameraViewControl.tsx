@@ -12,14 +12,34 @@ type Props = {
 export const CAMERA_POSITION = new THREE.Vector3(-4, 2, -0.5);
 export const CAMERA_LOOKAT = new THREE.Vector3(0, 1, 0);
 
+/** Readonly hook for programmatic production verification — same pattern as __MEADOW_EVENTS__. */
+declare global {
+  interface Window {
+    __MEADOW_CAMERA__?: { readonly azimuth: number | null };
+  }
+}
+
 export function CameraViewControl({ boneName = 'head' }: Props) {
   const cameraMode = useGameStore((state) => state.cameraMode);
+  const isMobile = useGameStore((state) => state.isMobile);
   const characterRef = useGameStore((state) => state.characterRef);
   const isGameLoaded = useGameStore((state) => state.isGameStarted);
   const isControlEnabled = useGameStore((state) => state.isControlEnabled);
   const setControlEnabled = useGameStore((state) => state.setControlEnabled);
 
   const controlsRef = useRef<CameraControls>(null);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.__MEADOW_CAMERA__ = {
+      get azimuth() {
+        return controlsRef.current?.azimuthAngle ?? null;
+      },
+    };
+    return () => {
+      delete window.__MEADOW_CAMERA__;
+    };
+  }, []);
 
   useFPVCamera({
     characterRef,
@@ -33,12 +53,17 @@ export function CameraViewControl({ boneName = 'head' }: Props) {
     enabled: cameraMode === CameraMode.Follow && isControlEnabled,
   });
 
+  const characterFlightLiftRef = useGameStore((state) => state.characterFlightLiftRef);
+
   const resetCamera = useCallback((earlyStop: boolean = true) => {
     if (!characterRef?.current || !controlsRef.current) return Promise.resolve();
 
     const charPos = characterRef.current.position;
+    const flightLift = characterFlightLiftRef.current;
     const pos = charPos.clone().add(CAMERA_POSITION);
+    pos.y += flightLift;
     const lookAt = charPos.clone().add(CAMERA_LOOKAT);
+    lookAt.y += flightLift;
 
     const originalThreshold = controlsRef.current.restThreshold;
     controlsRef.current.restThreshold = earlyStop ? 0.05 : originalThreshold;
@@ -52,7 +77,7 @@ export function CameraViewControl({ boneName = 'head' }: Props) {
         controlsRef.current.restThreshold = originalThreshold;
       }
     });
-  }, [characterRef]);
+  }, [characterRef, characterFlightLiftRef]);
 
   // initial sequence, reset camera to back
   useEffect(() => {
@@ -89,6 +114,10 @@ export function CameraViewControl({ boneName = 'head' }: Props) {
       minDistance={2}
       maxDistance={20}
       maxPolarAngle={Math.PI / 2}
+      // Desktop drag-look: slower than the library default so it feels
+      // deliberate, not twitchy. Mobile keeps its existing touch feel.
+      azimuthRotateSpeed={isMobile ? 1 : 0.55}
+      polarRotateSpeed={isMobile ? 1 : 0.55}
       smoothTime={isControlEnabled ? 0.1 : 1}
     />
   );
