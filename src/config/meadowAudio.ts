@@ -1,5 +1,6 @@
 import { AudioLoader } from 'three'
 import { AudioContext as ThreeAudioContext } from 'three/webgpu'
+import { resolveMeadowAsset } from './meadowAssets'
 
 /** Cross-origin anonymous — required when audio loads from CDN or `/meadow-assets` rewrite. */
 export function configureCdnAudioLoader(loader: AudioLoader): AudioLoader {
@@ -47,6 +48,19 @@ export const MEADOW_ORB_CHIME_SOLO = 0.75
 /** Cosmic beam hit one-shot (wave01.mp3 peaks −11.6 dB). */
 export const MEADOW_BEAM_HIT_VOLUME = 0.65
 
+/**
+ * Galactic flight loop — plays while Booster is flying, gated on
+ * isGameStarted like all SFX (not the music toggle). Direct CDN in prod
+ * (audio convention: never the /meadow-assets rewrite), bundled in dev.
+ */
+export const MEADOW_FLIGHT_LOOP_PATH = resolveMeadowAsset('/audio/galactic-flight.mp3')
+
+/** Owner spec: 50% of the file's base loudness. */
+export const MEADOW_FLIGHT_LOOP_VOLUME = 0.5
+
+/** Soft attack/release — no hard start or stop on flight toggles. */
+export const MEADOW_FLIGHT_LOOP_FADE_SECONDS = 0.4
+
 /** Read-only mix table for programmatic production verification (Playwright). */
 declare global {
   interface Window {
@@ -62,6 +76,8 @@ if (typeof window !== 'undefined') {
     orbChimeDucked: MEADOW_ORB_CHIME_DUCKED,
     orbChimeSolo: MEADOW_ORB_CHIME_SOLO,
     beamHit: MEADOW_BEAM_HIT_VOLUME,
+    flightLoop: MEADOW_FLIGHT_LOOP_VOLUME,
+    flightLoopFade: MEADOW_FLIGHT_LOOP_FADE_SECONDS,
   })
 }
 

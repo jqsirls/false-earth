@@ -20,14 +20,15 @@ export const CHARACTER_CONFIG = {
  * Happy Idle loops until the user moves. Any movement exits the chain
  * instantly; returning to rest restarts from Idle + 6s.
  *
- * Crossfade values are ~95%-blended durations (exponential approach, tau =
- * duration/3). Stage-to-stage fades sit in the owner's 500–800ms band; the
+ * Crossfades are true mixer fades (linear weight ramps with both actions
+ * playing). Offensive Idle's first frame differs a lot from base Idle, so its
+ * entry fade is stretched to 1s to read as a natural stance shift; the
  * movement exit keeps the fast locomotion feel so controls stay responsive.
  */
 export const IDLE_CHAIN_CONFIG = {
   baseHoldSeconds: 6,
   crossfadeSeconds: {
-    toOffensive: 0.6,
+    toOffensive: 1.0,
     toHappy: 0.8,
     exitToBase: 0.3,
   },

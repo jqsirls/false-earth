@@ -50,39 +50,33 @@ export function useCharacterPhysics(
 
   const state = useRef<PhysicsState>({ ...INITIAL_PHYSICS_STATE });
 
-  // Idle-variety chain: distributes the idle envelope across the idle clips
-  // (Idle 6s -> Offensive x1 cycle -> Happy loop until movement).
+  // Idle-variety chain (Idle 6s -> Offensive x1 cycle -> Happy loop until
+  // movement). Stage handoffs are true mixer crossfades — both actions keep
+  // playing while the mixer ramps their weights linearly — so each idle flows
+  // into the next instead of cutting.
   const idleChain = useRef({
     stage: 'base' as IdleChainStage,
     stageTime: 0,
     offensiveFinished: false,
-    crossfadeTau: IDLE_CHAIN_CONFIG.crossfadeSeconds.exitToBase / 3,
-    weights: { base: 1, offensive: 0, happy: 0 } as Record<IdleChainStage, number>,
   });
 
   // Init Animations
   useEffect(() => {
-    ['Idle', 'Walk', 'Run', 'Back', 'Flight', 'IdleHappy'].forEach((name) => {
+    ['Idle', 'Walk', 'Run', 'Back', 'Flight'].forEach((name) => {
       const action = actions[name];
       if (action) {
         action.reset().play();
         action.setEffectiveWeight(name === 'Idle' ? 1.0 : 0.0);
       }
     });
-    // Offensive Idle plays exactly once per chain pass — armed on stage entry.
+    // Idle variants start on chain-stage entry (reset().play() + crossfade),
+    // never at init. Offensive plays exactly once per chain pass.
     const offensive = actions[IDLE_CHAIN_STAGE_CLIPS.offensive];
     if (offensive) {
       offensive.setLoop(THREE.LoopOnce, 1);
       offensive.clampWhenFinished = true;
-      offensive.setEffectiveWeight(0);
     }
-    idleChain.current = {
-      stage: 'base',
-      stageTime: 0,
-      offensiveFinished: false,
-      crossfadeTau: IDLE_CHAIN_CONFIG.crossfadeSeconds.exitToBase / 3,
-      weights: { base: 1, offensive: 0, happy: 0 },
-    };
+    idleChain.current = { stage: 'base', stageTime: 0, offensiveFinished: false };
   }, [actions]);
 
   // One-cycle detection for Offensive Idle via the mixer's finished event.
@@ -97,26 +91,30 @@ export function useCharacterPhysics(
     return () => mixer.removeEventListener('finished', onFinished);
   }, [mixer, actions]);
 
-  // ~95% blended in the configured duration (tau = duration / 3).
-  const IDLE_STAGE_TAU: Record<IdleChainStage, number> = {
-    base: IDLE_CHAIN_CONFIG.crossfadeSeconds.exitToBase / 3,
-    offensive: IDLE_CHAIN_CONFIG.crossfadeSeconds.toOffensive / 3,
-    happy: IDLE_CHAIN_CONFIG.crossfadeSeconds.toHappy / 3,
+  const IDLE_STAGE_FADE: Record<IdleChainStage, number> = {
+    base: IDLE_CHAIN_CONFIG.crossfadeSeconds.exitToBase,
+    offensive: IDLE_CHAIN_CONFIG.crossfadeSeconds.toOffensive,
+    happy: IDLE_CHAIN_CONFIG.crossfadeSeconds.toHappy,
   };
 
+  /**
+   * Mixer crossfade into the next stage: the incoming action restarts and
+   * plays, the outgoing action keeps playing while both weights ramp
+   * linearly. No timescale warp — these are same-tempo idles.
+   */
   const enterIdleStage = (stage: IdleChainStage) => {
     const chain = idleChain.current;
+    const from = actions[IDLE_CHAIN_STAGE_CLIPS[chain.stage]];
+    const to = actions[IDLE_CHAIN_STAGE_CLIPS[stage]];
     chain.stage = stage;
     chain.stageTime = 0;
-    chain.crossfadeTau = IDLE_STAGE_TAU[stage];
-    const action = actions[IDLE_CHAIN_STAGE_CLIPS[stage]];
-    if (!action) return;
-    if (stage === 'offensive') {
-      chain.offensiveFinished = false;
-      action.reset().play();
-    } else if (stage === 'happy') {
-      // Restart Happy from its first frame so the entry looks intentional.
-      action.time = 0;
+    if (!to || to === from) return;
+    if (stage === 'offensive') chain.offensiveFinished = false;
+    to.reset().play();
+    if (from && from.enabled) {
+      from.crossFadeTo(to, IDLE_STAGE_FADE[stage], false);
+    } else {
+      to.fadeIn(IDLE_STAGE_FADE[stage]);
     }
   };
 
@@ -127,35 +125,33 @@ export function useCharacterPhysics(
     // Rigs without the idle-variant clips (licensed astronaut) stay on plain Idle.
     const hasVariants =
       actions[IDLE_CHAIN_STAGE_CLIPS.offensive] && actions[IDLE_CHAIN_STAGE_CLIPS.happy];
-    if (!hasVariants) {
-      chain.stage = 'base';
-      chain.weights = { base: 1, offensive: 0, happy: 0 };
-      return;
-    }
+    if (!hasVariants) return;
 
     if (!isResting) {
       if (chain.stage !== 'base') enterIdleStage('base');
       chain.stageTime = 0;
-    } else {
-      chain.stageTime += delta;
-      if (chain.stage === 'base' && chain.stageTime >= IDLE_CHAIN_CONFIG.baseHoldSeconds) {
-        enterIdleStage('offensive');
-      } else if (chain.stage === 'offensive') {
-        const offensive = actions[IDLE_CHAIN_STAGE_CLIPS.offensive];
-        const duration = offensive?.getClip().duration ?? 0;
-        if (chain.offensiveFinished || !offensive || chain.stageTime >= duration) {
-          enterIdleStage('happy');
-        }
-      }
-      // 'happy' loops until movement resets the chain.
+      return;
     }
 
-    // Soft crossfade: exponential approach, ~95% blended in ~3*tau.
-    const k = 1 - Math.exp(-delta / chain.crossfadeTau);
-    (Object.keys(chain.weights) as IdleChainStage[]).forEach((stage) => {
-      const target = stage === chain.stage ? 1 : 0;
-      chain.weights[stage] = THREE.MathUtils.lerp(chain.weights[stage], target, k);
-    });
+    chain.stageTime += delta;
+    if (chain.stage === 'base' && chain.stageTime >= IDLE_CHAIN_CONFIG.baseHoldSeconds) {
+      enterIdleStage('offensive');
+    } else if (chain.stage === 'offensive') {
+      const offensive = actions[IDLE_CHAIN_STAGE_CLIPS.offensive];
+      const duration = offensive?.getClip().duration ?? 0;
+      // Begin the Happy fade BEFORE the clip ends so the outgoing pose is
+      // still moving through the whole crossfade (a clamped end frame would
+      // read as a freeze). The finished event stays as a backstop.
+      const fadeLead = IDLE_CHAIN_CONFIG.crossfadeSeconds.toHappy;
+      if (
+        !offensive ||
+        chain.offensiveFinished ||
+        offensive.time >= Math.max(duration - fadeLead, 0)
+      ) {
+        enterIdleStage('happy');
+      }
+    }
+    // 'happy' loops until movement resets the chain.
   };
 
   const processFootstep = (
@@ -239,11 +235,18 @@ export function useCharacterPhysics(
     // Idle-variety chain: any movement input (walk/run/fly/turn) exits immediately.
     const isResting = !isFlying && !isRotating && Math.abs(s.speed) < 0.05;
     updateIdleChain(delta, isResting);
-    const idleWeights = idleChain.current.weights;
 
-    actions['Idle']?.setEffectiveWeight(s.idleWeight * idleWeights.base);
-    actions[IDLE_CHAIN_STAGE_CLIPS.offensive]?.setEffectiveWeight(s.idleWeight * idleWeights.offensive);
-    actions[IDLE_CHAIN_STAGE_CLIPS.happy]?.setEffectiveWeight(s.idleWeight * idleWeights.happy);
+    // All idle-chain actions share the locomotion idle envelope as their base
+    // weight; the mixer's crossfade interpolants multiply on top (and keep
+    // faded-out actions at 0 via enabled=false). Assign `.weight` directly —
+    // setEffectiveWeight() calls stopFading() and would kill the crossfade.
+    const setIdleBaseWeight = (name: string) => {
+      const action = actions[name];
+      if (action) action.weight = s.idleWeight;
+    };
+    setIdleBaseWeight('Idle');
+    setIdleBaseWeight(IDLE_CHAIN_STAGE_CLIPS.offensive);
+    setIdleBaseWeight(IDLE_CHAIN_STAGE_CLIPS.happy);
     actions['Walk']?.setEffectiveWeight(s.walkWeight);
     actions['Run']?.setEffectiveWeight(s.runWeight);
     actions['Back']?.setEffectiveWeight(s.backWeight);
