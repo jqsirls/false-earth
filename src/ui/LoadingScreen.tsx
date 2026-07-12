@@ -1,7 +1,7 @@
 import { useProgress } from "@react-three/drei";
 import { useEffect, useRef, useState, useMemo } from "react";
 import { useGameStore } from "../core/store/gameStore";
-import { useSessionTimerStore, SESSION_TIMER_CHOICES_MIN, sessionTimerLabel } from "../core/store/sessionTimerStore";
+import { useSessionTimerStore, SESSION_TIMER_CHOICES_MIN, sessionTimerLabel, sessionTimerEchoLabel } from "../core/store/sessionTimerStore";
 import { meadowHudFontFamily } from "./meadowUiStyles";
 import { MEADOW_LOGO_ALT, MEADOW_LOGO_PATH, MEADOW_PLAYLIST_TRACKS, resolveMeadowAsset } from "../config/meadow";
 import { resumeMeadowAudioContext } from "../config/meadowAudio";
@@ -42,6 +42,7 @@ export function LoadingScreen() {
     const gpuErrorInfo = useMemo(() => formatGpuError(gpuError), [gpuError]);
 
     const [isReadyToStart, setIsReadyToStart] = useState(false);
+    const [isTimerExpanded, setIsTimerExpanded] = useState(false);
     const [bgmReady, setBgmReady] = useState(false);
     const [isVisible, setIsVisible] = useState(true);
     const containerRef = useRef<HTMLDivElement>(null);
@@ -237,8 +238,10 @@ export function LoadingScreen() {
                             }} />
                         </div>
 
-                        {/* Optional session timer: quiet HUD row, no persuasion copy.
-                            Presets were the chosen path (calculator modal rejected). */}
+                        {/* Optional session timer: collapsed disclosure (owner-approved).
+                            Rest state is one quiet word; tapping unfolds the presets.
+                            A selection collapses back to an echo like `TIMER 30 MIN`.
+                            No underlines anywhere (meadow links never underline). */}
                         <div
                             data-meadow-timer-row
                             style={{
@@ -255,31 +258,53 @@ export function LoadingScreen() {
                                 pointerEvents: isReadyToStart ? 'auto' : 'none',
                             }}
                         >
-                            {[null, ...SESSION_TIMER_CHOICES_MIN].map((minutes) => {
-                                const isSelected = selectedMinutes === minutes;
-                                return (
-                                    <button
-                                        key={minutes ?? 'none'}
-                                        type="button"
-                                        onClick={() => setSelectedMinutes(minutes)}
-                                        aria-pressed={isSelected}
-                                        style={{
-                                            background: 'transparent',
-                                            border: 'none',
-                                            padding: '6px 2px',
-                                            fontFamily: 'inherit',
-                                            fontSize: 'inherit',
-                                            letterSpacing: 'inherit',
-                                            cursor: 'pointer',
-                                            color: isSelected ? '#fff' : 'rgba(255,255,255,0.45)',
-                                            textDecoration: isSelected ? 'underline' : 'none',
-                                            textUnderlineOffset: '4px',
-                                        }}
-                                    >
-                                        {sessionTimerLabel(minutes)}
-                                    </button>
-                                );
-                            })}
+                            {isTimerExpanded ? (
+                                [null, ...SESSION_TIMER_CHOICES_MIN].map((minutes) => {
+                                    const isSelected = selectedMinutes === minutes;
+                                    return (
+                                        <button
+                                            key={minutes ?? 'off'}
+                                            type="button"
+                                            onClick={() => {
+                                                setSelectedMinutes(minutes);
+                                                setIsTimerExpanded(false);
+                                            }}
+                                            aria-pressed={isSelected}
+                                            style={{
+                                                background: 'transparent',
+                                                border: 'none',
+                                                padding: '6px 2px',
+                                                fontFamily: 'inherit',
+                                                fontSize: 'inherit',
+                                                letterSpacing: 'inherit',
+                                                cursor: 'pointer',
+                                                color: isSelected ? '#fff' : 'rgba(255,255,255,0.45)',
+                                            }}
+                                        >
+                                            {sessionTimerLabel(minutes)}
+                                        </button>
+                                    );
+                                })
+                            ) : (
+                                <button
+                                    type="button"
+                                    onClick={() => setIsTimerExpanded(true)}
+                                    aria-expanded={false}
+                                    aria-label="Session timer options"
+                                    style={{
+                                        background: 'transparent',
+                                        border: 'none',
+                                        padding: '6px 2px',
+                                        fontFamily: 'inherit',
+                                        fontSize: 'inherit',
+                                        letterSpacing: 'inherit',
+                                        cursor: 'pointer',
+                                        color: 'rgba(255,255,255,0.45)',
+                                    }}
+                                >
+                                    {sessionTimerEchoLabel(selectedMinutes)}
+                                </button>
+                            )}
                         </div>
                     </>
                 )}

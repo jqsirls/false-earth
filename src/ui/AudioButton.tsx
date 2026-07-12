@@ -74,8 +74,10 @@ export default function AudioButton() {
                     style={{
                         ...meadowIconPillStyle,
                         position: 'fixed',
+                        // Top-LEFT region, below the centered CTA strip; the lamp keeps
+                        // the top-right alone. The ORBS readout sits beside this pill.
                         top: 'calc(max(20px, env(safe-area-inset-top)) + 52px)',
-                        right: 'max(20px, env(safe-area-inset-right))',
+                        left: 'max(20px, env(safe-area-inset-left))',
                         zIndex: 20,
                         pointerEvents: 'auto',
                         color: isSoundOn ? '#fff' : 'rgba(255,255,255,0.5)',

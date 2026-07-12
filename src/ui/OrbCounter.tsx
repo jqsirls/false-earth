@@ -18,12 +18,14 @@ const COUNTER_CSS = `
   /* Desktop: readable at a glance (owner 2026-07-11 — users couldn't find it). */
   font-size: 1.05rem;
 }
-/* Narrow screens: the CTA pill spans most of the top strip, so sit below it
-   (CTA is smaller on mobile now, so the drop is tighter). Mobile keeps the
+/* Narrow screens: the CTA pill spans most of the top strip and the speaker
+   pill now anchors the top-left corner below it, so the readout sits beside
+   the speaker pill (vertically centered against it). Mobile keeps the
    original quieter size — the HUD strip is denser there. */
 @media (max-width: 560px) {
   .orb-counter-readout {
-    top: calc(max(12px, env(safe-area-inset-top)) + 56px);
+    top: calc(max(20px, env(safe-area-inset-top)) + 66px);
+    left: calc(max(20px, env(safe-area-inset-left)) + 60px);
     font-size: 0.7rem;
   }
 }
