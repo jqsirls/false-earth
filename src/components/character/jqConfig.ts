@@ -82,13 +82,23 @@ export const JQ_PART_TEXTURE_PATHS = Object.fromEntries(
   ]),
 ) as Record<JqMeshPart, ReturnType<typeof getJqPartTexturePaths>>;
 
-/** JQ Mixamo locomotion + flight clip GLBs (animation-only, same skeleton as JQ_mixamo.glb). */
+/** JQ Mixamo locomotion + flight + idle-variant clip GLBs (animation-only, same skeleton as JQ_mixamo.glb). */
 export const JQ_LOCOMOTION_ANIM_PATHS = [
   resolveMeadowAsset('/models/JQ_Idle.glb'),
   resolveMeadowAsset('/models/JQ_Walking.glb'),
   resolveMeadowAsset('/models/JQ_Running.glb'),
   resolveMeadowAsset('/models/JQ_WalkingBack.glb'),
   resolveMeadowAsset('/models/JQ_Flying.glb'),
+  resolveMeadowAsset('/models/JQ_OffensiveIdle.glb'),
+  resolveMeadowAsset('/models/JQ_HappyIdle.glb'),
 ] as const;
 
-export const JQ_LOCOMOTION_CLIP_NAMES = ['Idle', 'Walk', 'Run', 'Back', 'Flight'] as const;
+export const JQ_LOCOMOTION_CLIP_NAMES = [
+  'Idle',
+  'Walk',
+  'Run',
+  'Back',
+  'Flight',
+  'IdleOffensive',
+  'IdleHappy',
+] as const;

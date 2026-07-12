@@ -14,6 +14,33 @@ export const CHARACTER_CONFIG = {
   animBlendLerp: 0.15,
 } as const;
 
+/**
+ * Idle-variety chain (owner spec, rev 2): at rest, Idle holds 6s, then
+ * Offensive Idle plays exactly one cycle (LoopOnce + finished event), then
+ * Happy Idle loops until the user moves. Any movement exits the chain
+ * instantly; returning to rest restarts from Idle + 6s.
+ *
+ * Crossfade values are ~95%-blended durations (exponential approach, tau =
+ * duration/3). Stage-to-stage fades sit in the owner's 500–800ms band; the
+ * movement exit keeps the fast locomotion feel so controls stay responsive.
+ */
+export const IDLE_CHAIN_CONFIG = {
+  baseHoldSeconds: 6,
+  crossfadeSeconds: {
+    toOffensive: 0.6,
+    toHappy: 0.8,
+    exitToBase: 0.3,
+  },
+} as const;
+
+export type IdleChainStage = 'base' | 'offensive' | 'happy';
+
+export const IDLE_CHAIN_STAGE_CLIPS: Record<IdleChainStage, string> = {
+  base: 'Idle',
+  offensive: 'IdleOffensive',
+  happy: 'IdleHappy',
+} as const;
+
 // Character mesh name constants
 export const BODY_MESH_NAMES: readonly string[] = [
   'Astronaut_Suit_Body_Detail_01_Mesh',

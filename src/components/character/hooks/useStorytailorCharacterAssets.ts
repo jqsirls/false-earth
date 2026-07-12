@@ -179,7 +179,7 @@ function isRootPositionTrack(trackName: string): boolean {
 }
 
 function sanitizeClipTracks(clip: THREE.AnimationClip): void {
-  const locomotion = clip.name !== 'Idle';
+  const locomotion = !clip.name.startsWith('Idle');
   clip.tracks = clip.tracks.filter((track) => {
     if (!track.name.endsWith('.position')) return true;
     if (locomotion) return false;
@@ -252,7 +252,16 @@ export function useStorytailorCharacterAssets(
   uWorldPos?: { value: THREE.Vector3 },
   uFlightLift?: { value: number },
 ) {
-  const [meshData, idleAnim, walkAnim, runAnim, backAnim, flightAnim] = useGLTF(JQ_MODEL_PATHS);
+  const [
+    meshData,
+    idleAnim,
+    walkAnim,
+    runAnim,
+    backAnim,
+    flightAnim,
+    offensiveIdleAnim,
+    happyIdleAnim,
+  ] = useGLTF(JQ_MODEL_PATHS);
   const jqTextures = useJqTextureSets();
 
   const { scene, animations, helmets, helmetMaterials } = useMemo((): {
@@ -297,6 +306,8 @@ export function useStorytailorCharacterAssets(
       { src: runAnim, name: JQ_LOCOMOTION_CLIP_NAMES[2] },
       { src: backAnim, name: JQ_LOCOMOTION_CLIP_NAMES[3] },
       { src: flightAnim, name: JQ_LOCOMOTION_CLIP_NAMES[4] },
+      { src: offensiveIdleAnim, name: JQ_LOCOMOTION_CLIP_NAMES[5] },
+      { src: happyIdleAnim, name: JQ_LOCOMOTION_CLIP_NAMES[6] },
     ];
 
     const animations = animSources
@@ -315,7 +326,19 @@ export function useStorytailorCharacterAssets(
       helmets: [] as THREE.Mesh[],
       helmetMaterials: helmetMaterialsAcc,
     };
-  }, [meshData, idleAnim, walkAnim, runAnim, backAnim, flightAnim, uWorldPos, uFlightLift, jqTextures]);
+  }, [
+    meshData,
+    idleAnim,
+    walkAnim,
+    runAnim,
+    backAnim,
+    flightAnim,
+    offensiveIdleAnim,
+    happyIdleAnim,
+    uWorldPos,
+    uFlightLift,
+    jqTextures,
+  ]);
 
   return { scene, animations, helmets, helmetMaterials };
 }
