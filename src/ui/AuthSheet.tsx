@@ -11,6 +11,7 @@ import {
 import { usePrefersReducedMotion } from '../core/utils/reducedMotion';
 import { useFocusTrap } from '../core/hooks/useFocusTrap';
 import {
+  meadowClickableCss,
   meadowCrtCss,
   meadowFocusCss,
   meadowHudActionStyle,
@@ -353,6 +354,7 @@ export function AuthSheet() {
     <div style={meadowOverlayRootStyle(isMobile)}>
       <style>{`
         ${meadowFocusCss}
+        ${meadowClickableCss}
         ${meadowCrtCss}
         @keyframes meadowSlideUp {
           from { transform: translateY(12px); opacity: 0; }
@@ -504,7 +506,7 @@ export function AuthSheet() {
 
               <button
                 type="button"
-                className="meadow-focusable"
+                className="meadow-focusable meadow-clickable"
                 onClick={closeAuthSheet}
                 style={meadowHudQuietButtonStyle}
               >
@@ -586,7 +588,7 @@ export function AuthSheet() {
                 Didn&apos;t get it?{' '}
                 <button
                   type="button"
-                  className="meadow-focusable"
+                  className="meadow-focusable meadow-clickable"
                   disabled={resendCooldown > 0 || isSubmitting}
                   style={{
                     ...meadowHudLinkStyle(false),
@@ -607,7 +609,7 @@ export function AuthSheet() {
 
               <button
                 type="button"
-                className="meadow-focusable"
+                className="meadow-focusable meadow-clickable"
                 onClick={handleUseDifferentEmail}
                 style={meadowHudQuietButtonStyle}
               >
@@ -761,7 +763,7 @@ export function AuthSheet() {
 
               <button
                 type="button"
-                className="meadow-focusable"
+                className="meadow-focusable meadow-clickable"
                 onClick={closeAuthSheet}
                 style={meadowHudQuietButtonStyle}
               >

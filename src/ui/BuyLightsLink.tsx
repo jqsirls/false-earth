@@ -31,6 +31,7 @@ export function BuyLightsLink({ style }: { style?: CSSProperties }) {
         target="_blank"
         rel="noopener sponsored"
         data-testid="meadow-buy-lights"
+        className="meadow-clickable"
         style={{
           color: meadowModalTokens.accent,
           textDecoration: 'none',

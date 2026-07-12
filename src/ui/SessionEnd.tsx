@@ -3,7 +3,7 @@ import { useGameStore } from '../core/store/gameStore';
 import { useSessionTimerStore } from '../core/store/sessionTimerStore';
 import { useIsMeadowOverlayOpen } from '../core/hooks/useIsMeadowOverlayOpen';
 import { usePrefersReducedMotion } from '../core/utils/reducedMotion';
-import { meadowHudFontFamily, meadowModalTokens } from './meadowUiStyles';
+import { meadowClickableCss, meadowHudFontFamily, meadowModalTokens } from './meadowUiStyles';
 
 const FADE_IN_MS = 12_000;
 const FADE_IN_REDUCED_MS = 1_600;
@@ -89,6 +89,7 @@ export function SessionEnd() {
         boxSizing: 'border-box',
       }}
     >
+      <style>{meadowClickableCss}</style>
       <p
         style={{
           margin: 0,
@@ -111,7 +112,7 @@ export function SessionEnd() {
           extend();
           setPhase('returning');
         }}
-        className="meadow-focusable"
+        className="meadow-focusable meadow-clickable"
         style={{
           background: 'transparent',
           border: 'none',
@@ -122,9 +123,11 @@ export function SessionEnd() {
           cursor: 'pointer',
           padding: '12px 16px',
           opacity: textVisible ? 1 : 0,
+          // Inline transition overrides the meadow-clickable class transition,
+          // so the 400ms color ease rides along here (snaps under reduced motion).
           transition: reducedMotion
             ? `opacity 400ms ease ${phase === 'fading' ? 800 : 0}ms`
-            : `opacity ${TEXT_FADE_MS}ms ease ${phase === 'fading' ? TEXT_DELAY_MS + 1_200 : 0}ms`,
+            : `opacity ${TEXT_FADE_MS}ms ease ${phase === 'fading' ? TEXT_DELAY_MS + 1_200 : 0}ms, color 400ms ease`,
           pointerEvents: textVisible ? 'auto' : 'none',
         }}
       >

@@ -96,6 +96,50 @@ export const meadowIconPillStyle: CSSProperties = {
 
 
 
+/**
+ * Universal clickable-text affordance (owner-approved 2026-07-12): every
+ * clickable text element goes to #ffffff at 100% opacity on hover AND on
+ * :focus-visible (keyboard parity), with a 400ms ease transition in and out.
+ * Never underlined. Rest colors stay whatever each element already uses —
+ * only the hover/focus target and easing are standardized here.
+ *
+ * `!important` is deliberate: rest colors are inline React styles, and a
+ * stylesheet `!important` declaration is the only thing that beats them.
+ * Do NOT put this class on non-clickable text (e.g. the session countdown) —
+ * the affordance only means something if non-clickables never do it.
+ */
+export const meadowClickableCss = `
+
+  .meadow-clickable {
+
+    transition: color 400ms ease;
+
+    text-decoration: none;
+
+  }
+
+  .meadow-clickable:hover:not(:disabled),
+
+  .meadow-clickable:focus-visible {
+
+    color: #ffffff !important;
+
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+
+    .meadow-clickable {
+
+      transition: none;
+
+    }
+
+  }
+
+`;
+
+
+
 export const meadowFocusCss = `
 
   .meadow-focusable:focus-visible {

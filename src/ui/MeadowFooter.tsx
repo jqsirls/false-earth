@@ -4,6 +4,7 @@ import { useMeadowUiStore } from '../core/store/meadowUiStore';
 import type { LegalModalId } from './legalModalContent';
 import { trackLegalModalOpen } from './LegalModal';
 import {
+  meadowClickableCss,
   meadowFocusCss,
   meadowFooterLinkStyle,
   meadowHudFontFamily,
@@ -45,7 +46,7 @@ export function MeadowFooter() {
 
   return (
     <>
-      <style>{meadowFocusCss}</style>
+      <style>{`${meadowFocusCss}${meadowClickableCss}`}</style>
       <footer
         style={{
           position: 'fixed',
@@ -104,21 +105,9 @@ export function MeadowFooter() {
                 triggerRefs.current[item.id] = node;
               }}
               type="button"
-              className="meadow-focusable"
+              className="meadow-focusable meadow-clickable"
               style={{ ...meadowFooterLinkStyle, color: restColor }}
               onClick={() => openFromFooter(item.id)}
-              onMouseEnter={(event) => {
-                event.currentTarget.style.color = meadowModalTokens.accent;
-              }}
-              onMouseLeave={(event) => {
-                event.currentTarget.style.color = restColor;
-              }}
-              onFocus={(event) => {
-                event.currentTarget.style.color = meadowModalTokens.accent;
-              }}
-              onBlur={(event) => {
-                event.currentTarget.style.color = restColor;
-              }}
             >
               {item.label}
             </button>

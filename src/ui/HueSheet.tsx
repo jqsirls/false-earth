@@ -23,6 +23,7 @@ import {
   takeHueCallbackHandoff,
 } from '../lib/hueOAuth';
 import {
+  meadowClickableCss,
   meadowCrtCss,
   meadowFocusCss,
   meadowHudActionStyle,
@@ -392,6 +393,7 @@ export function HueSheet() {
     <div style={meadowOverlayRootStyle(isMobile)}>
       <style>{`
         ${meadowFocusCss}
+        ${meadowClickableCss}
         ${meadowCrtCss}
         @keyframes meadowHueSlideUp {
           from { transform: translateY(8px); opacity: 0; }
@@ -619,7 +621,7 @@ export function HueSheet() {
         {phase === 'connecting' ? (
           <button
             type="button"
-            className="meadow-focusable"
+            className="meadow-focusable meadow-clickable"
             onClick={() => {
               try {
                 popupRef.current?.close();
@@ -673,7 +675,7 @@ export function HueSheet() {
                 <button
                   key={room.id}
                   type="button"
-                  className="meadow-focusable"
+                  className="meadow-focusable meadow-clickable"
                   disabled={isBusy}
                   onClick={() => void handleSaveRoom(room)}
                   style={meadowHudQuietButtonStyle}
@@ -786,7 +788,7 @@ export function HueSheet() {
             >
               <button
                 type="button"
-                className="meadow-focusable"
+                className="meadow-focusable meadow-clickable"
                 disabled={isBusy}
                 onClick={() => void handleDisconnect()}
                 style={{
@@ -804,7 +806,7 @@ export function HueSheet() {
                 href={BUY_LIGHTS_URL}
                 target="_blank"
                 rel="noopener sponsored"
-                className="meadow-focusable"
+                className="meadow-focusable meadow-clickable"
                 data-testid="meadow-connected-get-lights"
                 style={{
                   ...meadowHudQuietButtonStyle,
@@ -821,7 +823,7 @@ export function HueSheet() {
 
         <button
           type="button"
-          className="meadow-focusable"
+          className="meadow-focusable meadow-clickable"
           onClick={closeHueSheet}
           style={meadowHudQuietButtonStyle}
         >

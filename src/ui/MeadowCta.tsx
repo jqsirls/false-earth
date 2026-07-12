@@ -13,7 +13,7 @@ import {
 } from '../analytics/meadowAnalytics';
 import { pauseMeadowBgm } from '../audio/meadowBgmPlayer';
 import { mintStoryHandoff } from '../api/meadowAuthApi';
-import { MEADOW_TOP_STRIP_HEIGHT_PX, meadowHudFontFamily } from './meadowUiStyles';
+import { MEADOW_TOP_STRIP_HEIGHT_PX, meadowClickableCss, meadowHudFontFamily } from './meadowUiStyles';
 
 const ctaStyle: CSSProperties = {
   display: 'inline-flex',
@@ -78,11 +78,13 @@ export function MeadowCta() {
 
   return (
     <>
-      <style>{ctaFocusStyle}</style>
+      <style>{`${ctaFocusStyle}${meadowClickableCss}`}</style>
       {/* Anchored to true viewport center — independent of the left counter
           and right lamp widths (left 50% + translateX, not a flex row). */}
+      {/* Label is already 100% white; the class adds the standard 400ms ease +
+          focus-visible parity without changing the pill's border/glow language. */}
       <a
-        className="meadow-cta"
+        className="meadow-cta meadow-clickable"
         href={href}
         target="_blank"
         rel="noopener"

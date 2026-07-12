@@ -7,6 +7,7 @@ import { usePrefersReducedMotion } from '../core/utils/reducedMotion';
 import { LEGAL_MODAL_CONTENT, type LegalModalId } from './legalModalContent';
 import { BuyLightsLink } from './BuyLightsLink';
 import {
+  meadowClickableCss,
   meadowCrtCss,
   meadowFocusCss,
   meadowHudActionStyle,
@@ -32,7 +33,8 @@ function renderParagraph(text: string) {
           href="https://storytailor.com/terms"
           target="_blank"
           rel="noopener noreferrer"
-          style={{ color: meadowModalTokens.accent, textDecoration: 'underline', textUnderlineOffset: '3px' }}
+          className="meadow-clickable"
+          style={{ color: meadowModalTokens.accent, textDecoration: 'none' }}
         >
           storytailor.com/terms
         </a>
@@ -50,7 +52,8 @@ function renderParagraph(text: string) {
           href="https://storytailor.com/privacy"
           target="_blank"
           rel="noopener noreferrer"
-          style={{ color: meadowModalTokens.accent, textDecoration: 'underline', textUnderlineOffset: '3px' }}
+          className="meadow-clickable"
+          style={{ color: meadowModalTokens.accent, textDecoration: 'none' }}
         >
           storytailor.com/privacy
         </a>
@@ -68,6 +71,7 @@ function renderParagraph(text: string) {
           href="https://mingjyunhung.com"
           target="_blank"
           rel="noopener noreferrer"
+          className="meadow-clickable"
           style={{ color: meadowModalTokens.accent, textDecoration: 'none' }}
         >
           mingjyunhung.com
@@ -81,6 +85,7 @@ function renderParagraph(text: string) {
     return (
       <a
         href={`mailto:${text}`}
+        className="meadow-clickable"
         style={{ color: meadowModalTokens.accent, textDecoration: 'none' }}
       >
         {text}
@@ -126,7 +131,7 @@ export function LegalModal() {
 
   return (
     <div style={meadowOverlayRootStyle(isMobile)}>
-      <style>{`${meadowFocusCss}${meadowCrtCss}`}</style>
+      <style>{`${meadowFocusCss}${meadowClickableCss}${meadowCrtCss}`}</style>
 
       <button
         type="button"
@@ -279,6 +284,7 @@ export function LegalModal() {
                         href={citation.url}
                         target="_blank"
                         rel="noopener noreferrer"
+                        className="meadow-clickable"
                         style={{
                           color: meadowModalTokens.accent,
                           textDecoration: 'none',
@@ -298,7 +304,7 @@ export function LegalModal() {
           <div style={{ marginTop: '18px' }}>
             <button
               type="button"
-              className="meadow-focusable"
+              className="meadow-focusable meadow-clickable"
               data-testid="meadow-about-connect-lights"
               aria-busy={isHueEntryChecking}
               onClick={() => void enterHueFlow(closeLegalModal)}
