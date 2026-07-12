@@ -22,7 +22,6 @@ import {
   int,
   uint,
   oneMinus,
-  smoothstep,
   step,
   select,
   atomicAdd,
@@ -32,21 +31,22 @@ import {
 
 import { uWindDir, uWindScale, uWindSpeed, uWindStrength, uWindFacing, uTime, uTerrainAmp, uTerrainFreq, uTerrainSeed } from "../../../core/shaders/uniforms";
 import type { LODBufferConfig } from "./config";
-import { DEFAULT_GRASS_AREA_SIZE, DEFAULT_BLADES_PER_AXIS } from "./config";
+import { DEFAULT_GRASS_AREA_SIZE } from "./config";
 import { calculateWindStrength, applyWindFacingAndNormalize } from "../../../core/shaders/windHelpers";
 import { getTerrainHeight, getTerrainNormal } from "../../../core/shaders/terrainHelpers";
 import { hash2to1, hash2to2 } from "./shaderHelpers";
+import { wgslSmoothstep } from "../../../core/shaders/wgslSmoothstep";
 
 export function createGrassCompute(
   grassData: ReturnType<typeof instancedArray>,
   lodConfigs: LODBufferConfig[],
-  uniforms: Record<string, any>
+  uniforms: Record<string, any>,
+  bladesPerAxis: number,
 ) {
 
-  // Constants imported from config
-  const BLADES_PER_AXIS = float(DEFAULT_BLADES_PER_AXIS);
+  const BLADES_PER_AXIS = float(bladesPerAxis);
   const GRASS_AREA_SIZE = float(DEFAULT_GRASS_AREA_SIZE);
-  const BLADE_SPACING = float(DEFAULT_GRASS_AREA_SIZE / DEFAULT_BLADES_PER_AXIS);
+  const BLADE_SPACING = float(DEFAULT_GRASS_AREA_SIZE / bladesPerAxis);
 
   // Build LOD routing chain factory function
   const createLODRoutingChainBuilder = (configs: LODBufferConfig[]) => {
@@ -137,8 +137,8 @@ export function createGrassCompute(
 
     const calculateWorldPosition = (idx: any) => {
       const uIdx = uint(idx);
-      const iGridX = uIdx.div( uint(DEFAULT_BLADES_PER_AXIS));
-      const iGridZ = uIdx.mod( uint(DEFAULT_BLADES_PER_AXIS));
+      const iGridX = uIdx.div(uint(bladesPerAxis));
+      const iGridZ = uIdx.mod(uint(bladesPerAxis));
       const offsetStepsX = round(uniforms.uGridIndex.x);
       const offsetStepsZ = round(uniforms.uGridIndex.y);
 
@@ -219,7 +219,7 @@ export function createGrassCompute(
         const d1 = sqrt(minD2);
         const d2 = sqrt(secondMinD2);
         const smoothness = uniforms.uClumpBlendSmoothness ?? float(0.2);
-        const centerFactor = smoothstep(float(0.0), smoothness, d2.sub(d1));
+        const centerFactor = wgslSmoothstep(float(0.0), smoothness, d2.sub(d1));
         const toCenter = bestDiff.mul(uniforms.uClumpSize);
         return { bestID, secondBestID, centerFactor, toCenter };
       };
@@ -275,7 +275,7 @@ export function createGrassCompute(
         vec2(0.0, 0.0),
         charDiff.div(charDist)
       );
-      const pushFactor = smoothstep(uniforms.uCharacterPushRadius, float(0.0), charDist);
+      const pushFactor = wgslSmoothstep(uniforms.uCharacterPushRadius, float(0.0), charDist);
       const activePush = step(float(0.001), pushFactor);
       const finalPushStrength = pushFactor.mul(uniforms.uCharacterPushAmount).mul(activePush);
       const pushVector = safeCharDir.mul(finalPushStrength);

@@ -3,7 +3,7 @@ import { useThree } from "@react-three/fiber";
 import * as THREE from "three/webgpu";
 import { createBladeGeometry, createGrassData } from "./core/grassGeometry";
 import { createGrassMaterial } from "./core/grassMaterial";
-import { DEFAULT_BLADES_PER_AXIS } from "./core/config";
+import { getEffectiveGrassBladeCount, getEffectiveGrassBladesPerAxis } from "../../core/utils/browserCaps";
 import type { LODBufferConfig } from "./core/config";
 
 interface GrassLODProps {
@@ -22,14 +22,14 @@ export function GrassLOD({
 }: GrassLODProps) {
 
   const { scene } = useThree();
-  const bladesPerAxis = DEFAULT_BLADES_PER_AXIS;
+  const bladesPerAxis = getEffectiveGrassBladesPerAxis();
 
   const mesh = useMemo(() => {
     if (!grassData || !lodBuffer) {
       return null;
     }
 
-    const grassBlades = bladesPerAxis * bladesPerAxis;
+    const grassBlades = getEffectiveGrassBladeCount();
 
     const bladeGeometry = createBladeGeometry(lodBuffer.segments);
     bladeGeometry.setIndirect(lodBuffer.drawBuffer);

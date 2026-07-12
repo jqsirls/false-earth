@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { DEFAULT_LOD_SEGMENTS_CONFIG, drawIndirectStructure, LODBufferConfig } from '../core/config'
 import { createBladeGeometry, createVisibleIndicesBuffer } from '../core/grassGeometry'
-import { DEFAULT_BLADES_PER_AXIS } from '../core/config'
+import { getEffectiveGrassBladeCount, getEffectiveGrassBladesPerAxis } from '../../../core/utils/browserCaps'
 import { storage } from 'three/tsl'
 import { createGrassData } from '../core/grassGeometry'
 import { createGrassCompute, createResetDrawBufferCompute } from '../core/grassCompute'
@@ -21,7 +21,8 @@ export function useGrassCompute(
     const grassDataRef = useRef<ReturnType<typeof createGrassData> | null>(null)
 
     useEffect(() => {
-        const grassBlades = DEFAULT_BLADES_PER_AXIS * DEFAULT_BLADES_PER_AXIS
+        const bladesPerAxis = getEffectiveGrassBladesPerAxis()
+        const grassBlades = getEffectiveGrassBladeCount()
         const grassData = createGrassData(grassBlades)
         grassDataRef.current = grassData
 
@@ -44,7 +45,7 @@ export function useGrassCompute(
         setLodBuffers(configs)
 
         computeRefs.current = {
-            main: createGrassCompute(grassData, configs, uniforms.compute).computeFn().compute(grassBlades).setName('GrassUpdate'),
+            main: createGrassCompute(grassData, configs, uniforms.compute, bladesPerAxis).computeFn().compute(grassBlades).setName('GrassUpdate'),
             reset: createResetDrawBufferCompute(configs).setName('GrassReset'),
         }
 
