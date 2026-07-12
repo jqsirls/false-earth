@@ -153,7 +153,7 @@ async function meadowHueRequest<T>(
       // Machine flag only — UI routes to the in-modal profile step on this code.
       return {
         ok: false,
-        message: 'Almost there — a few details for the lights.',
+        message: 'Almost there. A few details for the lights.',
         code: 'PROFILE_INCOMPLETE',
         status: response.status,
       };
@@ -306,6 +306,26 @@ export async function accentMeadowHueAmbient(
   const result = await meadowHueRequest<unknown>('', {
     method: 'POST',
     body: JSON.stringify({ action: 'ambientAccent', sessionId }),
+  });
+  if (!result.ok) return result;
+  return { ok: true, data: { applied: Boolean(asRecord(result.data)?.applied) } };
+}
+
+/**
+ * Activity hint: NUMBERS ONLY (0 = idle .. 1 = flying) — never colors. The server
+ * scales breath depth within its sensory clamps. Throttled by the caller (>=30s).
+ */
+export async function activityMeadowHueAmbient(
+  sessionId: string,
+  activity: number,
+): Promise<MeadowHueResult<{ applied: boolean }>> {
+  const result = await meadowHueRequest<unknown>('', {
+    method: 'POST',
+    body: JSON.stringify({
+      action: 'ambientActivity',
+      sessionId,
+      activity: Math.min(1, Math.max(0, activity)),
+    }),
   });
   if (!result.ok) return result;
   return { ok: true, data: { applied: Boolean(asRecord(result.data)?.applied) } };

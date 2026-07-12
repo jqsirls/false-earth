@@ -2,3 +2,9 @@
 node_modules/
 package-lock.json
 dist
+.vercel
+.env*
+
+# local verification artifacts
+.verify-*/
+.playwright-cli/

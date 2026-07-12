@@ -4,6 +4,7 @@ import { useGameStore } from './gameStore';
 import { useMeadowAuthStore } from './meadowAuthStore';
 import {
   accentMeadowHueAmbient,
+  activityMeadowHueAmbient,
   startMeadowHueAmbient,
   stopMeadowHueAmbient,
   stopMeadowHueAmbientOnHide,
@@ -25,6 +26,15 @@ import { meadowAuthHeaders } from '../../api/meadowAuthApi';
 
 const HEARTBEAT_MS = 13 * 60 * 1000;
 const ACCENT_THROTTLE_MS = 15000;
+// Activity hint: numbers only (0 idle, 0.5 walking, 1 flying). Sampled every 10s,
+// sent at most once per 30s and only when the level changes — never per-frame.
+const ACTIVITY_SAMPLE_MS = 10000;
+const ACTIVITY_SEND_MIN_GAP_MS = 30000;
+const ACTIVITY_MOVE_WINDOW_MS = 15000;
+const MOVEMENT_KEYS = new Set([
+  'w', 'a', 's', 'd',
+  'arrowup', 'arrowdown', 'arrowleft', 'arrowright',
+]);
 
 export type AmbientStageSetting = 'off' | HueAmbientStage;
 
@@ -40,6 +50,40 @@ interface AmbientHueState {
 let heartbeatTimer: number | null = null;
 let lastAccentAtMs = 0;
 let listenersBound = false;
+let activityTimer: number | null = null;
+let lastMovementKeyAtMs = 0;
+let lastSentActivity = 0;
+let lastActivitySentAtMs = 0;
+
+function currentActivityLevel(): number {
+  if (useGameStore.getState().isFlying) return 1;
+  return Date.now() - lastMovementKeyAtMs < ACTIVITY_MOVE_WINDOW_MS ? 0.5 : 0;
+}
+
+function clearActivityTimer(): void {
+  if (activityTimer !== null) {
+    window.clearInterval(activityTimer);
+    activityTimer = null;
+  }
+}
+
+function startActivityTimer(): void {
+  clearActivityTimer();
+  // Server initializes every session at activity 0.
+  lastSentActivity = 0;
+  lastActivitySentAtMs = 0;
+  activityTimer = window.setInterval(() => {
+    const { sessionId } = useAmbientHueStore.getState();
+    if (!sessionId || !canRun()) return;
+    const level = currentActivityLevel();
+    const now = Date.now();
+    if (level === lastSentActivity) return;
+    if (now - lastActivitySentAtMs < ACTIVITY_SEND_MIN_GAP_MS) return;
+    lastSentActivity = level;
+    lastActivitySentAtMs = now;
+    void activityMeadowHueAmbient(sessionId, level).catch(() => undefined);
+  }, ACTIVITY_SAMPLE_MS);
+}
 
 function clearHeartbeat(): void {
   if (heartbeatTimer !== null) {
@@ -82,6 +126,7 @@ async function startSession(stage: HueAmbientStage): Promise<void> {
     notice: null,
   });
 
+  startActivityTimer();
   clearHeartbeat();
   heartbeatTimer = window.setInterval(() => {
     const { stage: currentStage } = useAmbientHueStore.getState();
@@ -92,6 +137,7 @@ async function startSession(stage: HueAmbientStage): Promise<void> {
 
 async function stopSession(silent = false): Promise<void> {
   clearHeartbeat();
+  clearActivityTimer();
   const { sessionId } = useAmbientHueStore.getState();
   useAmbientHueStore.setState({ stage: 'off', sessionId: null, isBusy: false, notice: null });
   if (!sessionId) return;
@@ -124,6 +170,18 @@ export function bindAmbientHueListeners(): void {
   if (listenersBound || typeof window === 'undefined') return;
   listenersBound = true;
 
+  // Passive movement sensing for the activity hint — read-only listeners, no
+  // interaction with the character/camera systems.
+  window.addEventListener(
+    'keydown',
+    (event) => {
+      if (MOVEMENT_KEYS.has(event.key.toLowerCase())) {
+        lastMovementKeyAtMs = Date.now();
+      }
+    },
+    { passive: true },
+  );
+
   gameEvents.on('orb:gathered', () => {
     const { sessionId } = useAmbientHueStore.getState();
     if (!sessionId || !canRun()) return;
@@ -138,6 +196,7 @@ export function bindAmbientHueListeners(): void {
     if (!sessionId) return;
     stopMeadowHueAmbientOnHide(sessionId, meadowAuthHeaders());
     clearHeartbeat();
+    clearActivityTimer();
     useAmbientHueStore.setState({ sessionId: null });
   };
 
