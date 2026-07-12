@@ -26,7 +26,9 @@ import {
   meadowCrtCss,
   meadowFocusCss,
   meadowHudActionStyle,
+  meadowHudFontFamily,
   meadowHudLabelStyle,
+  meadowModalTokens,
   meadowHudQuietButtonStyle,
   meadowOverlayRootStyle,
   meadowSheetBackdropStyle,
@@ -767,13 +769,16 @@ export function HueSheet() {
             {ambientNotice?.includes('no color lights') ? (
               <BuyLightsLink style={{ marginBottom: '12px' }} />
             ) : null}
+            {/* Centered action row, footer-link grammar: A · B. Tighter
+                letter-spacing on mobile so 390px holds one row. */}
             <div
               style={{
                 display: 'flex',
                 alignItems: 'baseline',
-                justifyContent: 'space-between',
-                gap: '16px',
+                justifyContent: 'center',
+                gap: '10px',
                 marginBottom: '10px',
+                whiteSpace: 'nowrap',
               }}
             >
               <button
@@ -784,10 +789,14 @@ export function HueSheet() {
                 style={{
                   ...meadowHudQuietButtonStyle,
                   width: 'auto',
+                  letterSpacing: isMobile ? '0.05em' : '0.08em',
                 }}
               >
                 Disconnect Hue
               </button>
+              <span aria-hidden="true" style={{ color: meadowModalTokens.muted, fontFamily: meadowHudFontFamily, fontSize: '0.65rem' }}>
+                ·
+              </span>
               <a
                 href={BUY_LIGHTS_URL}
                 target="_blank"
@@ -797,8 +806,8 @@ export function HueSheet() {
                 style={{
                   ...meadowHudQuietButtonStyle,
                   width: 'auto',
-                  textDecoration: 'underline',
-                  textUnderlineOffset: '3px',
+                  letterSpacing: isMobile ? '0.05em' : '0.08em',
+                  textDecoration: 'none',
                 }}
               >
                 Get Hue Lights

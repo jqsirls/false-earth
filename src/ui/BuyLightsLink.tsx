@@ -33,8 +33,7 @@ export function BuyLightsLink({ style }: { style?: CSSProperties }) {
         data-testid="meadow-buy-lights"
         style={{
           color: meadowModalTokens.accent,
-          textDecoration: 'underline',
-          textUnderlineOffset: '3px',
+          textDecoration: 'none',
         }}
       >
         Get Philips Hue

@@ -185,6 +185,23 @@ async function run() {
       linkBox && discBox && Math.abs(linkBox.y - discBox.y) < 14,
       linkBox && discBox ? `dy ${(linkBox.y - discBox.y).toFixed(1)}` : 'no box',
     );
+    check(
+      'connected link not underlined',
+      (await link.evaluate((el) => getComputedStyle(el).textDecorationLine)) === 'none',
+      '',
+    );
+    const row = await link.evaluate((el) => {
+      const parent = el.parentElement;
+      const panel = el.closest('.meadow-hue-panel');
+      const rowBox = parent.getBoundingClientRect();
+      const panelBox = panel.getBoundingClientRect();
+      return {
+        hasSeparator: (parent.textContent ?? '').includes('\u00b7'),
+        centerDelta: Math.abs(rowBox.left + rowBox.width / 2 - (panelBox.left + panelBox.width / 2)),
+      };
+    });
+    check('action row uses the \u00b7 separator', row.hasSeparator, '');
+    check('action row centered in the sheet', row.centerDelta < 10, `delta ${row.centerDelta.toFixed(1)}px`);
 
     // Glow: off by default.
     let glow = await glowState(page);
@@ -280,6 +297,12 @@ async function run() {
     check('mobile link rel/target', attrs.target === '_blank' && /noopener/.test(attrs.rel) && /sponsored/.test(attrs.rel), `${attrs.target} / ${attrs.rel}`);
     const linkBox = await link.boundingBox();
     check('mobile link inside viewport', linkBox && linkBox.x >= 0 && linkBox.x + linkBox.width <= vw + 0.5, linkBox ? `x ${linkBox.x.toFixed(1)} w ${linkBox.width.toFixed(1)}` : 'no box');
+    const discBoxM = await page.getByRole('button', { name: 'Disconnect Hue' }).boundingBox();
+    check(
+      'mobile action row holds one row',
+      linkBox && discBoxM && Math.abs(linkBox.y - discBoxM.y) < 14,
+      linkBox && discBoxM ? `dy ${(linkBox.y - discBoxM.y).toFixed(1)}` : 'no box',
+    );
     const radios = page.locator('[role="radiogroup"] [role="radio"]');
     const stageRows = await radios.evaluateAll(
       (els) => new Set(els.map((el) => el.getBoundingClientRect().top.toFixed(0))).size,
