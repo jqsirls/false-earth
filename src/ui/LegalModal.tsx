@@ -68,7 +68,7 @@ function renderParagraph(text: string) {
           href="https://mingjyunhung.com"
           target="_blank"
           rel="noopener noreferrer"
-          style={{ color: meadowModalTokens.accent, textDecoration: 'underline', textUnderlineOffset: '3px' }}
+          style={{ color: meadowModalTokens.accent, textDecoration: 'none' }}
         >
           mingjyunhung.com
         </a>
@@ -81,7 +81,7 @@ function renderParagraph(text: string) {
     return (
       <a
         href={`mailto:${text}`}
-        style={{ color: meadowModalTokens.accent, textDecoration: 'underline', textUnderlineOffset: '3px' }}
+        style={{ color: meadowModalTokens.accent, textDecoration: 'none' }}
       >
         {text}
       </a>
@@ -281,8 +281,7 @@ export function LegalModal() {
                         rel="noopener noreferrer"
                         style={{
                           color: meadowModalTokens.accent,
-                          textDecoration: 'underline',
-                          textUnderlineOffset: '3px',
+                          textDecoration: 'none',
                         }}
                       >
                         {citation.label}

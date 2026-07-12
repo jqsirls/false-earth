@@ -216,7 +216,7 @@ export const LEGAL_MODAL_CONTENT: Record<LegalModalId, LegalModalContent> = {
       {
         heading: 'NO STREAKS, NO SCORES, NOTHING OWED',
         paragraphs: [
-          'Decades of motivation research show that pressure and external rewards crowd out the quiet, self-chosen kind of engagement. So the count fades, nothing persists between visits, and the meadow never asks you to come back.',
+          'Decades of motivation research show that pressure and external rewards crowd out the quiet, self-chosen kind of engagement. So the count is a quiet readout that keeps to itself: it appears after your first gathered light, holds for the visit, and is forgotten when you leave. Nothing persists between visits, and the meadow never asks you to come back.',
         ],
         citations: [
           {

@@ -80,19 +80,15 @@ export function MeadowFooter() {
               style={{ ...meadowFooterLinkStyle, color: restColor }}
               onClick={() => openFromFooter(item.id)}
               onMouseEnter={(event) => {
-                event.currentTarget.style.textDecoration = 'underline';
                 event.currentTarget.style.color = meadowModalTokens.accent;
               }}
               onMouseLeave={(event) => {
-                event.currentTarget.style.textDecoration = 'none';
                 event.currentTarget.style.color = restColor;
               }}
               onFocus={(event) => {
-                event.currentTarget.style.textDecoration = 'underline';
                 event.currentTarget.style.color = meadowModalTokens.accent;
               }}
               onBlur={(event) => {
-                event.currentTarget.style.textDecoration = 'none';
                 event.currentTarget.style.color = restColor;
               }}
             >

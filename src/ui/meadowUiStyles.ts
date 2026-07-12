@@ -508,9 +508,7 @@ export const meadowHudLinkStyle = (active: boolean): CSSProperties => ({
 
   cursor: 'pointer',
 
-  textDecoration: active ? 'underline' : 'none',
-
-  textUnderlineOffset: '4px',
+  textDecoration: 'none',
 
 });
 
