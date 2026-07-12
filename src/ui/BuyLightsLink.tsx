@@ -1,8 +1,12 @@
 import type { CSSProperties } from 'react';
 import { meadowHudFontFamily, meadowModalTokens } from './meadowUiStyles';
 
-/** Amazon affiliate link for visitors who want to try the lights but have none. */
-export const BUY_LIGHTS_URL = 'https://amzn.to/4wDqjPl';
+/**
+ * Amazon affiliate link for visitors who want to try the lights but have none.
+ * Canonical everywhere (owner decision 2026-07-11): Amazon Hue store page so
+ * buyers choose their own starter set.
+ */
+export const BUY_LIGHTS_URL = 'https://amzn.to/4vw54hn';
 
 const lineStyle: CSSProperties = {
   margin: 0,

@@ -35,7 +35,7 @@ import {
   meadowSheetTitleStyle,
 } from './meadowUiStyles';
 import { useHueStatusStore } from '../core/store/hueStatusStore';
-import { BuyLightsLink } from './BuyLightsLink';
+import { BuyLightsLink, BUY_LIGHTS_URL } from './BuyLightsLink';
 
 type HueSheetPhase =
   | 'loading'
@@ -619,18 +619,43 @@ export function HueSheet() {
             {ambientNotice?.includes('no color lights') ? (
               <BuyLightsLink style={{ marginBottom: '12px' }} />
             ) : null}
-            <button
-              type="button"
-              className="meadow-focusable"
-              disabled={isBusy}
-              onClick={() => void handleDisconnect()}
+            <div
               style={{
-                ...meadowHudQuietButtonStyle,
+                display: 'flex',
+                alignItems: 'baseline',
+                justifyContent: 'space-between',
+                gap: '16px',
                 marginBottom: '10px',
               }}
             >
-              Disconnect Hue
-            </button>
+              <button
+                type="button"
+                className="meadow-focusable"
+                disabled={isBusy}
+                onClick={() => void handleDisconnect()}
+                style={{
+                  ...meadowHudQuietButtonStyle,
+                  width: 'auto',
+                }}
+              >
+                Disconnect Hue
+              </button>
+              <a
+                href={BUY_LIGHTS_URL}
+                target="_blank"
+                rel="noopener sponsored"
+                className="meadow-focusable"
+                data-testid="meadow-connected-get-lights"
+                style={{
+                  ...meadowHudQuietButtonStyle,
+                  width: 'auto',
+                  textDecoration: 'underline',
+                  textUnderlineOffset: '3px',
+                }}
+              >
+                Get Hue Lights
+              </a>
+            </div>
           </>
         ) : null}
 
