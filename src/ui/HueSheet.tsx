@@ -37,6 +37,18 @@ import {
 import { useHueStatusStore } from '../core/store/hueStatusStore';
 import { BuyLightsLink, BUY_LIGHTS_URL } from './BuyLightsLink';
 
+/**
+ * Ambient glow intensity per stage — mirrors the room lights behind the sheet.
+ * GENTLE barely-there, VIVID clearly present, FULL deepest. Icing only: it must
+ * never compete with the sheet content.
+ */
+const GLOW_OPACITY: Record<AmbientStageSetting, number> = {
+  off: 0,
+  gentle: 0.28,
+  vivid: 0.55,
+  full: 0.8,
+};
+
 type HueSheetPhase =
   | 'loading'
   | 'disconnected'
@@ -309,6 +321,17 @@ export function HueSheet() {
 
   if (!isOpen) return null;
 
+  // Wrapper owns the sheet's footprint so the glow layer can bleed past the
+  // panel edges without being clipped by the panel's own overflow scroll.
+  const glowWrapperStyle: CSSProperties = isMobile
+    ? { position: 'relative', width: '100%', pointerEvents: 'none' }
+    : {
+        position: 'relative',
+        width: 'min(360px, calc(100vw - 32px))',
+        maxWidth: '100%',
+        pointerEvents: 'none',
+      };
+
   const panelStyle: CSSProperties = isMobile
     ? {
         ...meadowSheetPanelBase,
@@ -321,12 +344,18 @@ export function HueSheet() {
       }
     : {
         ...meadowSheetPanelBase,
-        width: 'min(360px, calc(100vw - 32px))',
+        width: '100%',
         maxHeight: '72vh',
         padding: '24px',
         overflowY: 'auto',
         animation: reducedMotion ? 'meadowHueFadeIn 160ms ease' : 'meadowHueSlideIn 220ms ease-out',
       };
+
+  // Glow mirrors the room: active only while a connected session stage is on.
+  // Store resets (OFF, tab hide, sign-out, disconnect) fade it out via CSS.
+  const glowStage: AmbientStageSetting =
+    phase === 'connected' && profile?.connected && !profile.disabled ? ambientStage : 'off';
+  const glowOpacity = GLOW_OPACITY[glowStage];
 
   const statusLabel = formatHueStatusLabel(profile);
   const showRoomPicker =
@@ -349,8 +378,18 @@ export function HueSheet() {
           from { opacity: 0; }
           to { opacity: 1; }
         }
+        @keyframes meadowHueGlowDrift {
+          0% { filter: blur(30px) hue-rotate(0deg); }
+          50% { filter: blur(30px) hue-rotate(45deg); }
+          100% { filter: blur(30px) hue-rotate(0deg); }
+        }
+        .meadow-hue-glow {
+          animation: meadowHueGlowDrift 21s ease-in-out infinite;
+          will-change: filter, opacity;
+        }
         @media (prefers-reduced-motion: reduce) {
           .meadow-hue-panel { animation: meadowHueFadeIn 1ms linear !important; }
+          .meadow-hue-glow { animation: none !important; }
         }
       `}</style>
 
@@ -361,7 +400,28 @@ export function HueSheet() {
         onClick={closeHueSheet}
       />
 
-      <section
+      <div style={glowWrapperStyle}>
+        {/* Meadow-light glow behind the sheet — deep blue → lavender → rose,
+            breathing at the lights' slow rhythm. Pure CSS; no re-renders. */}
+        <div
+          aria-hidden="true"
+          className="meadow-hue-glow"
+          data-testid="meadow-hue-glow"
+          data-glow-stage={glowStage}
+          style={{
+            position: 'absolute',
+            inset: '-22px',
+            borderRadius: '28px',
+            background:
+              'linear-gradient(140deg, rgba(30, 58, 138, 0.95) 0%, rgba(139, 124, 246, 0.85) 45%, rgba(232, 115, 158, 0.9) 100%)',
+            filter: 'blur(30px)',
+            opacity: glowOpacity,
+            transition: 'opacity 2000ms ease',
+            pointerEvents: 'none',
+            zIndex: 0,
+          }}
+        />
+        <section
         ref={panelRef}
         className="meadow-hue-panel meadow-crt-panel meadow-crt-warmup meadow-focusable"
         role="dialog"
@@ -667,7 +727,8 @@ export function HueSheet() {
         >
           Close
         </button>
-      </section>
+        </section>
+      </div>
     </div>
   );
 }
