@@ -19,7 +19,6 @@ import {
   instanceIndex,
   instancedArray,
   fract,
-  smoothstep,
   mx_noise_float,
   remapClamp,
   cross,
@@ -46,6 +45,7 @@ import {
 } from "@core";
 import { getTerrainHeight, getTerrainNormal, rotateAxis } from "../../../core/shaders/terrainHelpers";
 import { calculateWindStrength, safeNormalize } from "../../../core/shaders/windHelpers";
+import { wgslSmoothstep } from "../../../core/shaders/wgslSmoothstep";
 import { uWindDir, uWindScale, uWindSpeed, uWindStrength, uTerrainAmp, uTerrainFreq, uTerrainSeed, uTime, uGlobalHueShift } from "../../../core/shaders/uniforms";
 
 /**
@@ -103,7 +103,7 @@ export function createVATMaterial(
 
     const dist = length(toChar);
     const lookRadius = float(3.0);
-    const lookFactor = smoothstep(lookRadius, float(0.5), dist);
+    const lookFactor = wgslSmoothstep(lookRadius, float(0.5), dist);
 
     const rawBlend = mix(randDir, charDir, lookFactor.mul(0.2));
     const safeBlend = rawBlend.add(1e-6);
@@ -140,7 +140,7 @@ export function createVATMaterial(
 
     let worldPos = positionLocal.add(localPos).add(instancePos);
 
-    const heightFactor = smoothstep(float(0.0), float(0.08), vatPos.y.abs()).mul(0.2);
+    const heightFactor = wgslSmoothstep(float(0.0), float(0.08), vatPos.y.abs()).mul(0.2);
 
     const windDirNorm = safeNormalize(uWindDir);
     const windStrength = calculateWindStrength(instancePos.xz,
@@ -160,7 +160,7 @@ export function createVATMaterial(
     const radius = float(1);
     const maxPush = float(2.0);
 
-    const pushFactor = smoothstep(radius, float(0.2), dist);
+    const pushFactor = wgslSmoothstep(radius, float(0.2), dist);
     const pushDir = normalize(dirToFlower);
     const pushVec = vec3(pushDir.x, float(-0.3), pushDir.y).mul(pushFactor).mul(maxPush).mul(heightFactor);
     worldPos = worldPos.add(pushVec);
@@ -181,7 +181,7 @@ export function createVATMaterial(
     let petalCol = texture(colorTex, uvCord).rgb;
     const seed2 = fract(seed.mul(87.65));
 
-    const hueShift = seed2.mul(float(uniforms.uHueRandomness).add(smoothstep(float(0.6), float(1.0), progress).mul(0.03))).add(uniforms.uHueShift);
+    const hueShift = seed2.mul(float(uniforms.uHueRandomness).add(wgslSmoothstep(float(0.6), float(1.0), progress).mul(0.03))).add(uniforms.uHueShift);
     const valueShift = fract(seed2.mul(25.0)).mul(1);
     petalCol = shiftHSV(petalCol, vec3(hueShift, 0.0, valueShift));
     const darker = shiftHSV(petalCol, vec3(0.0, 0.0, -0.1));
@@ -194,7 +194,7 @@ export function createVATMaterial(
       .add(stemColor.mul(isLeaf));
 
     const hueShifted = shiftHSV(finalColor, vec3(uGlobalHueShift, float(0.0), float(0.0)));
-    return vec4(hueShifted.mul(smoothstep(0.95, 0.8, progress)), 1.0);
+    return vec4(hueShifted.mul(wgslSmoothstep(0.95, 0.8, progress)), 1.0);
   })();
 
   const calculateVatNormalView = Fn(() => {
@@ -231,7 +231,7 @@ export function createVATMaterial(
     const u = mix(uv(0).x, uv(0).y, isPetal);
     const animSpeed = mix(-0.2, -0.7, fract(seed.mul(35.8)));
     const t = uTime.add(seed.mul(123.0)).mul(animSpeed);
-    const wave = smoothstep(0.3, 0.0, abs(u.sub(mix(-0.2, 1.2, fract(t)))));
+    const wave = wgslSmoothstep(0.3, 0.0, abs(u.sub(mix(-0.2, 1.2, fract(t)))));
     const glow = wave.mul(uniforms.uEmissiveIntensity);
 
     return uniforms.uEmissiveColor.mul(glow.add(fresnel));

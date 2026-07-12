@@ -12,13 +12,13 @@ import {
   uv,
   float,
   mix,
-  smoothstep,
   uniform,
   abs,
 } from "three/tsl";
 import { uGlobalHueShift } from "../../core/shaders/uniforms";
 import { shiftHSV } from "../../../packages/three-core/src/utils/tsl/color";
 import { BeamSceneContext } from "../../app/App";
+import { wgslSmoothstep } from "../../core/shaders/wgslSmoothstep";
 function createCosmicBeamMaterial() {
   const material = new THREE.MeshBasicNodeMaterial();
   material.depthWrite = true;
@@ -32,7 +32,7 @@ function createCosmicBeamMaterial() {
     const vUv = uv();
 
     const distFromCenter = abs(vUv.x.sub(0.5)).mul(2.0);
-    const coreBeam = smoothstep(float(0.4), float(0.0), distFromCenter);
+    const coreBeam = wgslSmoothstep(float(0.4), float(0.0), distFromCenter);
 
     const finalColor = mix(uGlowColor, uCoreColor, coreBeam);
     const hueShifted = shiftHSV(
@@ -40,8 +40,8 @@ function createCosmicBeamMaterial() {
       vec3(uGlobalHueShift, float(0.0), float(0.0))
     );
 
-    const fade = smoothstep(float(0.0), float(0.2), vUv.y).mul(
-      smoothstep(float(1.0), float(0.8), vUv.y)
+    const fade = wgslSmoothstep(float(0.0), float(0.2), vUv.y).mul(
+      wgslSmoothstep(float(1.0), float(0.8), vUv.y)
     );
 
     return vec4(hueShifted, fade);
