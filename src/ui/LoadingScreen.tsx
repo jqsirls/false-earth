@@ -1,7 +1,8 @@
 import { useProgress } from "@react-three/drei";
 import { useEffect, useRef, useState, useMemo } from "react";
 import { useGameStore } from "../core/store/gameStore";
-import { useSessionTimerStore, SESSION_TIMER_CHOICES_MIN, sessionTimerLabel, sessionTimerEchoLabel } from "../core/store/sessionTimerStore";
+import { useSessionTimerStore, sessionTimerEchoLabel } from "../core/store/sessionTimerStore";
+import { SessionTimerPresetRow } from "./SessionTimerPresetRow";
 import { meadowClickableCss, meadowHudFontFamily } from "./meadowUiStyles";
 import { MEADOW_LOGO_ALT, MEADOW_LOGO_PATH, MEADOW_PLAYLIST_TRACKS, resolveMeadowAsset } from "../config/meadow";
 import { resumeMeadowAudioContext } from "../config/meadowAudio";
@@ -261,33 +262,13 @@ export function LoadingScreen() {
                             }}
                         >
                             {isTimerExpanded ? (
-                                [null, ...SESSION_TIMER_CHOICES_MIN].map((minutes) => {
-                                    const isSelected = selectedMinutes === minutes;
-                                    return (
-                                        <button
-                                            key={minutes ?? 'off'}
-                                            type="button"
-                                            className="meadow-clickable"
-                                            onClick={() => {
-                                                setSelectedMinutes(minutes);
-                                                setIsTimerExpanded(false);
-                                            }}
-                                            aria-pressed={isSelected}
-                                            style={{
-                                                background: 'transparent',
-                                                border: 'none',
-                                                padding: '6px 2px',
-                                                fontFamily: 'inherit',
-                                                fontSize: 'inherit',
-                                                letterSpacing: 'inherit',
-                                                cursor: 'pointer',
-                                                color: isSelected ? '#fff' : 'rgba(255,255,255,0.45)',
-                                            }}
-                                        >
-                                            {sessionTimerLabel(minutes)}
-                                        </button>
-                                    );
-                                })
+                                <SessionTimerPresetRow
+                                    selectedMinutes={selectedMinutes}
+                                    onSelect={(minutes) => {
+                                        setSelectedMinutes(minutes);
+                                        setIsTimerExpanded(false);
+                                    }}
+                                />
                             ) : (
                                 <button
                                     type="button"

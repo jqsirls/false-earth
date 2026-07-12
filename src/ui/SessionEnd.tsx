@@ -4,6 +4,7 @@ import { useSessionTimerStore } from '../core/store/sessionTimerStore';
 import { useIsMeadowOverlayOpen } from '../core/hooks/useIsMeadowOverlayOpen';
 import { usePrefersReducedMotion } from '../core/utils/reducedMotion';
 import { meadowClickableCss, meadowHudFontFamily, meadowModalTokens } from './meadowUiStyles';
+import { SessionTimerPresetRow } from './SessionTimerPresetRow';
 
 const FADE_IN_MS = 12_000;
 const FADE_IN_REDUCED_MS = 1_600;
@@ -15,13 +16,18 @@ type Phase = 'idle' | 'fading' | 'returning';
 
 /**
  * Soft session ending: when the optional timer expires, the meadow fades
- * slowly toward black while the music keeps playing. One quiet option brings
- * it back. Never interrupts an open sheet or modal; waits for it to close.
+ * slowly toward black while the music keeps playing. The same preset row
+ * from the START gate lets the user choose a new limit (or NONE to stay
+ * untimed); any choice returns them to the meadow. There is deliberately
+ * no explicit "leave" button: closing the tab is leaving, and this quiet
+ * fade screen should not grow chrome.
+ * Never interrupts an open sheet or modal; waits for it to close.
  */
 export function SessionEnd() {
   const isGameStarted = useGameStore((state) => state.isGameStarted);
   const endsAt = useSessionTimerStore((state) => state.endsAt);
-  const extend = useSessionTimerStore((state) => state.extend);
+  const selectedMinutes = useSessionTimerStore((state) => state.selectedMinutes);
+  const restart = useSessionTimerStore((state) => state.restart);
   const isOverlayOpen = useIsMeadowOverlayOpen();
   const reducedMotion = usePrefersReducedMotion();
 
@@ -106,33 +112,50 @@ export function SessionEnd() {
       >
         Your time in the meadow is up.
       </p>
-      <button
-        type="button"
-        onClick={() => {
-          extend();
-          setPhase('returning');
-        }}
-        className="meadow-focusable meadow-clickable"
+      <div
         style={{
-          background: 'transparent',
-          border: 'none',
-          color: meadowModalTokens.mutedBright,
-          fontFamily: meadowHudFontFamily,
-          fontSize: '0.75rem',
-          letterSpacing: '0.18em',
-          cursor: 'pointer',
-          padding: '12px 16px',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '18px',
           opacity: textVisible ? 1 : 0,
-          // Inline transition overrides the meadow-clickable class transition,
-          // so the 400ms color ease rides along here (snaps under reduced motion).
           transition: reducedMotion
             ? `opacity 400ms ease ${phase === 'fading' ? 800 : 0}ms`
-            : `opacity ${TEXT_FADE_MS}ms ease ${phase === 'fading' ? TEXT_DELAY_MS + 1_200 : 0}ms, color 400ms ease`,
+            : `opacity ${TEXT_FADE_MS}ms ease ${phase === 'fading' ? TEXT_DELAY_MS + 1_200 : 0}ms`,
           pointerEvents: textVisible ? 'auto' : 'none',
         }}
       >
-        [ STAY A LITTLE LONGER ]
-      </button>
+        <p
+          style={{
+            margin: 0,
+            fontFamily: meadowHudFontFamily,
+            fontSize: '0.75rem',
+            letterSpacing: '0.18em',
+            color: meadowModalTokens.mutedBright,
+          }}
+        >
+          Stay a little longer?
+        </p>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            gap: '16px',
+            fontFamily: meadowHudFontFamily,
+            fontSize: '0.8rem',
+            letterSpacing: '0.12em',
+          }}
+        >
+          <SessionTimerPresetRow
+            selectedMinutes={selectedMinutes}
+            onSelect={(minutes) => {
+              restart(minutes);
+              setPhase('returning');
+            }}
+          />
+        </div>
+      </div>
     </div>
   );
 }

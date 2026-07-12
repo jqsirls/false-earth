@@ -18,8 +18,6 @@ export function sessionTimerEchoLabel(minutes: number | null): string {
   if (minutes % 60 === 0) return `TIME LIMIT ${minutes / 60}H`;
   return `TIME LIMIT ${minutes} MIN`;
 }
-export const SESSION_TIMER_EXTENSION_MIN = 10;
-
 interface SessionTimerState {
   /** Splash selection. null = no timer (default). Session-only, never persisted. */
   selectedMinutes: number | null;
@@ -31,8 +29,11 @@ interface SessionTimerState {
   /** Arm the timer at START from the splash selection. */
   startTimer: () => void;
 
-  /** Stay a little longer: gentle default extension from now. */
-  extend: () => void;
+  /**
+   * Soft-ending re-choice: arm a fresh limit from now, or NONE to stay
+   * untimed. Replaces the old fixed +10-minute extend.
+   */
+  restart: (minutes: number | null) => void;
 
   clear: () => void;
 }
@@ -62,7 +63,14 @@ export const useSessionTimerStore = create<SessionTimerState>((set, get) => ({
     set({ endsAt: Date.now() + durationMs });
   },
 
-  extend: () => set({ endsAt: Date.now() + SESSION_TIMER_EXTENSION_MIN * 60_000 }),
+  restart: (minutes) => {
+    if (!minutes) {
+      set({ selectedMinutes: null, endsAt: null });
+      return;
+    }
+    const durationMs = testDurationMs() ?? minutes * 60_000;
+    set({ selectedMinutes: minutes, endsAt: Date.now() + durationMs });
+  },
 
   clear: () => set({ endsAt: null, selectedMinutes: null }),
 }));
