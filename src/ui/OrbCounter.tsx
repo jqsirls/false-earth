@@ -38,7 +38,7 @@ const COUNTER_CSS = `
 `;
 
 /**
- * Session-only gather readout in the suit-HUD idiom: `GATHERED 07`, top-left.
+ * Session-only gather readout in the suit-HUD idiom: `ORBS 07`, top-left.
  * Hidden until the first collect, then persistent at full-white rest opacity.
  * Each collect accents it with one soft glitch beat, then it settles.
  * Perfectly static while idle. No milestones, no persistence across visits.
@@ -70,7 +70,7 @@ export function OrbCounter() {
 
   if (!isControlEnabled || count < 1) return null;
 
-  const label = `GATHERED ${String(count).padStart(2, '0')}`;
+  const label = `ORBS ${String(count).padStart(2, '0')}`;
 
   return (
     <>
