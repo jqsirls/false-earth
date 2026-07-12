@@ -555,7 +555,7 @@ export function HueSheet() {
         {phase === 'loading' || phase === 'connecting' ? (
           <p style={{ margin: '0 0 16px', fontSize: '0.68rem', lineHeight: 1.75, color: 'rgba(255,255,255,0.55)', letterSpacing: '0.03em', textAlign: 'center' }}>
             {phase === 'connecting'
-              ? 'Finish sign-in in the Philips Hue window — this sheet updates on its own.'
+              ? 'Finish sign-in in the Philips Hue window. This sheet updates on its own.'
               : 'Checking your lights…'}
           </p>
         ) : null}
@@ -590,7 +590,7 @@ export function HueSheet() {
         {phase === 'profile_incomplete' ? (
           <>
             <p style={{ margin: '0 0 16px', fontSize: '0.68rem', lineHeight: 1.75, color: 'rgba(255,255,255,0.62)', letterSpacing: '0.03em', textAlign: 'center' }}>
-              Almost there — a few details for the lights.
+              Almost there. A few details for the lights.
             </p>
             <button
               type="button"
