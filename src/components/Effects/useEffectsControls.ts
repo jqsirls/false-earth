@@ -3,7 +3,12 @@ import { useControls } from 'leva';
 import { useGameStore, CameraMode } from '../../core/store/gameStore';
 import { usePrefersReducedMotion } from '../../core/utils/reducedMotion';
 import { shouldDisableHeavyPostProcessing } from '../../core/utils/browserCaps';
-import { MEADOW_TONE_EXPOSURE } from '../../config/meadowVisualGrade';
+import {
+  MEADOW_BLOOM_RADIUS,
+  MEADOW_BLOOM_STRENGTH,
+  MEADOW_BLOOM_THRESHOLD,
+  MEADOW_TONE_EXPOSURE,
+} from '../../config/meadowVisualGrade';
 
 export function useEffectsControls() {
   const prefersReducedMotion = usePrefersReducedMotion();
@@ -18,9 +23,9 @@ export function useEffectsControls() {
 
   const bloomParams = useControls('Effects.Bloom', {
     enabled: { value: true, label: 'Enable Bloom' },
-    threshold: { value: 0.35, min: 0, max: 1, step: 0.01 },
-    strength: { value: 0.3, min: 0, max: 3, step: 0.01 },
-    radius: { value: 0.5, min: 0, max: 1, step: 0.01 },
+    threshold: { value: MEADOW_BLOOM_THRESHOLD, min: 0, max: 1, step: 0.01 },
+    strength: { value: MEADOW_BLOOM_STRENGTH, min: 0, max: 3, step: 0.01 },
+    radius: { value: MEADOW_BLOOM_RADIUS, min: 0, max: 1, step: 0.01 },
   }, { collapsed: true });
 
   const toneMappingParams = useControls('Effects.Tone Mapping', {
