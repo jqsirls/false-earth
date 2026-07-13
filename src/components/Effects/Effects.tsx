@@ -122,7 +122,7 @@ export default function Effects() {
       finalNode = finalNode.add(bloomNode);
     }
 
-    // Restrained global contrast — mix toward mid-gray (owner 2026-07-13: −15%).
+    // Restrained global contrast — mix toward mid-gray (owner 2026-07-13: −4%).
     const gradeMidGray = vec4(0.5, 0.5, 0.5, 1.0);
     finalNode = mix(gradeMidGray, finalNode, float(MEADOW_POST_CONTRAST));
 
