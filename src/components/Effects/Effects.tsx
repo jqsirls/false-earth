@@ -10,6 +10,7 @@ import { smaa } from "three/addons/tsl/display/SMAANode.js";
 import { useGameStore, CameraMode } from "../../core/store/gameStore";
 import { useEffectsControls } from "./useEffectsControls";
 import { BeamSceneContext } from "../../app/App";
+import { MEADOW_POST_CONTRAST } from "../../config/meadowVisualGrade";
 
 export default function Effects() {
   const { isHighQuality, cameraMode, bloom: bloomCfg, dof: dofCfg, toneMapping: tmCfg, smaa: smaaEnabled } = useEffectsControls();
@@ -120,6 +121,10 @@ export default function Effects() {
       bloomNode.radius = uParams.current.bloomRad;
       finalNode = finalNode.add(bloomNode);
     }
+
+    // Restrained global contrast — mix toward mid-gray (owner 2026-07-13: −15%).
+    const gradeMidGray = vec4(0.5, 0.5, 0.5, 1.0);
+    finalNode = mix(gradeMidGray, finalNode, float(MEADOW_POST_CONTRAST));
 
     if (isHighQuality && smaaEnabled) {
       finalNode = smaa(finalNode);

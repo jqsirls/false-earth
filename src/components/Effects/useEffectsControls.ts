@@ -3,6 +3,7 @@ import { useControls } from 'leva';
 import { useGameStore, CameraMode } from '../../core/store/gameStore';
 import { usePrefersReducedMotion } from '../../core/utils/reducedMotion';
 import { shouldDisableHeavyPostProcessing } from '../../core/utils/browserCaps';
+import { MEADOW_TONE_EXPOSURE } from '../../config/meadowVisualGrade';
 
 export function useEffectsControls() {
   const prefersReducedMotion = usePrefersReducedMotion();
@@ -24,7 +25,7 @@ export function useEffectsControls() {
 
   const toneMappingParams = useControls('Effects.Tone Mapping', {
     enabled: { value: true, label: 'Enable Tone Mapping' },
-    exposure: { value: 1.1, min: 0.1, max: 2, step: 0.01 },
+    exposure: { value: MEADOW_TONE_EXPOSURE, min: 0.1, max: 2, step: 0.01 },
   }, { collapsed: true });
 
   const dofParamsTPS = useControls('Effects.DoF.TPS', {
