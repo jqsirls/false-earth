@@ -11,12 +11,12 @@ export function DirectionalLight() {
     
     const { rotationSpeed, color, intensity, debug } = useControls('Directional Light', {
         rotationSpeed: { value: 0.5, min: 0, max: 2, step: 0.1 },
-        color: { value: '#ffffff' },
-        intensity: { value: 2.0, min: 0, max: 3, step: 0.1 },
+        color: { value: '#fff8f0' },
+        intensity: { value: 2.8, min: 0, max: 4, step: 0.1 },
         debug: { value: false },
     }, { collapsed: true })
 
-    const basePosition = useMemo(() => new THREE.Vector3(0, 2, 5), [])
+    const basePosition = useMemo(() => new THREE.Vector3(6, 2.8, 2.5), [])
     const positionRef = useRef(new THREE.Vector3())
     const rotationMatrixRef = useRef(new THREE.Matrix4())
 
@@ -73,7 +73,7 @@ export function DirectionalLight() {
     })
 
     return (
-        <directionalLight ref={directionalLightRef} position={basePosition.toArray()} intensity={1.0} />
+        <directionalLight ref={directionalLightRef} position={basePosition.toArray()} intensity={2.8} />
     )
 }
 

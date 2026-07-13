@@ -26,7 +26,7 @@ import { CanvasErrorBoundary } from './CanvasErrorBoundary';
 import { getInitialDpr, getMaxDpr, isDebugMode, isMemoryConstrainedGpu, shouldPreloadVatRoses } from '../core/utils/browserCaps';
 import { MEADOW_FOOTSTEP_PATHS } from '../config/meadowAudio';
 import { resolveMeadowAsset } from '../config/meadow';
-import { configureCdnTextureLoader } from '../core/utils/cdnTextureLoader';
+import { MEADOW_ENV_INTENSITY } from '../config/meadowVisualGrade';
 
 function attachGpuDeviceLostHandler(
     renderer: WebGPURenderer,
@@ -228,6 +228,7 @@ export default function App() {
                         <CameraViewControl />
                         <Environment
                             files={resolveMeadowAsset('/textures/potsdamer_platz_1k_nb.hdr')}
+                            environmentIntensity={MEADOW_ENV_INTENSITY}
                         />
                         <DirectionalLight />
                         <Effects />

@@ -319,6 +319,11 @@ export function createGrassMaterial(
       .mul(oneMinus(distFadeFactor))
       .add(vec3(grayValue).mul(distFadeFactor));
 
+    // Subtle right-side rim on blade tips (splash key light direction).
+    const viewDir = normalize(cameraPosition.sub(vWorldPos));
+    const rightRim = smoothstep(float(0.35), float(0.9), dot(viewDir, vec3(1.0, 0.0, 0.2)));
+    const tipRim = smoothstep(float(0.55), float(1.0), vHeight);
+    finalColor = finalColor.add(vec3(0.06, 0.08, 0.11).mul(rightRim).mul(tipRim));
 
     const hueShifted = shiftHSV(finalColor, vec3(uGlobalHueShift, float(0.0), float(0.0)));
     return vec4(hueShifted, float(1.0));
@@ -339,7 +344,7 @@ export function createGrassMaterial(
     const envMap = material.envMap;
     if (envMap) {
       const ao = calculateAO();
-      const envSample = pmremTexture(envMap).mul(ao);
+      const envSample = pmremTexture(envMap).mul(ao).mul(float(0.55));
       return envSample;
     }
     return vec3(0.0, 0.0, 0.0);
@@ -368,7 +373,7 @@ export function createGrassMaterial(
       .mul(finalColor)
       .mul(tipGlow)
       .mul(electricCrackle)
-      .mul(float(5.0)); // Boost intensity for Bloom 
+      .mul(float(3.0)); // Bloom feed — toned down vs prior 5.0
 
     const hueShifted = shiftHSV(glow, vec3(uGlobalHueShift, float(0.0), float(0.0))); 
 

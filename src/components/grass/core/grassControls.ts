@@ -29,7 +29,7 @@ export function createGrassControls() {
 
     Appearance: folder({
       Color: folder({
-        tipColor: { value: TIP_COLOR_PRESETS[0] },
+        tipColor: { value: '#1a3d52' },
         baseColor: { value: '#000000' },
         bladeSeedRange: { value: { x: 0.95, y: 1.03 }, step: 0.01, min: 0.5, max: 1.5 },
         clumpSeedRange: { value: { x: 0.9, y: 1.1 }, step: 0.01, min: 0.5, max: 1.5 },
@@ -69,10 +69,10 @@ export function createGrassControls() {
     }, { collapsed: true }),
 
     Material: folder({
-      roughness: { value: 0.35, min: 0.0, max: 1.0, step: 0.01 },
-      metalness: { value: 0.5, min: 0.0, max: 1.0, step: 0.01 },
-      emissive: { value: '#61ffef' },
-      envMapIntensity: { value: 0.5, min: 0.0, max: 3.0, step: 0.1 },
+      roughness: { value: 0.58, min: 0.0, max: 1.0, step: 0.01 },
+      metalness: { value: 0.06, min: 0.0, max: 1.0, step: 0.01 },
+      emissive: { value: '#2a4a5c' },
+      envMapIntensity: { value: 0.22, min: 0.0, max: 3.0, step: 0.1 },
     }, { collapsed: true }),
   }
 }

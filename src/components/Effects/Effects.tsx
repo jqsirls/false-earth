@@ -5,7 +5,10 @@ import { WebGPURenderer } from "three/webgpu";
 import { clamp, float, Fn, If, length, luminance, mix, pass, pow, saturation, smoothstep, uniform, uv, vec4 } from "three/tsl";
 import { bloom } from "three/addons/tsl/display/BloomNode.js";
 import { dof } from "three/addons/tsl/display/DepthOfFieldNode.js";
+import { film } from "three/addons/tsl/display/FilmNode.js";
+import { gaussianBlur } from "three/addons/tsl/display/GaussianBlurNode.js";
 import { hashBlur } from "three/addons/tsl/display/hashBlur.js";
+import { lensflare } from "three/addons/tsl/display/LensflareNode.js";
 import { smaa } from "three/addons/tsl/display/SMAANode.js";
 
 import { useGameStore, CameraMode } from "../../core/store/gameStore";
@@ -17,10 +20,19 @@ import {
   MEADOW_POST_SHADOWS,
   MEADOW_POST_SHADOW_LUMA_MAX,
   MEADOW_POST_SOFTEN,
+  MEADOW_FILM_GRAIN_INTENSITY,
+  MEADOW_FLARE_ADD_STRENGTH,
+  MEADOW_FLARE_BLOOM_RADIUS,
+  MEADOW_FLARE_BLOOM_STRENGTH,
+  MEADOW_FLARE_BLOOM_THRESHOLD,
+  MEADOW_FLARE_GHOST_ATTENUATION,
+  MEADOW_FLARE_GHOST_SAMPLES,
+  MEADOW_FLARE_GHOST_SPACING,
+  MEADOW_FLARE_THRESHOLD,
 } from "../../config/meadowVisualGrade";
 
 export default function Effects() {
-  const { isHighQuality, cameraMode, bloom: bloomCfg, dof: dofCfg, toneMapping: tmCfg, smaa: smaaEnabled } = useEffectsControls();
+  const { isHighQuality, cameraMode, bloom: bloomCfg, dof: dofCfg, toneMapping: tmCfg, smaa: smaaEnabled, prefersReducedMotion } = useEffectsControls();
 
   const characterRef = useGameStore((state) => state.characterRef);
   const characterFlightLiftRef = useGameStore((state) => state.characterFlightLiftRef);
@@ -143,8 +155,29 @@ export default function Effects() {
       finalNode = mix(finalNode, softNode, float(MEADOW_POST_SOFTEN));
     }
 
+    // Whisper film grain (high quality, motion OK).
+    if (isHighQuality && !prefersReducedMotion && MEADOW_FILM_GRAIN_INTENSITY > 0) {
+      finalNode = film(finalNode, float(MEADOW_FILM_GRAIN_INTENSITY));
+    }
+
     if (isHighQuality && smaaEnabled) {
       finalNode = smaa(finalNode);
+    }
+
+    // Soft horizontal flare from beam emissives only (separate bloom feed).
+    if (isHighQuality && !prefersReducedMotion) {
+      const flareBloomNode = bloom(finalNode);
+      flareBloomNode.threshold = uniform(MEADOW_FLARE_BLOOM_THRESHOLD);
+      flareBloomNode.strength = uniform(MEADOW_FLARE_BLOOM_STRENGTH);
+      flareBloomNode.radius = uniform(MEADOW_FLARE_BLOOM_RADIUS);
+      const flare = lensflare(flareBloomNode, {
+        threshold: uniform(MEADOW_FLARE_THRESHOLD),
+        ghostAttenuationFactor: uniform(MEADOW_FLARE_GHOST_ATTENUATION),
+        ghostSpacing: uniform(MEADOW_FLARE_GHOST_SPACING),
+        ghostSamples: uniform(MEADOW_FLARE_GHOST_SAMPLES),
+      });
+      const softFlare = gaussianBlur(flare, 5);
+      finalNode = finalNode.add(softFlare.mul(float(MEADOW_FLARE_ADD_STRENGTH)));
     }
 
     pp.outputNode = finalNode;
@@ -165,6 +198,7 @@ export default function Effects() {
     smaaEnabled,
     tmCfg.enabled,
     beamScene,
+    prefersReducedMotion,
   ]);
 
   useFrame(() => {

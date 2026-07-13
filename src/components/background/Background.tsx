@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import { useMemo, useEffect, memo } from 'react'
 import { useThree } from '@react-three/fiber'
-import { texture, equirectUV, uniform, mx_rotate3d, vec3, positionWorld } from 'three/tsl'
+import { texture, equirectUV, uniform, mx_rotate3d, vec3, positionWorld, float, smoothstep } from 'three/tsl'
 import { useKTX2Texture } from '@core'
 import { CameraMode, useGameStore } from '../../core/store/gameStore'
 import { uTime } from '../../core/shaders/uniforms';
@@ -36,7 +36,9 @@ export const Background = memo(function Background({ intensity, axis, speed }: {
       const finalUVs = equirectUV(rotatedDir)
 
       const bgNode = texture(map, finalUVs).mul(uniforms.uIntensity)
-      scene.backgroundNode = bgNode
+      const skyLift = smoothstep(float(-0.15), float(0.65), rotatedDir.y)
+      const haze = vec3(0.02, 0.035, 0.07).mul(skyLift.mul(float(0.12)))
+      scene.backgroundNode = bgNode.add(haze)
     }
     return () => {
       scene.backgroundNode = null
