@@ -19,30 +19,44 @@ export interface CharacterAudioHandle {
   playStep: (type: StepType, volume: number) => void;
 }
 
+/** Per-character flight-loop configuration (Booster is the default). */
+export interface FlightLoopConfig {
+  path: string;
+  /**
+   * When set, the loop only plays while flight speed exceeds this
+   * (world-units/second) — the Void's loop is silent while hovering still.
+   */
+  moveSpeedThreshold?: number;
+}
+
 /** Read-only flight-loop state for programmatic production verification. */
 declare global {
   interface Window {
-    __MEADOW_FLIGHT_SFX__?: Readonly<{ playing: boolean; volume: number }>;
+    __MEADOW_FLIGHT_SFX__?: Readonly<{ playing: boolean; volume: number; speed: number }>;
   }
 }
 
 /**
- * Galactic flight loop: fades in while flying, fades out (~400ms) when flight
- * ends. SFX contract: gated on isGameStarted, independent of the music toggle.
+ * Flight loop: fades in while flying, fades out (~400ms) when flight ends —
+ * or, with a moveSpeedThreshold, when the character hovers still. SFX
+ * contract: gated on isGameStarted, independent of the music toggle.
  */
-function FlightLoopAudio() {
+function FlightLoopAudio({ path, moveSpeedThreshold }: FlightLoopConfig) {
   const listener = useGameStore((state) => state.audioListener);
   const isGameStarted = useGameStore((state) => state.isGameStarted);
   const isFlying = useGameStore((state) => state.isFlying);
+  const characterRef = useGameStore((state) => state.characterRef);
 
   const audioRef = useRef<THREE.Audio | null>(null);
   const [buffer, setBuffer] = useState<AudioBuffer | null>(null);
+  const prevPosRef = useRef<THREE.Vector3 | null>(null);
+  const smoothedSpeedRef = useRef(0);
 
   useEffect(() => {
     let cancelled = false;
     const loader = configureCdnAudioLoader(new AudioLoader());
     loader
-      .loadAsync(MEADOW_FLIGHT_LOOP_PATH)
+      .loadAsync(path)
       .then((buf) => {
         if (!cancelled) setBuffer(buf);
       })
@@ -52,7 +66,7 @@ function FlightLoopAudio() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [path]);
 
   useEffect(() => {
     if (!listener || !buffer) return;
@@ -72,7 +86,28 @@ function FlightLoopAudio() {
     const audio = audioRef.current;
     if (!audio) return;
 
-    const target = isGameStarted && isFlying ? MEADOW_FLIGHT_LOOP_VOLUME : 0;
+    // Smoothed world-space speed (only needed when a movement gate is set).
+    if (moveSpeedThreshold !== undefined) {
+      const pos = characterRef?.current?.position;
+      if (pos) {
+        if (prevPosRef.current && delta > 0) {
+          const instSpeed = prevPosRef.current.distanceTo(pos) / delta;
+          smoothedSpeedRef.current = THREE.MathUtils.lerp(
+            smoothedSpeedRef.current,
+            instSpeed,
+            0.2,
+          );
+        }
+        prevPosRef.current = (prevPosRef.current ?? new THREE.Vector3()).copy(pos);
+      } else {
+        smoothedSpeedRef.current = 0;
+        prevPosRef.current = null;
+      }
+    }
+
+    const moving =
+      moveSpeedThreshold === undefined || smoothedSpeedRef.current > moveSpeedThreshold;
+    const target = isGameStarted && isFlying && moving ? MEADOW_FLIGHT_LOOP_VOLUME : 0;
     const current = audio.getVolume();
 
     if (target > 0 && !audio.isPlaying) {
@@ -95,34 +130,42 @@ function FlightLoopAudio() {
     window.__MEADOW_FLIGHT_SFX__ = Object.freeze({
       playing: audio.isPlaying,
       volume: audio.getVolume(),
+      speed: smoothedSpeedRef.current,
     });
   });
 
   return null;
 }
 
-export const CharacterAudio = forwardRef<CharacterAudioHandle>((_, ref) => {
-  const listener = useGameStore((state) => state.audioListener);
-  const characterRef = useGameStore((state) => state.characterRef);
-  const isGameStarted = useGameStore((state) => state.isGameStarted);
+interface CharacterAudioProps {
+  /** Defaults to Booster's galactic flight loop (always-on while flying). */
+  flightLoop?: FlightLoopConfig;
+}
 
-  const { play } = useOneShotAudio(listener as AudioListener, [...MEADOW_FOOTSTEP_PATHS]);
+export const CharacterAudio = forwardRef<CharacterAudioHandle, CharacterAudioProps>(
+  ({ flightLoop }, ref) => {
+    const listener = useGameStore((state) => state.audioListener);
+    const characterRef = useGameStore((state) => state.characterRef);
+    const isGameStarted = useGameStore((state) => state.isGameStarted);
 
-  useImperativeHandle(ref, () => ({
-    playStep: (type: StepType, volume: number) => {
-      if (!isGameStarted) return;
+    const { play } = useOneShotAudio(listener as AudioListener, [...MEADOW_FOOTSTEP_PATHS]);
 
-      play({
-        position: characterRef?.current?.position,
-        volume: volume * MEADOW_FOOTSTEP_GAIN,
-        detuneRange: 200,
-        refDistance: 2,
-        maxDistance: 30,
-      });
-    },
-  }));
+    useImperativeHandle(ref, () => ({
+      playStep: (_type: StepType, volume: number) => {
+        if (!isGameStarted) return;
 
-  return <FlightLoopAudio />;
-});
+        play({
+          position: characterRef?.current?.position,
+          volume: volume * MEADOW_FOOTSTEP_GAIN,
+          detuneRange: 200,
+          refDistance: 2,
+          maxDistance: 30,
+        });
+      },
+    }));
+
+    return <FlightLoopAudio {...(flightLoop ?? { path: MEADOW_FLIGHT_LOOP_PATH })} />;
+  },
+);
 
 CharacterAudio.displayName = 'CharacterAudio';

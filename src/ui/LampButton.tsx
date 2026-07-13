@@ -59,37 +59,29 @@ export function LampButton() {
   // gate → Hue sheet. Shared with the About modal via useHueEntry.
   const handleClick = () => void enterHueFlow();
 
+  // Pill only — fixed top-right positioning moved to TopRightCluster so the
+  // character switcher and the lamp live in one hover group.
   return (
     <>
       <style>{`${meadowFocusCss}${lampGlowCss}`}</style>
-      <div
+      <button
+        type="button"
+        className={`meadow-focusable${isConnected ? ' meadow-lamp-connected' : ''}`}
+        aria-label={isConnected ? 'Booster room lights — connected' : 'Booster room lights'}
+        aria-busy={isChecking}
+        onClick={handleClick}
         style={{
-          position: 'fixed',
-          top: 'max(20px, env(safe-area-inset-top))',
-          right: 'max(20px, env(safe-area-inset-right))',
-          zIndex: 20,
-          pointerEvents: 'auto',
+          ...meadowIconPillStyle,
+          opacity: isChecking ? 0.6 : 1,
+          cursor: isChecking ? 'wait' : 'pointer',
         }}
       >
-        <button
-          type="button"
-          className={`meadow-focusable${isConnected ? ' meadow-lamp-connected' : ''}`}
-          aria-label={isConnected ? 'Booster room lights — connected' : 'Booster room lights'}
-          aria-busy={isChecking}
-          onClick={handleClick}
-          style={{
-            ...meadowIconPillStyle,
-            opacity: isChecking ? 0.6 : 1,
-            cursor: isChecking ? 'wait' : 'pointer',
-          }}
-        >
-          {isConnected ? (
-            <LightbulbIcon sx={{ fontSize: 20, color: 'inherit' }} />
-          ) : (
-            <LightbulbOutlinedIcon sx={{ fontSize: 20, color: 'inherit' }} />
-          )}
-        </button>
-      </div>
+        {isConnected ? (
+          <LightbulbIcon sx={{ fontSize: 20, color: 'inherit' }} />
+        ) : (
+          <LightbulbOutlinedIcon sx={{ fontSize: 20, color: 'inherit' }} />
+        )}
+      </button>
     </>
   );
 }

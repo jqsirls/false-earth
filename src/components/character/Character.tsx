@@ -6,10 +6,21 @@ import { uniform } from 'three/tsl';
 import { CharacterProps, CHARACTER_CONFIG } from './config';
 import { useCharacterAssets as useLicensedCharacterAssets } from './hooks/useCharacterAssets';
 import { useStorytailorCharacterAssets } from './hooks/useStorytailorCharacterAssets';
+import { useVoidCharacterAssets } from './hooks/useVoidCharacterAssets';
+import { useVoidMotion } from './hooks/useVoidMotion';
 import { STORYTAILOR } from '../../config/storytailor';
-import { useCharacterPhysics } from './hooks/useCharacterPhysics';
+import {
+  consumePendingCharacterTransform,
+  useMeadowCharacterStore,
+} from '../../core/store/meadowCharacterStore';
+import { VOID_CHARACTER_SCALE, setVoidGlow } from './voidConfig';
+import { useCharacterPhysics, CharacterPhysicsOptions } from './hooks/useCharacterPhysics';
 import { useGameStore, CameraMode } from '../../core/store/gameStore';
-import { CharacterAudio, CharacterAudioHandle } from './CharacterAudio';
+import { CharacterAudio, CharacterAudioHandle, FlightLoopConfig } from './CharacterAudio';
+import {
+  MEADOW_VOID_FLIGHT_LOOP_PATH,
+  MEADOW_VOID_FLIGHT_MOVE_SPEED_THRESHOLD,
+} from '../../config/meadowAudio';
 
 type CharacterAssetResult = ReturnType<typeof useLicensedCharacterAssets> & {
   helmetMaterials?: THREE.Material[];
@@ -19,6 +30,8 @@ type CharacterRigProps = CharacterProps & {
   assets: CharacterAssetResult;
   uWorldPos: { value: THREE.Vector3 };
   uFlightLift?: { value: number };
+  physicsOptions?: CharacterPhysicsOptions;
+  flightLoop?: FlightLoopConfig;
 };
 
 function CharacterRig({
@@ -28,6 +41,8 @@ function CharacterRig({
   assets,
   uWorldPos,
   uFlightLift,
+  physicsOptions,
+  flightLoop,
 }: CharacterRigProps) {
   const groupRef = useRef<Group>(null);
   const audioRef = useRef<CharacterAudioHandle>(null);
@@ -46,12 +61,26 @@ function CharacterRig({
 
   const { scene, animations, helmets, helmetMaterials = [] } = assets;
 
-  useCharacterPhysics(groupRef, scene, animations, (event) => {
-    audioRef.current?.playStep(event.type, event.volume);
-  });
+  useCharacterPhysics(
+    groupRef,
+    scene,
+    animations,
+    (event) => {
+      audioRef.current?.playStep(event.type, event.volume);
+    },
+    physicsOptions,
+  );
 
   useEffect(() => {
     setCharacterRef(groupRef);
+    // Live character switch: the incoming rig picks up exactly where the
+    // outgoing one stood (meadowCharacterStore captures the transform before
+    // the remount) — no teleport back to spawn.
+    const pending = consumePendingCharacterTransform();
+    if (pending && groupRef.current) {
+      groupRef.current.position.copy(pending.position);
+      groupRef.current.quaternion.copy(pending.quaternion);
+    }
     return () => setCharacterRef(null);
   }, [setCharacterRef]);
 
@@ -102,7 +131,7 @@ function CharacterRig({
   return (
     <group ref={groupRef} position={position} scale={scale} visible={visible} dispose={null}>
       <primitive object={scene} />
-      <CharacterAudio ref={audioRef} />
+      <CharacterAudio ref={audioRef} flightLoop={flightLoop} />
     </group>
   );
 }
@@ -133,7 +162,61 @@ function JqCharacter(props: CharacterProps) {
   );
 }
 
+/**
+ * The Void (ORBY) — LOCAL ONLY until owner approval (meadowCharacter.ts /
+ * meadowCharacterStore). Shares the physics rig; wings/glow/flight-secondary
+ * motion run in useVoidMotion on top of it.
+ */
+function VoidCharacter(props: CharacterProps) {
+  const uWorldPos = useMemo(() => uniform(new THREE.Vector3(0, 0, 0)), []);
+  const uFlightLift = useMemo(() => uniform(0), []);
+  const assets = useVoidCharacterAssets(uWorldPos, uFlightLift);
+  useVoidMotion(assets);
+
+  useEffect(() => {
+    const w = window as unknown as {
+      __setVoidGlow?: (on: boolean) => void;
+      __voidAssets?: unknown;
+    };
+    w.__setVoidGlow = setVoidGlow;
+    // local-only debug handle for verification scripts (never shipped — the
+    // whole component is behind ?character=void)
+    w.__voidAssets = assets;
+    return () => {
+      delete w.__setVoidGlow;
+      delete w.__voidAssets;
+    };
+  }, [assets]);
+
+  return (
+    <CharacterRig
+      {...props}
+      // Callers pass the JQ-tuned scale; the ORBY export is ~6cm tall and
+      // needs its own (voidConfig).
+      scale={VOID_CHARACTER_SCALE}
+      assets={assets}
+      uWorldPos={uWorldPos}
+      uFlightLift={uFlightLift}
+      // Held pose2 float is a large shape change — ease over ~0.6s in and out
+      // (owner: natural, settling transitions; never a pop).
+      physicsOptions={{ flightBlendLerpFactor: 0.06 }}
+      // Owner: Void's loop plays only while MOVING in flight — silent hover.
+      flightLoop={{
+        path: MEADOW_VOID_FLIGHT_LOOP_PATH,
+        moveSpeedThreshold: MEADOW_VOID_FLIGHT_MOVE_SPEED_THRESHOLD,
+      }}
+    />
+  );
+}
+
 export function Character(props: CharacterProps) {
+  // Reactive: the character switcher swaps this live (remount under the
+  // WorldController Suspense; the name overlay covers the swap).
+  const activeCharacter = useMeadowCharacterStore((state) => state.activeCharacter);
+
+  if (activeCharacter === 'void') {
+    return <VoidCharacter {...props} />;
+  }
   if (STORYTAILOR.useJqCharacter) {
     return <JqCharacter {...props} />;
   }

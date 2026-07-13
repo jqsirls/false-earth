@@ -2,7 +2,11 @@ import { useEffect, useRef, useState } from 'react';
 import { useGameStore } from '../core/store/gameStore';
 import { gameEvents } from '../core/events';
 import { usePrefersReducedMotion } from '../core/utils/reducedMotion';
-import { meadowHudFontFamily, meadowModalTokens } from './meadowUiStyles';
+import {
+  MEADOW_TOP_STRIP_HEIGHT_PX,
+  meadowHudFontFamily,
+  meadowModalTokens,
+} from './meadowUiStyles';
 
 /** Rest opacity: full white (owner-approved 2026-07-11; supersedes the 28% dim rest). */
 const REST_OPACITY = 1;
@@ -11,29 +15,10 @@ const BRIGHT_MS = 900;
 /** Settle back to rest. */
 const SETTLE_MS = 700;
 
+/** Mobile controls-band anchor — joystick optical center (~70px), clear of footer. */
+const MOBILE_BOTTOM = 'max(66px, calc(env(safe-area-inset-bottom) + 52px))';
+
 const COUNTER_CSS = `
-.orb-counter-readout {
-  /* One optical line with the CTA pill and lamp: the readout is a 42px-tall
-     flex band matching the top-strip pill height, text vertically centered. */
-  top: max(20px, env(safe-area-inset-top));
-  left: max(20px, env(safe-area-inset-left));
-  height: 42px;
-  display: flex;
-  align-items: center;
-  /* Desktop: readable at a glance (owner 2026-07-11 — users couldn't find it). */
-  font-size: 1.05rem;
-}
-/* Narrow screens: the speaker pill owns the top-left corner of the strip, so
-   the readout drops to its own quiet line just below it. Mobile keeps the
-   original quieter size — the HUD strip is denser there. */
-@media (max-width: 560px) {
-  .orb-counter-readout {
-    top: calc(max(20px, env(safe-area-inset-top)) + 54px);
-    left: calc(max(20px, env(safe-area-inset-left)) + 4px);
-    height: auto;
-    font-size: 0.7rem;
-  }
-}
 @keyframes orb-counter-glitch {
   0% { opacity: 1; transform: translateX(0); clip-path: inset(0 0 0 0); }
   18% { opacity: 0.65; transform: translateX(1px); clip-path: inset(15% 0 40% 0); }
@@ -45,13 +30,14 @@ const COUNTER_CSS = `
 `;
 
 /**
- * Session-only gather readout in the suit-HUD idiom: `ORBS 07`, top-left.
+ * Session-only gather readout in the suit-HUD idiom: `ORBS 07`.
+ * Desktop: top-left (larger). Mobile: bottom-center near controls.
  * Hidden until the first collect, then persistent at full-white rest opacity.
  * Each collect accents it with one soft glitch beat, then it settles.
- * Perfectly static while idle. No milestones, no persistence across visits.
  */
 export function OrbCounter() {
   const isControlEnabled = useGameStore((state) => state.isControlEnabled);
+  const isMobile = useGameStore((state) => state.isMobile);
   const reducedMotion = usePrefersReducedMotion();
 
   const [count, setCount] = useState(0);
@@ -92,12 +78,29 @@ export function OrbCounter() {
           userSelect: 'none',
           color: meadowModalTokens.accent,
           fontFamily: meadowHudFontFamily,
-          // font-size lives in COUNTER_CSS so the mobile media query can win.
           letterSpacing: '0.14em',
           opacity: bright ? 1 : REST_OPACITY,
           transition: reducedMotion
             ? 'none'
             : `opacity ${bright ? 120 : SETTLE_MS}ms ease`,
+          ...(isMobile
+            ? {
+                top: 'auto',
+                left: '50%',
+                right: 'auto',
+                bottom: MOBILE_BOTTOM,
+                transform: 'translateX(-50%)',
+                height: 'auto',
+                fontSize: '0.7rem',
+              }
+            : {
+                top: 'max(20px, env(safe-area-inset-top))',
+                left: 'max(20px, env(safe-area-inset-left))',
+                height: `${MEADOW_TOP_STRIP_HEIGHT_PX}px`,
+                display: 'flex',
+                alignItems: 'center',
+                fontSize: '1.05rem',
+              }),
         }}
       >
         <span

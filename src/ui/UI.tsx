@@ -5,7 +5,8 @@ import { useZenStore } from "../core/store/zenStore";
 import { useShortcut } from "@core/hooks/useShortcut";
 import { LoadingScreen } from "./LoadingScreen";
 import { MeadowCta } from "./MeadowCta";
-import { LampButton } from "./LampButton";
+import { TopRightCluster } from "./TopRightCluster";
+import { CharacterSwitchOverlay } from "./CharacterSwitchOverlay";
 import { AuthSheet } from "./AuthSheet";
 import { HueSheet } from "./HueSheet";
 import { HueOAuthHandler } from "./HueOAuthHandler";
@@ -76,6 +77,7 @@ export function UI() {
             <LegalModal />
             <SessionEnd />
             <MeadowCursor />
+            <CharacterSwitchOverlay />
 
             {/* Zen wrapper: [H] fades every piece of HUD chrome together.
                 Sheets, the session ending, and the cursor live outside it.
@@ -88,7 +90,7 @@ export function UI() {
                 transition: `opacity 0.5s ease, visibility 0s linear ${isUiHidden ? '0.5s' : '0s'}`,
             }}>
                 <MeadowCta />
-                <LampButton />
+                <TopRightCluster />
                 <ControlsHint />
                 <OrbCounter />
                 <MeadowFooter />

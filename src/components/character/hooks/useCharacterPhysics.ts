@@ -23,11 +23,22 @@ export interface StepEvent {
   volume: number;
 }
 
+export interface CharacterPhysicsOptions {
+  /**
+   * Per-character lerp factor for the flight-state weight crossfade only
+   * (ground locomotion blending is untouched). The Void's held flight pose is
+   * a large shape change and needs a slower ~0.6s ease; Booster keeps the
+   * default when this is omitted.
+   */
+  flightBlendLerpFactor?: number;
+}
+
 export function useCharacterPhysics(
   groupRef: MutableRefObject<Group | null>,
   scene: Object3D | null,
   animations: AnimationClip[],
-  onStep: (event: StepEvent) => void
+  onStep: (event: StepEvent) => void,
+  options?: CharacterPhysicsOptions
 ) {
   const { camera } = useThree();
   const cameraMode = useGameStore((state) => state.cameraMode);
@@ -208,14 +219,16 @@ export function useCharacterPhysics(
     const rotateRight = input.isPressed('RotateRight') || input.getAxis('horizontal') > 0.1;
     const isRotating = (cameraMode === CameraMode.FPV) && (rotateLeft || rotateRight);
 
+    const flightBlend = options?.flightBlendLerpFactor ?? blend;
+
     if (isFlying) {
-      s.flightWeight = THREE.MathUtils.lerp(s.flightWeight, 1, blend);
-      s.idleWeight = THREE.MathUtils.lerp(s.idleWeight, 0, blend);
-      s.walkWeight = THREE.MathUtils.lerp(s.walkWeight, 0, blend);
-      s.runWeight = THREE.MathUtils.lerp(s.runWeight, 0, blend);
-      s.backWeight = THREE.MathUtils.lerp(s.backWeight, 0, blend);
+      s.flightWeight = THREE.MathUtils.lerp(s.flightWeight, 1, flightBlend);
+      s.idleWeight = THREE.MathUtils.lerp(s.idleWeight, 0, flightBlend);
+      s.walkWeight = THREE.MathUtils.lerp(s.walkWeight, 0, flightBlend);
+      s.runWeight = THREE.MathUtils.lerp(s.runWeight, 0, flightBlend);
+      s.backWeight = THREE.MathUtils.lerp(s.backWeight, 0, flightBlend);
     } else {
-      s.flightWeight = THREE.MathUtils.lerp(s.flightWeight, 0, blend);
+      s.flightWeight = THREE.MathUtils.lerp(s.flightWeight, 0, flightBlend);
 
       const signedSpeed = Math.abs(s.speed);
       const targetWeights = calculateBlendWeights(

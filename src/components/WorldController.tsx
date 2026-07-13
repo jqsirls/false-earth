@@ -26,6 +26,7 @@ import Orbs from './Orb/Orbs';
 import GrassWebGPU from './grass/GrassWebGPU';
 import { Character } from './character';
 import { STORYTAILOR } from '../config/storytailor';
+import { useMeadowCharacterStore } from '../core/store/meadowCharacterStore';
 import { GrassCullingDebug } from '../debug/GrassCullingDebug';
 import {
     getDefaultCompileTimeoutMs,
@@ -39,6 +40,7 @@ import { usePrefersReducedMotion } from '../core/utils/reducedMotion';
 
 export function WorldController() {
     const prefersReducedMotion = usePrefersReducedMotion();
+    const activeCharacter = useMeadowCharacterStore((state) => state.activeCharacter);
     const setActiveTargets = useGameStore((state) => state.setActiveTargets);
     const setComponentReady = useGameStore((state) => state.setComponentReady);
 
@@ -192,6 +194,7 @@ export function WorldController() {
             >
                 <Suspense fallback={null}>
                     <Character
+                        key={activeCharacter}
                         position={[0, 0, 0]}
                         scale={STORYTAILOR.useJqCharacter ? STORYTAILOR.characterScale : 1}
                         visible={enableCharacter}

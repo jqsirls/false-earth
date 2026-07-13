@@ -1,5 +1,6 @@
 import { useEffect, useMemo, type CSSProperties } from 'react';
 import { useGameStore } from '../core/store/gameStore';
+import { useMeadowCharacterStore } from '../core/store/meadowCharacterStore';
 import {
   buildMeadowCtaUrl,
   detectMeadowCtaVariant,
@@ -48,8 +49,9 @@ export function MeadowCta() {
   const isSoundOn = useGameStore((state) => state.isSoundOn);
   const setIsSoundOn = useGameStore((state) => state.setIsSoundOn);
 
+  const activeCharacter = useMeadowCharacterStore((state) => state.activeCharacter);
   const variant = useMemo(() => detectMeadowCtaVariant(), []);
-  const label = getMeadowCtaLabel(variant);
+  const label = getMeadowCtaLabel(variant, activeCharacter);
   const href = buildMeadowCtaUrl(variant);
 
   const handleCtaClick = () => {

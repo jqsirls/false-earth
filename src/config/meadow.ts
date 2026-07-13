@@ -1,5 +1,9 @@
 import { STORYTAILOR } from './storytailor';
 import { resolveMeadowAsset } from './meadowAssets';
+import {
+  MEADOW_CHARACTER_CTA_LABELS,
+  type MeadowCharacterId,
+} from './meadowCharacter';
 
 export { MEADOW_ASSET_BASE, resolveMeadowAsset } from './meadowAssets';
 
@@ -78,10 +82,13 @@ export function detectMeadowCtaVariant(): MeadowCtaVariant {
     : 'make_story';
 }
 
-export function getMeadowCtaLabel(variant: MeadowCtaVariant): string {
+export function getMeadowCtaLabel(
+  variant: MeadowCtaVariant,
+  character: MeadowCharacterId = 'jq',
+): string {
   return variant === 'back'
     ? `Back to ${STORYTAILOR.brandName}`
-    : 'Make a story with Booster';
+    : MEADOW_CHARACTER_CTA_LABELS[character];
 }
 
 function appendInboundUtms(target: URL): void {

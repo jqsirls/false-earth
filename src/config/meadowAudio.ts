@@ -61,6 +61,21 @@ export const MEADOW_FLIGHT_LOOP_VOLUME = 0.5
 /** Soft attack/release — no hard start or stop on flight toggles. */
 export const MEADOW_FLIGHT_LOOP_FADE_SECONDS = 0.4
 
+/**
+ * The Void's flight loop (LOCAL ONLY, ?character=void). Bundled same-origin
+ * for now — TODO at ship time: upload to assets.storytailor.dev/meadow/audio/
+ * and switch to the direct CDN URL like galactic-flight.mp3.
+ * Owner spec: plays only while Void is MOVING in flight (not hovering still).
+ */
+export const MEADOW_VOID_FLIGHT_LOOP_PATH = '/audio/void-flight.mp3'
+
+/**
+ * World-units/second above which flight counts as "moving" for the Void loop.
+ * Flight travel speed is 4.0 (CHARACTER_CONFIG.flightSpeed); hover drift/bob
+ * stays well under this.
+ */
+export const MEADOW_VOID_FLIGHT_MOVE_SPEED_THRESHOLD = 0.5
+
 /** Read-only mix table for programmatic production verification (Playwright). */
 declare global {
   interface Window {

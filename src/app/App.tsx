@@ -18,6 +18,8 @@ import { AudioLoader, TextureLoader } from 'three';
 import { ROSE_TEXTURES } from "../components/Rose/core/config";
 import { BODY_TEXTURE_PATHS, DETAIL_TEXTURE_PATHS, MODEL_PATHS } from '../components/character/config';
 import { JQ_LOCOMOTION_ANIM_PATHS, getJqPartTexturePaths } from '../components/character/jqConfig';
+import { VOID_MESH_PARTS, VOID_MODEL_PATHS, getVoidPartTexturePaths } from '../components/character/voidConfig';
+import { isVoidCharacterActive } from '../config/meadowCharacter';
 import { STORYTAILOR } from '../config/storytailor';
 import { CanvasErrorBoundary } from './CanvasErrorBoundary';
 import { getInitialDpr, getMaxDpr, isDebugMode, isMemoryConstrainedGpu, shouldPreloadVatRoses } from '../core/utils/browserCaps';
@@ -54,15 +56,40 @@ function collectJqTexturePaths(): string[] {
     return [...paths];
 }
 
+function collectVoidTexturePaths(): string[] {
+    const paths = new Set<string>();
+
+    for (const part of VOID_MESH_PARTS) {
+        const tex = getVoidPartTexturePaths(part);
+        paths.add(tex.map);
+        paths.add(tex.normalMap);
+        paths.add(tex.roughnessMap);
+        if (tex.metalnessMap) paths.add(tex.metalnessMap);
+        if (tex.emissiveMap) paths.add(tex.emissiveMap);
+        if (tex.alphaMap) paths.add(tex.alphaMap);
+    }
+
+    return [...paths];
+}
+
 useLoader.preload(AudioLoader, [...MEADOW_FOOTSTEP_PATHS, '/audio/wave01.mp3']);
 
+// Starting character (param override → persisted choice → Booster). Only the
+// STARTING character preloads; a live switch loads the other on demand under
+// the switch name overlay (Suspense in WorldController).
+const voidCharacterActive = isVoidCharacterActive();
+
 useGLTF.preload(
-  STORYTAILOR.useJqCharacter
-    ? [STORYTAILOR.characterModel, ...JQ_LOCOMOTION_ANIM_PATHS]
-    : MODEL_PATHS,
+  voidCharacterActive
+    ? [...VOID_MODEL_PATHS]
+    : STORYTAILOR.useJqCharacter
+      ? [STORYTAILOR.characterModel, ...JQ_LOCOMOTION_ANIM_PATHS]
+      : MODEL_PATHS,
 );
 
-if (STORYTAILOR.useJqCharacter) {
+if (voidCharacterActive) {
+  useLoader.preload(TextureLoader, collectVoidTexturePaths(), configureCdnTextureLoader);
+} else if (STORYTAILOR.useJqCharacter) {
   useLoader.preload(TextureLoader, collectJqTexturePaths(), configureCdnTextureLoader);
 }
 

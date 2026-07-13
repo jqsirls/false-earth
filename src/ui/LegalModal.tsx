@@ -4,7 +4,16 @@ import { useMeadowUiStore } from '../core/store/meadowUiStore';
 import { useFocusTrap } from '../core/hooks/useFocusTrap';
 import { useHueEntry } from '../core/hooks/useHueEntry';
 import { usePrefersReducedMotion } from '../core/utils/reducedMotion';
-import { LEGAL_MODAL_CONTENT, type LegalModalId } from './legalModalContent';
+import {
+  LEGAL_MODAL_CONTENT,
+  getAboutModalContent,
+  type LegalModalId,
+} from './legalModalContent';
+import { useMeadowCharacterStore } from '../core/store/meadowCharacterStore';
+import {
+  MEADOW_CHARACTER_PLAY_LABELS,
+  otherMeadowCharacter,
+} from '../config/meadowCharacter';
 import { BuyLightsLink } from './BuyLightsLink';
 import {
   meadowClickableCss,
@@ -104,6 +113,9 @@ export function LegalModal() {
   const panelRef = useRef<HTMLElement>(null);
   const triggerRef = useRef<HTMLElement | null>(null);
   const { isChecking: isHueEntryChecking, enterHueFlow } = useHueEntry();
+  const activeCharacter = useMeadowCharacterStore((state) => state.activeCharacter);
+  const isSwitching = useMeadowCharacterStore((state) => state.isSwitching);
+  const switchCharacter = useMeadowCharacterStore((state) => state.switchCharacter);
 
   useFocusTrap(Boolean(legalModal), panelRef);
 
@@ -121,7 +133,22 @@ export function LegalModal() {
 
   if (!legalModal) return null;
 
-  const content = LEGAL_MODAL_CONTENT[legalModal];
+  // About is character-aware: current character's story first, then the
+  // other's, then the shared closing (legalModalContent).
+  const content =
+    legalModal === 'about'
+      ? getAboutModalContent(activeCharacter)
+      : LEGAL_MODAL_CONTENT[legalModal];
+  const otherCharacter = otherMeadowCharacter(activeCharacter);
+
+  // Quiet inline switch action at the end of the OTHER character's story
+  // section (section index 1 in the About layout): closes the modal and runs
+  // the same switch mechanism as the top-right switcher (name overlay).
+  const handlePlayOther = () => {
+    if (isSwitching) return;
+    closeLegalModal();
+    switchCharacter();
+  };
   const panelStyle = isMobile ? meadowLegalPanelMobile : meadowLegalPanelDesktop;
   const enterAnimation = reducedMotion
     ? 'meadowLegalFadeIn 160ms ease forwards'
@@ -280,6 +307,29 @@ export function LegalModal() {
                   {renderParagraph(paragraph)}
                 </p>
               ))}
+              {content.id === 'about' && sectionIndex === 1 ? (
+                <button
+                  type="button"
+                  className="meadow-focusable meadow-clickable"
+                  data-testid="meadow-about-play-other"
+                  onClick={handlePlayOther}
+                  style={{
+                    display: 'block',
+                    margin: '14px 0 0',
+                    padding: 0,
+                    border: 'none',
+                    background: 'transparent',
+                    color: meadowModalTokens.muted,
+                    fontFamily: meadowHudFontFamily,
+                    fontSize: '12px',
+                    letterSpacing: '0.12em',
+                    textDecoration: 'none',
+                    cursor: isSwitching ? 'default' : 'pointer',
+                  }}
+                >
+                  [ {MEADOW_CHARACTER_PLAY_LABELS[otherCharacter]} ]
+                </button>
+              ) : null}
               {section.citations?.length ? (
                 <ul
                   style={{

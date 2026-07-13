@@ -4,6 +4,8 @@ export interface MeadowSession {
   userId: string;
   email: string;
   memberstackId?: string;
+  /** Account-level "met The Void" marker (auth user_metadata) — cross-device switcher availability. */
+  meadowMetVoid?: boolean;
 }
 
 export type MeadowAuthResult =
@@ -564,6 +566,27 @@ export async function completeProfile(
       ok: false,
       message: 'We could not reach the account service. Check your connection and try again.',
     };
+  }
+}
+
+/**
+ * Push the "met The Void" flag to the signed-in account (user_metadata via
+ * meadow-auth `meadowFlags`). Merge-only — the server never clears it, and the
+ * local flag is never cleared either. Best-effort, fire-and-forget safe:
+ * character access is NEVER auth-gated (owner law), this only syncs
+ * availability across devices.
+ */
+export async function pushMeadowMetVoidFlag(): Promise<void> {
+  if (isMockMode() || !MEADOW_AUTH_URL) return;
+  if (!readClientTokens()?.access_token) return;
+
+  try {
+    await meadowAuthedFetch(MEADOW_AUTH_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'meadowFlags', set: { meadow_met_void: true } }),
+    });
+  } catch {
+    // Best-effort — localStorage remains the local source of truth.
   }
 }
 

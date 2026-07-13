@@ -1,3 +1,5 @@
+import { otherMeadowCharacter, type MeadowCharacterId } from '../config/meadowCharacter';
+
 export type LegalModalId = 'about' | 'terms' | 'privacy' | 'research';
 
 export type LegalModalCitation = {
@@ -19,35 +21,73 @@ export type LegalModalContent = {
   sections: LegalModalSection[];
 };
 
-export const LEGAL_MODAL_CONTENT: Record<LegalModalId, LegalModalContent> = {
-  about: {
+/**
+ * Per-character origin stories (file-card sections). The About modal shows the
+ * CURRENT character's story first, then the other character's, then the shared
+ * experience closing. Booster's copy is the shipped verbatim text; The Void's
+ * is the owner-seen, parent-approved draft (owner may still edit wording).
+ * Meadow lore law: zero em dashes, zero colons in this copy.
+ */
+export const CHARACTER_STORY_SECTIONS: Record<MeadowCharacterId, LegalModalSection> = {
+  jq: {
+    heading: 'CADET FILE',
+    subheading: 'BOOSTER STARLING \u00b7 SPECIES UNKNOWN',
+    paragraphs: [
+      'Before there were maps, there were stories. The old ones say every star began as a story someone told into the dark, and that long before the first ships ever flew, there were beings who walked between worlds gathering those stories the way children gather fireflies. They were called Storytailor. No one has ever seen their faces. Some say they wove the first constellations by hand. Some say they only listen, and that listening is the whole secret. But wherever imagination burns, they are near, tending it like a fire that must never be allowed to go out.',
+      'It was the Storytailor who founded O.R.B.I.T., a fellowship of cadets drawn from every corner of the sky. Not the strongest, and never the loudest. The ancient ones chose differently. They chose the ones who told stories to empty rooms, who built ships out of scrap and believed they would fly, who kept a light on for no reason anyone else could see.',
+      'Which is how they found Booster.',
+      'Booster grew up on a small planet most maps had already forgotten, where the nights were long and the stars felt closer than anyone else. There was no family to speak of, so Booster made one. Stories whispered to the dark. Little ships built from salvage and stubbornness. A promise, kept nightly, that somewhere up there someone was listening.',
+      'Someone was.',
+      'The recruiting officer never said how long the ancient ones had been watching. Only that the youngest cadet in the history of O.R.B.I.T. should probably stop crying and try on the suit. For a while, life was marching songs and missions, a patch worn proudly on one shoulder, and the particular happiness of belonging somewhere at last.',
+      'Then something quiet moved through the stars. It did not roar or burn. It simply dimmed things, the way a room goes gray when a candle gutters, and when it had passed, the fellowship was gone. Every cadet, every teacher, every song. Except one.',
+      'Booster was the one who kept going. The suit is scuffed now. The visor never opens, and no one has ever seen the face behind it. Maybe that is the point. Anyone could be Booster.',
+      'They still hum the old marching songs when they think no one is listening. They still keep a pinch of meteorite dust from every world in one pocket, because the ancient ones taught that no story should be left behind. And between journeys they rest here, in the grass, under the sky, keeping the fire lit until the fellowship flies again.',
+    ],
+  },
+  void: {
+    heading: 'SUBJECT FILE',
+    subheading: 'THE VOID \u00b7 SPECIES UNKNOWN',
+    paragraphs: [
+      'Somewhere before memory, when the universe was young and very loud, something small woke up in the dark between the stars. It had no name, no voice, and no one to ask about either. The old ones would come to call it The Void, but it never called itself anything at all.',
+      'It found the universe overwhelming. Every world blazed and rang and shouted its stories into the sky, and nothing ever seemed to rest. So the small quiet thing did the only kind thing it knew. It began to hush things. A little less light here. A little less noise there. Wherever it passed, worlds went soft and gray and still, and it believed, truly believed, that it was helping.',
+      'It did not notice what it took. It does not know that someone survived. It only knows that lately something strange keeps happening. It finds itself following brightness instead of hushing it. Hovering near warm windows. Tilting its head at songs it cannot sing. Reaching, very carefully, toward small drifting lights, and feeling something it has no word for when they glow.',
+      'It has started to wonder if it is missing something.',
+      'These nights it comes to a quiet meadow at the edge of the sky, where one light burns steady in the grass. It keeps its distance. It watches. And for reasons it cannot explain, it has not dimmed a single thing here.',
+    ],
+  },
+};
+
+/** Shared experience closing — unchanged from the shipped About. */
+const ABOUT_CLOSING_SECTION: LegalModalSection = {
+  paragraphs: [
+    'This is a quiet meadow at the edge of the sky. There is nothing to win here and nothing to finish. You can walk, fly, gather the drifting lights, or just stand in the grass and listen to the wind.',
+    'If you have smart lights at home, the room can drift along with the sky.',
+    "Storytailor's Booster lives here. Stay as long as you like.",
+  ],
+};
+
+/**
+ * Character-aware About: current character's story first, the other's below it
+ * (each with its own file-card header), then the shared closing. LegalModal
+ * appends the [ PLAY WITH … ] inline switch action after the OTHER
+ * character's section.
+ */
+export function getAboutModalContent(active: MeadowCharacterId): LegalModalContent {
+  const other = otherMeadowCharacter(active);
+  return {
     id: 'about',
     title: 'ABOUT',
     sections: [
-      {
-        heading: 'CADET FILE',
-        subheading: 'BOOSTER STARLING \u00b7 SPECIES UNKNOWN',
-        paragraphs: [
-          'Before there were maps, there were stories. The old ones say every star began as a story someone told into the dark, and that long before the first ships ever flew, there were beings who walked between worlds gathering those stories the way children gather fireflies. They were called Storytailor. No one has ever seen their faces. Some say they wove the first constellations by hand. Some say they only listen, and that listening is the whole secret. But wherever imagination burns, they are near, tending it like a fire that must never be allowed to go out.',
-          'It was the Storytailor who founded O.R.B.I.T., a fellowship of cadets drawn from every corner of the sky. Not the strongest, and never the loudest. The ancient ones chose differently. They chose the ones who told stories to empty rooms, who built ships out of scrap and believed they would fly, who kept a light on for no reason anyone else could see.',
-          'Which is how they found Booster.',
-          'Booster grew up on a small planet most maps had already forgotten, where the nights were long and the stars felt closer than anyone else. There was no family to speak of, so Booster made one. Stories whispered to the dark. Little ships built from salvage and stubbornness. A promise, kept nightly, that somewhere up there someone was listening.',
-          'Someone was.',
-          'The recruiting officer never said how long the ancient ones had been watching. Only that the youngest cadet in the history of O.R.B.I.T. should probably stop crying and try on the suit. For a while, life was marching songs and missions, a patch worn proudly on one shoulder, and the particular happiness of belonging somewhere at last.',
-          'Then something quiet moved through the stars. It did not roar or burn. It simply dimmed things, the way a room goes gray when a candle gutters, and when it had passed, the fellowship was gone. Every cadet, every teacher, every song. Except one.',
-          'Booster was the one who kept going. The suit is scuffed now. The visor never opens, and no one has ever seen the face behind it. Maybe that is the point. Anyone could be Booster.',
-          'They still hum the old marching songs when they think no one is listening. They still keep a pinch of meteorite dust from every world in one pocket, because the ancient ones taught that no story should be left behind. And between journeys they rest here, in the grass, under the sky, keeping the fire lit until the fellowship flies again.',
-        ],
-      },
-      {
-        paragraphs: [
-          'This is a quiet meadow at the edge of the sky. There is nothing to win here and nothing to finish. You can walk, fly, gather the drifting lights, or just stand in the grass and listen to the wind.',
-          'If you have smart lights at home, the room can drift along with the sky.',
-          "Storytailor's Booster lives here. Stay as long as you like.",
-        ],
-      },
+      CHARACTER_STORY_SECTIONS[active],
+      CHARACTER_STORY_SECTIONS[other],
+      ABOUT_CLOSING_SECTION,
     ],
-  },
+  };
+}
+
+export const LEGAL_MODAL_CONTENT: Record<LegalModalId, LegalModalContent> = {
+  // Booster-first default; LegalModal swaps in getAboutModalContent(active).
+  about: getAboutModalContent('jq'),
   terms: {
     id: 'terms',
     title: 'TERMS OF USE',
