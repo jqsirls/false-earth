@@ -2,10 +2,9 @@ import { useRef, useEffect, useMemo, useContext } from "react";
 import { useThree, useFrame } from "@react-three/fiber";
 import * as THREE from "three/webgpu";
 import { WebGPURenderer } from "three/webgpu";
-import { clamp, float, Fn, If, length, luminance, mix, pass, pow, saturation, smoothstep, uniform, uv, vec2, vec4 } from "three/tsl";
+import { clamp, float, Fn, If, length, luminance, mix, pass, pow, saturation, smoothstep, uniform, uv, vec4 } from "three/tsl";
 import { bloom } from "three/addons/tsl/display/BloomNode.js";
 import { dof } from "three/addons/tsl/display/DepthOfFieldNode.js";
-import { film } from "three/addons/tsl/display/FilmNode.js";
 import { hashBlur } from "three/addons/tsl/display/hashBlur.js";
 import { smaa } from "three/addons/tsl/display/SMAANode.js";
 
@@ -13,8 +12,6 @@ import { useGameStore, CameraMode } from "../../core/store/gameStore";
 import { useEffectsControls } from "./useEffectsControls";
 import { BeamSceneContext } from "../../app/App";
 import {
-  MEADOW_FILM_GRAIN_INTENSITY,
-  MEADOW_FLARE_STREAK_STRENGTH,
   MEADOW_POST_BLACKS,
   MEADOW_POST_SATURATION,
   MEADOW_POST_SHADOWS,
@@ -130,21 +127,6 @@ export default function Effects() {
       bloomNode.strength = uParams.current.bloomStr;
       bloomNode.radius = uParams.current.bloomRad;
       finalNode = finalNode.add(bloomNode);
-
-      if (MEADOW_FLARE_STREAK_STRENGTH > 0) {
-        const whisperStreak = Fn(() => {
-          const step = vec2(0.0025, 0.0);
-          const streak = sceneTex
-            .sample(uvNode.add(step))
-            .add(sceneTex.sample(uvNode.sub(step)))
-            .add(sceneTex.sample(uvNode.add(step.mul(2.0))))
-            .add(sceneTex.sample(uvNode.sub(step.mul(2.0))))
-            .mul(0.25);
-          const bright = smoothstep(float(0.45), float(0.75), luminance(streak.rgb));
-          return streak.mul(bright).mul(float(MEADOW_FLARE_STREAK_STRENGTH));
-        });
-        finalNode = finalNode.add(whisperStreak());
-      }
     }
 
     // Meadow grade (owner 2026-07-13): blacks −5%, shadows −10%, saturation +10%.
@@ -155,14 +137,10 @@ export default function Effects() {
     gradedRgb = saturation(gradedRgb, float(MEADOW_POST_SATURATION));
     finalNode = vec4(gradedRgb, finalNode.a);
 
-    // Sharpness −10%: mild single-pass blur mix (after grade, before grain/SMAA).
+    // Sharpness −10%: mild single-pass blur mix (after grade, before optional SMAA).
     if (isHighQuality && MEADOW_POST_SOFTEN > 0) {
       const softNode = hashBlur(finalNode, float(0.018), { repeats: float(24) });
       finalNode = mix(finalNode, softNode, float(MEADOW_POST_SOFTEN));
-    }
-
-    if (isHighQuality && MEADOW_FILM_GRAIN_INTENSITY > 0) {
-      finalNode = film(finalNode, float(MEADOW_FILM_GRAIN_INTENSITY));
     }
 
     if (isHighQuality && smaaEnabled) {
