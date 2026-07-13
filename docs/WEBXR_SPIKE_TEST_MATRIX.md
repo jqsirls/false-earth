@@ -48,6 +48,33 @@
 - Snap turn rotates view directly; player rig refactor planned for v1.
 - WebGPU + WebXR combo is bleeding-edge; failures surface inline under `[ ENTER VR ]`.
 
+## Interim testing without Quest/PCVR
+
+### Vision Pro interim testing (v1.1 target, useful spike smoke)
+
+Meadow requests **`immersive-vr`** with **`local-floor`** — not `immersive-ar`. Vision Pro Safari supports `immersive-vr`; do not expect an AR passthrough session.
+
+1. **Safari (visionOS):** Settings → Apps → Safari → Advanced → Feature Flags → enable **WebXR Device API** (and related WebXR flags if listed). Restart Safari.
+2. Open `https://booster.storytailor.com?webxr=1` or local `https://localhost:5173?webxr=1`.
+3. Tap `[ START ]`, then top-center `[ ENTER VR ]` when the support probe passes.
+4. Optional sanity check in Web Inspector console: `await navigator.xr?.isSessionSupported('immersive-vr')` → `true` with flags on.
+
+VP uses gaze + pinch (transient pointer), not Quest controllers — comfort and locomotion sign-off still require Quest/PCVR per ship matrix above.
+
+### Chrome Immersive Web Emulator caveats
+
+Desktop Chrome can polyfill `immersive-vr` for flow smoke tests; **WebGPU + WebXR is fragile** (failures show inline under `[ ENTER VR ]`).
+
+1. Install [Immersive Web Emulator](https://chromewebstore.google.com/detail/immersive-web-emulator/cgffilbpcibhmcfbgggfhfolhkfbhmik) (Chrome/Edge).
+2. `chrome://flags`: enable **WebXR Incubations**; on Windows try **WebXR/WebGPU Binding**; if WebXR Layers errors appear, disable **WebXR Layers** and restart.
+3. Same URL with `?webxr=1` → `[ START ]` → `[ ENTER VR ]`; use DevTools **WebXR** tab for emulated headset.
+
+Expect session bind failures (`WebGPU XR renderer not ready`, etc.). Not a substitute for headset performance or comfort checks. No `?webxr=simulate=1` desktop preview exists — only a real XR session toggles VR behavior.
+
+### Flat browser (no XR device)
+
+With **`?webxr=1` alone** and no XR support (`navigator.xr` missing or `isSessionSupported('immersive-vr')` false), Meadow is **visually unchanged** from production flat play. **`[ ENTER VR ]` stays hidden** until spike flag, immersive-vr support, and `[ START ]` all pass (`EnterVrButton.tsx`).
+
 ## Code map
 
 | Area | Path |
