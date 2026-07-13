@@ -114,21 +114,21 @@ export default function App() {
     useEffect(() => {
         const checkWebGPU = async () => {
             if (!navigator.gpu) {
-                setGpuError("WEBGPU NOT SUPPORTED");
+                setGpuError('WEBGPU_NOT_SUPPORTED');
                 console.error("WebGPU is not supported in this browser");
                 return;
             }
             try {
                 const adapter = await navigator.gpu.requestAdapter();
                 if (!adapter) {
-                    setGpuError("NO GPU ADAPTER FOUND");
+                    setGpuError('NO_GPU_ADAPTER');
                     console.error("No GPU adapter found");
                     return;
                 }
                 console.log('WebGPU initialized successfully');
                 setGpuError(null); // Clear any previous errors
             } catch (e) {
-                setGpuError("GPU INIT FAILED");
+                setGpuError('GPU_INIT_FAILED');
                 console.error("WebGPU initialization failed:", e);
             }
         };
@@ -179,22 +179,19 @@ export default function App() {
                     const canvasEl = renderer.domElement;
                     const onContextLost = (event: Event) => {
                         event.preventDefault();
-                        const hint = isMemoryConstrainedGpu()
-                            ? 'GPU memory exceeded — close other tabs and reload'
-                            : 'GPU memory exceeded — reload on a smaller display or use Chrome';
-                        setGpuError(hint);
+                        setGpuError('GPU_MEMORY_EXCEEDED');
                     };
                     canvasEl.addEventListener('webglcontextlost', onContextLost);
 
                     return renderer.init().then(() => {
                         attachGpuDeviceLostHandler(renderer, (message) => {
-                            setGpuError(`GPU LOST — ${message}`);
+                            console.error('[false-earth] GPU device lost:', message);
+                            setGpuError('GPU_LOST');
                         });
                         return renderer;
                     }).catch((err: unknown) => {
-                        const message = err instanceof Error ? err.message : String(err);
                         console.error('WebGPU renderer init failed:', err);
-                        setGpuError(`GPU INIT FAILED — ${message}`);
+                        setGpuError('GPU_INIT_FAILED');
                         throw err;
                     });
                 }}

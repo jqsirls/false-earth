@@ -8,7 +8,7 @@ import { MEADOW_LOGO_ALT, MEADOW_LOGO_PATH, MEADOW_PLAYLIST_TRACKS, resolveMeado
 import { resumeMeadowAudioContext } from "../config/meadowAudio";
 import { prepareMeadowBgm, startMeadowBgm, setMeadowBgmMuted, whenMeadowBgmPrepared } from "../audio/meadowBgmPlayer";
 import { prefersReducedMotion } from "../core/utils/reducedMotion";
-import { formatGpuError, getGpuErrorHeadline, getGpuErrorHint } from "../core/utils/gpuError";
+import { formatGpuError, getGpuErrorBody, getGpuErrorHeadline } from "../core/utils/gpuError";
 import gsap from "gsap";
 
 const SPLASH_WEBP = resolveMeadowAsset('/storytailor-splash.webp');
@@ -178,14 +178,11 @@ export function LoadingScreen() {
                 </h1>
 
                 {gpuErrorInfo ? (
-                    <div style={{ color: '#ff6b6b', fontSize: '0.85rem', lineHeight: 1.5 }}>
+                    <div style={{ color: 'rgba(255,255,255,0.88)', fontSize: '0.85rem', lineHeight: 1.5 }}>
                         <p style={{ margin: 0, fontWeight: 600 }}>{getGpuErrorHeadline(gpuErrorInfo)}</p>
-                        <p style={{ margin: '0.5rem 0 0', opacity: 0.85 }}>{gpuErrorInfo.detail}</p>
-                        {getGpuErrorHint(gpuErrorInfo) && (
-                            <p style={{ margin: '0.75rem 0 0', opacity: 0.7, fontSize: '0.8rem' }}>
-                                {getGpuErrorHint(gpuErrorInfo)}
-                            </p>
-                        )}
+                        <p style={{ margin: '0.5rem 0 0', opacity: 0.78 }}>
+                            {getGpuErrorBody(gpuErrorInfo)}
+                        </p>
                     </div>
                 ) : (
                     <>
