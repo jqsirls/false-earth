@@ -15,13 +15,16 @@ interface VrState {
   lastError: string | null;
   setLastError: (error: string | null) => void;
   comfort: VrComfortSettings;
+  /** VP gaze RUN chip / flat Shift equivalent while in VR. */
+  vrRunLatch: boolean;
+  setVrRunLatch: (latched: boolean) => void;
 }
 
 export const useVrStore = create<VrState>((set) => ({
   isSupported: false,
   setIsSupported: (supported) => set({ isSupported: supported }),
   isActive: false,
-  setIsActive: (active) => set({ isActive: active }),
+  setIsActive: (active) => set({ isActive: active, ...(active ? {} : { vrRunLatch: false }) }),
   isEntering: false,
   setIsEntering: (entering) => set({ isEntering: entering }),
   lastError: null,
@@ -30,4 +33,6 @@ export const useVrStore = create<VrState>((set) => ({
     snapTurnDegrees: 30,
     smoothTurnEnabled: false,
   },
+  vrRunLatch: false,
+  setVrRunLatch: (latched) => set({ vrRunLatch: latched }),
 }));

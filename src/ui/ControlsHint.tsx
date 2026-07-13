@@ -131,6 +131,7 @@ export function ControlsHint() {
           label="MOVE"
         />
         <HintRow input={<HintKey>SHIFT</HintKey>} label="RUN" />
+        <HintRow input={<HintKey>F</HintKey>} label="FLY" />
         <HintRow input={<MouseIcon />} label="DRAG" />
         <HintRow
           input={

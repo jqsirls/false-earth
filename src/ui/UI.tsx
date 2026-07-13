@@ -35,10 +35,26 @@ export function UI() {
     const toggleUiHidden = useZenStore((state) => state.toggleUiHidden);
     const showUi = useZenStore((state) => state.showUi);
     const isVrActive = useVrStore((state) => state.isActive);
+    const toggleFlight = useGameStore((state) => state.toggleFlight);
+    const setIsFlying = useGameStore((state) => state.setIsFlying);
+    const setVrRunLatch = useVrStore((state) => state.setVrRunLatch);
 
     useDoubleTapFlight();
 
     useMeadowOverlayEsc();
+
+    // F toggles flight on all devices (VR keyboard parity + flat desktop).
+    useShortcut('f', () => {
+        if (!isControlEnabled || isOverlayOpen) return;
+        toggleFlight();
+    });
+
+    // G lands without toggling back into flight.
+    useShortcut('g', () => {
+        if (!isControlEnabled || isOverlayOpen) return;
+        setIsFlying(false);
+        setVrRunLatch(false);
+    });
 
     // Desktop [H] zen mode: hide all chrome. Same guard rule as the M key —
     // no-op before START or while any sheet/modal is open. Desktop only.

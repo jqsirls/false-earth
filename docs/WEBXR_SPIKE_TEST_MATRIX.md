@@ -27,12 +27,12 @@
 | ID | Test | Expected |
 |----|------|----------|
 | C1 | Seated default | `local-floor` reference space; no forced standing |
-| C2 | Walk only | WASD move works; double-tap flight does nothing |
-| C3 | Snap turn | A/D rotate 30° per press; smooth turn off |
-| C4 | Stereo safety | No helmet/CRT post overlay in VR |
-| C5 | HUD | Flat HUD hidden in VR; `[ EXIT ]` only (not head-locked in spike) |
-| C6 | Modals | Auth/Hue/legal sheets not ported; exit VR to use flat UI |
-| C7 | Exit preserve | Exit VR keeps position, orbs, timer, session state |
+| C2 | Locomotion verbs | WASD walk; Shift run; F or G fly/land; double-tap flight flat-only |
+| C2b | VR snap turn | A/D rotate 30° per press in VR (not strafe); smooth turn off |
+| C3 | Stereo safety | No helmet/CRT post overlay in VR |
+| C4 | HUD | Flat HUD hidden in VR; locomotion ring stub + `[ EXIT ]` (world-anchored, not head-locked) |
+| C5 | Modals | Auth/Hue/legal sheets not ported; exit VR to use flat UI |
+| C6 | Exit preserve | Exit VR keeps position, orbs, timer, session state |
 
 ## Performance checks
 
@@ -46,6 +46,7 @@
 
 - Grass grid size is chosen at scene boot; full VR cap reload may require session restart (v1 follow-up).
 - Snap turn rotates view directly; player rig refactor planned for v1.
+- Controller thumbstick + grip run + fly buttons not wired in spike; keyboard + gaze menu stub only.
 - WebGPU + WebXR combo is bleeding-edge; failures surface inline under `[ ENTER VR ]`.
 
 ## Interim testing without Quest/PCVR
@@ -83,5 +84,6 @@ With **`?webxr=1` alone** and no XR support (`navigator.xr` missing or `isSessio
 | Feature detect | `src/core/xr/xrSupport.ts` |
 | Session bind | `src/core/xr/webXrSession.ts` |
 | In-session rules | `src/components/xr/VrSessionBridge.tsx` |
+| Locomotion menu stub | `src/components/xr/VrLocomotionMenu.tsx` |
 | HUD entry | `src/ui/EnterVrButton.tsx` |
 | Device caps | `src/core/utils/browserCaps.ts` (`isVrSceneProfile`) |

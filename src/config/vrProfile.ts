@@ -2,6 +2,9 @@
 
 export const VR_SNAP_TURN_DEGREES = 30;
 
+/** Vision Pro gaze chip dwell before auto-highlight (pinch still primary). */
+export const VR_GAZE_DWELL_MS = 800;
+
 /** Spike gate: opt-in via ?webxr=1 until Quest+PCVR v1 ship proof. */
 export function isWebXrSpikeEnabled(): boolean {
   if (typeof window === 'undefined') return false;

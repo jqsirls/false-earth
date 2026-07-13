@@ -7,19 +7,13 @@ import { VR_SNAP_TURN_DEGREES } from '../../config/vrProfile';
 import { input } from '../../core/input/controls';
 
 /**
- * In-session VR locomotion: walk-only, snap turn (A/D or stick), no flight.
- * Runs only while an immersive session is active.
+ * In-session VR locomotion bridge: snap turn (A/D), keyboard parity, flight allowed.
+ * Controller thumbstick wiring ships in VR v1; spike uses keyboard + gaze menu stub.
  */
 export function VrSessionBridge() {
   const { gl, camera } = useThree();
   const isActive = useVrStore((state) => state.isActive);
   const isControlEnabled = useGameStore((state) => state.isControlEnabled);
-  const setIsFlying = useGameStore((state) => state.setIsFlying);
-
-  useEffect(() => {
-    if (!isActive) return;
-    setIsFlying(false);
-  }, [isActive, setIsFlying]);
 
   useEffect(() => {
     if (!isActive) return undefined;
@@ -47,11 +41,6 @@ export function VrSessionBridge() {
     }
     if (input.isPressed('RotateRight')) {
       camera.rotation.y -= snapRad;
-    }
-
-    // Flight unreachable in VR v1.
-    if (useGameStore.getState().isFlying) {
-      setIsFlying(false);
     }
   });
 

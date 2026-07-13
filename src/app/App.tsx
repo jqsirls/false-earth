@@ -26,6 +26,7 @@ import { CanvasErrorBoundary } from './CanvasErrorBoundary';
 import { getInitialDpr, getMaxDpr, isDebugMode, isMemoryConstrainedGpu, shouldPreloadVatRoses } from '../core/utils/browserCaps';
 import { setVrRenderer } from '../core/xr/webXrSession';
 import { VrSessionBridge } from '../components/xr/VrSessionBridge';
+import { VrLocomotionMenu } from '../components/xr/VrLocomotionMenu';
 import { MEADOW_FOOTSTEP_PATHS } from '../config/meadowAudio';
 import { resolveMeadowAsset } from '../config/meadow';
 import { configureCdnTextureLoader } from '../core/utils/cdnTextureLoader';
@@ -224,6 +225,7 @@ export default function App() {
                 <BeamSceneContext.Provider value={beamScene}>
                     <WorldController />
                     <VrSessionBridge />
+                    <VrLocomotionMenu />
 
                     <Suspense fallback={null}>
                         <color attach="background" args={['#000000']} />

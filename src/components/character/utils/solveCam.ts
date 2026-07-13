@@ -2,6 +2,7 @@ import * as THREE from 'three/webgpu';
 import { Group, Camera, Euler } from 'three';
 import { PhysicsState } from '../config';
 import { input } from '../../../core/input/controls';
+import { useVrStore } from '../../../core/store/vrStore';
 
 const getShortestAngleDifference = (from: number, to: number) => {
   const delta = to - from;
@@ -23,12 +24,14 @@ export const solveCam = (
   options: { isFlying?: boolean } = {},
 ) => {
   const isFlying = options.isFlying ?? false;
+  const isVr = useVrStore.getState().isActive;
+  const vrRunLatch = isVr && useVrStore.getState().vrRunLatch;
 
   const moveForward = input.isPressed('MoveForward')
   const moveBackward = input.isPressed('MoveBackward')
   const rotateLeft = input.isPressed('RotateLeft')
   const rotateRight = input.isPressed('RotateRight')
-  const run = input.isPressed('Run')
+  const run = input.isPressed('Run') || vrRunLatch
   const joyX = input.getAxis('horizontal');
   const joyY = input.getAxis('vertical');
 
@@ -40,6 +43,10 @@ export const solveCam = (
   if (Math.abs(joyX) > 0.01 || Math.abs(joyY) > 0.01) {
     ix = joyX;
     iy = joyY;
+  } else if (isVr) {
+    // VR: W/S move relative to view; A/D snap-turn only (VrSessionBridge).
+    if (moveForward) iy += 1;
+    if (moveBackward) iy -= 1;
   } else {
     // Map WASD to Vector
     if (rotateLeft) ix -= 1;
