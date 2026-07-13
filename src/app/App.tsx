@@ -24,6 +24,8 @@ import { isVoidCharacterActive } from '../config/meadowCharacter';
 import { STORYTAILOR } from '../config/storytailor';
 import { CanvasErrorBoundary } from './CanvasErrorBoundary';
 import { getInitialDpr, getMaxDpr, isDebugMode, isMemoryConstrainedGpu, shouldPreloadVatRoses } from '../core/utils/browserCaps';
+import { setVrRenderer } from '../core/xr/webXrSession';
+import { VrSessionBridge } from '../components/xr/VrSessionBridge';
 import { MEADOW_FOOTSTEP_PATHS } from '../config/meadowAudio';
 import { resolveMeadowAsset } from '../config/meadow';
 import { configureCdnTextureLoader } from '../core/utils/cdnTextureLoader';
@@ -184,6 +186,7 @@ export default function App() {
                     canvasEl.addEventListener('webglcontextlost', onContextLost);
 
                     return renderer.init().then(() => {
+                        setVrRenderer(renderer);
                         attachGpuDeviceLostHandler(renderer, (message) => {
                             console.error('[false-earth] GPU device lost:', message);
                             setGpuError('GPU_LOST');
@@ -220,6 +223,7 @@ export default function App() {
 
                 <BeamSceneContext.Provider value={beamScene}>
                     <WorldController />
+                    <VrSessionBridge />
 
                     <Suspense fallback={null}>
                         <color attach="background" args={['#000000']} />

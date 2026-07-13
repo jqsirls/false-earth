@@ -111,6 +111,12 @@ export const LEGAL_MODAL_CONTENT: Record<LegalModalId, LegalModalContent> = {
         ],
       },
       {
+        heading: 'VR MODE',
+        paragraphs: [
+          'VR mode follows your headset maker age guidance. It is optional and the flat meadow works the same without a headset.',
+        ],
+      },
+      {
         heading: 'SMART LIGHTS',
         paragraphs: [
           'Connecting Philips Hue is optional. You can disconnect at any time from the lamp menu. Light effects are designed to change slowly, but you know your household best; if anyone in your home is sensitive to changing light, use the reduced lighting setting or keep lights disconnected.',

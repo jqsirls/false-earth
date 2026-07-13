@@ -15,11 +15,13 @@ import AudioButton from "./AudioButton";
 import { MeadowFooter } from "./MeadowFooter";
 import { OrbCounter } from "./OrbCounter";
 import { IntroFlightHint } from "./IntroFlightHint";
+import { EnterVrButton } from "./EnterVrButton";
 import { LegalModal } from "./LegalModal";
 import { MeadowCursor } from "./MeadowCursor";
 import { SessionEnd } from "./SessionEnd";
 import { useMeadowOverlayEsc } from "../core/hooks/useMeadowOverlayEsc";
 import { useIsMeadowOverlayOpen } from "../core/hooks/useIsMeadowOverlayOpen";
+import { useVrStore } from "../core/store/vrStore";
 import { TouchJoystick } from "../core/input/TouchJoystick";
 import { useDoubleTapFlight } from "../core/input/useDoubleTapFlight";
 import { input } from "../core/input/controls";
@@ -32,6 +34,7 @@ export function UI() {
     const isUiHidden = useZenStore((state) => state.isUiHidden);
     const toggleUiHidden = useZenStore((state) => state.toggleUiHidden);
     const showUi = useZenStore((state) => state.showUi);
+    const isVrActive = useVrStore((state) => state.isActive);
 
     useDoubleTapFlight();
 
@@ -89,12 +92,17 @@ export function UI() {
                 visibility: isUiHidden ? 'hidden' : undefined,
                 transition: `opacity 0.5s ease, visibility 0s linear ${isUiHidden ? '0.5s' : '0s'}`,
             }}>
-                <MeadowCta />
-                <TopRightCluster />
-                <ControlsHint />
-                <OrbCounter />
-                <MeadowFooter />
-                <IntroFlightHint />
+                {!isVrActive ? (
+                  <>
+                    <MeadowCta />
+                    <TopRightCluster />
+                    <ControlsHint />
+                    <OrbCounter />
+                    <MeadowFooter />
+                    <IntroFlightHint />
+                  </>
+                ) : null}
+                <EnterVrButton />
 
                 <div style={{
                     position: 'absolute',

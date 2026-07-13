@@ -12,6 +12,7 @@ import { lensflare } from "three/addons/tsl/display/LensflareNode.js";
 import { smaa } from "three/addons/tsl/display/SMAANode.js";
 
 import { useGameStore, CameraMode } from "../../core/store/gameStore";
+import { useVrStore } from "../../core/store/vrStore";
 import { useEffectsControls } from "./useEffectsControls";
 import { BeamSceneContext } from "../../app/App";
 import {
@@ -36,6 +37,7 @@ export default function Effects() {
 
   const characterRef = useGameStore((state) => state.characterRef);
   const characterFlightLiftRef = useGameStore((state) => state.characterFlightLiftRef);
+  const isVrActive = useVrStore((state) => state.isActive);
   const { gl, scene, camera } = useThree();
   const beamScene = useContext(BeamSceneContext);
 
@@ -64,13 +66,13 @@ export default function Effects() {
     uParams.current.focalLen.value = dofCfg.focalLength;
     uParams.current.bokeh.value = dofCfg.bokehScale;
 
-    uParams.current.helmetStr.value = cameraMode === CameraMode.FPV ? 1 : 0;
+    uParams.current.helmetStr.value = cameraMode === CameraMode.FPV && !isVrActive ? 1 : 0;
 
     if (gl) {
       const renderer = gl as unknown as WebGPURenderer;
       renderer.toneMappingExposure = Math.pow(tmCfg.exposure, 4.0);
     }
-  }, [bloomCfg.threshold, bloomCfg.strength, bloomCfg.radius, dofCfg, cameraMode, tmCfg.exposure, gl]);
+  }, [bloomCfg.threshold, bloomCfg.strength, bloomCfg.radius, dofCfg, cameraMode, tmCfg.exposure, gl, isVrActive]);
 
   useEffect(() => {
     if (!gl || !scene || !camera || !(gl instanceof WebGPURenderer)) return;
@@ -130,8 +132,10 @@ export default function Effects() {
 
     const vignette = smoothstep(0.2, 0.8, dist);
     const mask = clamp(float(1.0).sub(vignette), 0.0, 1.0);
-    const helmetOverlay = finalNode.mul(vec4(mask, mask, mask, 1.0)).mul(vec4(0.6, 0.65, 0.7, 1.0));
-    finalNode = mix(finalNode, helmetOverlay, uParams.current.helmetStr);
+    if (!isVrActive) {
+      const helmetOverlay = finalNode.mul(vec4(mask, mask, mask, 1.0)).mul(vec4(0.6, 0.65, 0.7, 1.0));
+      finalNode = mix(finalNode, helmetOverlay, uParams.current.helmetStr);
+    }
 
     if (isHighQuality && bloomCfg.enabled) {
       const bloomNode = bloom(finalNode);
@@ -180,6 +184,16 @@ export default function Effects() {
       finalNode = finalNode.add(softFlare.mul(float(MEADOW_FLARE_ADD_STRENGTH)));
     }
 
+    // No CRT/helmet stereo overlays in VR (PRD §2.4).
+    if (isVrActive) {
+      pp.outputNode = finalNode;
+      renderer.toneMapping = tmCfg.enabled ? THREE.ReinhardToneMapping : THREE.NoToneMapping;
+      return () => {
+        postProcessingRef.current = null;
+        camera.layers.enableAll();
+      };
+    }
+
     pp.outputNode = finalNode;
 
     renderer.toneMapping = tmCfg.enabled ? THREE.ReinhardToneMapping : THREE.NoToneMapping;
@@ -199,6 +213,7 @@ export default function Effects() {
     tmCfg.enabled,
     beamScene,
     prefersReducedMotion,
+    isVrActive,
   ]);
 
   useFrame(() => {

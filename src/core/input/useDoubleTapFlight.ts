@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useGameStore } from '../store/gameStore';
+import { useVrStore } from '../store/vrStore';
 import { getIsMeadowOverlayOpen } from '../hooks/useIsMeadowOverlayOpen';
 
 const DOUBLE_TAP_MS = 320;
@@ -18,6 +19,7 @@ export function useDoubleTapFlight() {
 
   useEffect(() => {
     if (!isControlEnabled) return;
+    if (useVrStore.getState().isActive) return;
 
     const onPointerUp = (event: PointerEvent) => {
       if (event.button !== 0) return;
