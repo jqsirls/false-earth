@@ -1,10 +1,11 @@
-import { useRef, type CSSProperties } from 'react';
+import { useRef, useState, type CSSProperties } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three/webgpu';
 import { useGameStore } from '../../core/store/gameStore';
 import { useVrStore } from '../../core/store/vrStore';
 import { VR_GAZE_DWELL_MS } from '../../config/vrProfile';
+import { endImmersiveVrSession, getVrRenderer } from '../../core/xr/webXrSession';
 
 type LocomotionVerb = 'walk' | 'run' | 'fly' | 'land';
 
@@ -35,11 +36,15 @@ export function VrLocomotionMenu() {
   const groupRef = useRef<THREE.Group>(null);
   const { camera } = useThree();
   const isActive = useVrStore((state) => state.isActive);
+  const isEntering = useVrStore((state) => state.isEntering);
+  const setIsEntering = useVrStore((state) => state.setIsEntering);
+  const setLastError = useVrStore((state) => state.setLastError);
   const vrRunLatch = useVrStore((state) => state.vrRunLatch);
   const setVrRunLatch = useVrStore((state) => state.setVrRunLatch);
   const setIsFlying = useGameStore((state) => state.setIsFlying);
   const isFlying = useGameStore((state) => state.isFlying);
   const isControlEnabled = useGameStore((state) => state.isControlEnabled);
+  const [isExiting, setIsExiting] = useState(false);
 
   useFrame(() => {
     const group = groupRef.current;
@@ -79,6 +84,26 @@ export function VrLocomotionMenu() {
         const _exhaustive: never = verb;
         return _exhaustive;
       }
+    }
+  };
+
+  const onExitVr = async () => {
+    if (isExiting || isEntering) return;
+    setLastError(null);
+    setIsExiting(true);
+    setIsEntering(true);
+    try {
+      const renderer = getVrRenderer();
+      if (!renderer) {
+        throw new Error('WebGPU XR renderer not ready');
+      }
+      await endImmersiveVrSession(renderer);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'VR exit failed';
+      setLastError(message);
+    } finally {
+      setIsExiting(false);
+      setIsEntering(false);
     }
   };
 
@@ -123,6 +148,19 @@ export function VrLocomotionMenu() {
               );
             })}
           </div>
+          <button
+            type="button"
+            style={{
+              ...CHIP_STYLE,
+              cursor: isExiting || isEntering ? 'wait' : 'pointer',
+              opacity: isExiting || isEntering ? 0.6 : 1,
+            }}
+            onClick={() => void onExitVr()}
+            disabled={isExiting || isEntering}
+            aria-label="Exit VR"
+          >
+            EXIT
+          </button>
         </div>
       </Html>
     </group>

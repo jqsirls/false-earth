@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useThree, useFrame } from '@react-three/fiber';
+import { useThree } from '@react-three/fiber';
 import { WebGPURenderer } from 'three/webgpu';
 import { useGameStore } from '../../core/store/gameStore';
 import { useVrStore } from '../../core/store/vrStore';
@@ -13,7 +13,6 @@ import { input } from '../../core/input/controls';
 export function VrSessionBridge() {
   const { gl, camera } = useThree();
   const isActive = useVrStore((state) => state.isActive);
-  const isControlEnabled = useGameStore((state) => state.isControlEnabled);
 
   useEffect(() => {
     if (!isActive) return undefined;
@@ -32,17 +31,25 @@ export function VrSessionBridge() {
     return () => session.removeEventListener('inputsourceschange', onInputs);
   }, [gl, isActive]);
 
-  useFrame(() => {
-    if (!isActive || !isControlEnabled) return;
+  useEffect(() => {
+    if (!isActive) return undefined;
 
     const snapRad = (VR_SNAP_TURN_DEGREES * Math.PI) / 180;
-    if (input.isPressed('RotateLeft')) {
-      camera.rotation.y += snapRad;
-    }
-    if (input.isPressed('RotateRight')) {
-      camera.rotation.y -= snapRad;
-    }
-  });
+
+    const turnIfReady = (delta: number) => {
+      if (!useVrStore.getState().isActive) return;
+      if (!useGameStore.getState().isControlEnabled) return;
+      camera.rotation.y += delta;
+    };
+
+    const unsubLeft = input.subscribe('RotateLeft', () => turnIfReady(snapRad));
+    const unsubRight = input.subscribe('RotateRight', () => turnIfReady(-snapRad));
+
+    return () => {
+      unsubLeft();
+      unsubRight();
+    };
+  }, [camera, isActive]);
 
   return null;
 }

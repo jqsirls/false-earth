@@ -2,16 +2,13 @@ import { useEffect } from 'react';
 import { useGameStore } from '../core/store/gameStore';
 import { useVrStore } from '../core/store/vrStore';
 import { probeImmersiveVrSupport } from '../core/xr/xrSupport';
-import {
-  endImmersiveVrSession,
-  getVrRenderer,
-  startImmersiveVrSession,
-} from '../core/xr/webXrSession';
+import { getVrRenderer, startImmersiveVrSession } from '../core/xr/webXrSession';
 import { HintKey } from './ControlsHint';
 import { meadowHudQuietButtonStyle } from './meadowUiStyles';
 
 /**
- * Flat-screen [ ENTER VR ] / in-session [ EXIT ] — keycap HUD idiom.
+ * Flat-screen [ ENTER VR ] — keycap HUD idiom.
+ * In-session [ EXIT ] lives on the world locomotion ring (PRD C4 / AC5).
  * Hidden unless spike flag + immersive-vr is supported (PRD AC1).
  */
 export function EnterVrButton() {
@@ -35,7 +32,7 @@ export function EnterVrButton() {
     };
   }, [setIsSupported]);
 
-  if (!isControlEnabled || gpuError || !isSupported) return null;
+  if (!isControlEnabled || gpuError || !isSupported || isActive) return null;
 
   const onClick = async () => {
     setLastError(null);
@@ -46,11 +43,7 @@ export function EnterVrButton() {
         throw new Error('WebGPU XR renderer not ready');
       }
 
-      if (isActive) {
-        await endImmersiveVrSession(renderer);
-      } else {
-        await startImmersiveVrSession(renderer);
-      }
+      await startImmersiveVrSession(renderer);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'VR session failed';
       setLastError(message);
@@ -89,7 +82,7 @@ export function EnterVrButton() {
           gap: '6px',
         }}
       >
-        <HintKey>{isActive ? 'EXIT' : 'ENTER VR'}</HintKey>
+        <HintKey>ENTER VR</HintKey>
       </button>
       {lastError ? (
         <span style={{ fontSize: '0.65rem', opacity: 0.75, maxWidth: '280px', textAlign: 'center' }}>
