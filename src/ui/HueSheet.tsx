@@ -89,6 +89,9 @@ export function HueSheet() {
   const isOpen = useMeadowAuthStore((state) => state.isHueSheetOpen);
   const closeHueSheet = useMeadowAuthStore((state) => state.closeHueSheet);
   const openAuthSheet = useMeadowAuthStore((state) => state.openAuthSheet);
+  const isAuthenticated = useMeadowAuthStore((state) => state.isAuthenticated);
+  const session = useMeadowAuthStore((state) => state.session);
+  const meadowSignOut = useMeadowAuthStore((state) => state.signOut);
   const pendingHueRooms = useMeadowAuthStore((state) => state.pendingHueRooms);
   const clearPendingHueRooms = useMeadowAuthStore((state) => state.clearPendingHueRooms);
   const panelRef = useRef<HTMLElement>(null);
@@ -99,6 +102,7 @@ export function HueSheet() {
   const [rooms, setRooms] = useState<HueInventoryItem[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isBusy, setIsBusy] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
   const ambientStage = useAmbientHueStore((state) => state.stage);
   const ambientBusy = useAmbientHueStore((state) => state.isBusy);
   const ambientNotice = useAmbientHueStore((state) => state.notice);
@@ -346,6 +350,19 @@ export function HueSheet() {
     setPhase('disconnected');
     setHueConnected(false);
   }, [setHueConnected, releaseAmbientSession]);
+
+  const handleSignOut = useCallback(async () => {
+    if (isSigningOut) return;
+    setIsSigningOut(true);
+    setError(null);
+    await releaseAmbientSession();
+    await meadowSignOut();
+    setProfile(null);
+    setPhase('disconnected');
+    setHueConnected(null);
+    setIsSigningOut(false);
+    closeHueSheet();
+  }, [closeHueSheet, isSigningOut, meadowSignOut, releaseAmbientSession, setHueConnected]);
 
   if (!isOpen) return null;
 
@@ -819,6 +836,48 @@ export function HueSheet() {
               </a>
             </div>
           </>
+        ) : null}
+
+        {isAuthenticated ? (
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '6px',
+              marginBottom: '12px',
+            }}
+          >
+            {session?.email ? (
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: '0.68rem',
+                  lineHeight: 1.6,
+                  color: 'rgba(255,255,255,0.55)',
+                  letterSpacing: '0.03em',
+                  textAlign: 'center',
+                }}
+              >
+                Signed in as {session.email}
+              </p>
+            ) : null}
+            <button
+              type="button"
+              className="meadow-focusable meadow-clickable"
+              disabled={isSigningOut || isBusy}
+              onClick={() => void handleSignOut()}
+              style={{
+                ...meadowHudQuietButtonStyle,
+                width: 'auto',
+                letterSpacing: isMobile ? '0.05em' : '0.08em',
+                opacity: isSigningOut || isBusy ? 0.55 : 1,
+                cursor: isSigningOut || isBusy ? 'wait' : 'pointer',
+              }}
+            >
+              {isSigningOut ? 'Signing out…' : 'Sign out'}
+            </button>
+          </div>
         ) : null}
 
         <button

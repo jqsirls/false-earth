@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { MeadowSession } from '../../api/meadowAuthApi';
 import type { HueInventoryItem } from '../../api/meadowHueApi';
-import { getSession, mintStoryHandoff } from '../../api/meadowAuthApi';
+import { getSession, mintStoryHandoff, signOut as meadowSignOut } from '../../api/meadowAuthApi';
 
 export type MeadowAuthIntent = 'hue_connect' | null;
 
@@ -24,6 +24,7 @@ interface MeadowAuthState {
   hydrateSession: () => Promise<void>;
   setPendingHueRooms: (rooms: HueInventoryItem[]) => void;
   clearPendingHueRooms: () => void;
+  signOut: () => Promise<void>;
 }
 
 export const useMeadowAuthStore = create<MeadowAuthState>((set, get) => ({
@@ -90,4 +91,16 @@ export const useMeadowAuthStore = create<MeadowAuthState>((set, get) => ({
   setPendingHueRooms: (rooms) => set({ pendingHueRooms: rooms }),
 
   clearPendingHueRooms: () => set({ pendingHueRooms: [] }),
+
+  signOut: async () => {
+    await meadowSignOut();
+    set({
+      session: null,
+      isAuthenticated: false,
+      isAuthSheetOpen: false,
+      isHueSheetOpen: false,
+      authIntent: null,
+      pendingHueRooms: [],
+    });
+  },
 }));

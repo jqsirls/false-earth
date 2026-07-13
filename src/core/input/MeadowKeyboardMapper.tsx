@@ -1,6 +1,9 @@
 import { useEffect } from 'react';
 import { InputSystem } from '@core';
 import type { GameAction } from './controls';
+import { useMeadowAuthStore } from '../store/meadowAuthStore';
+import { useMeadowUiStore } from '../store/meadowUiStore';
+import { getIsMeadowOverlayOpen, isFormFieldFocused } from '../utils/meadowInputGuards';
 
 /** Movement keys: block browser scroll / focus moves so arrows match WASD. */
 const GAME_KEY_CODES = new Set([
@@ -30,6 +33,13 @@ interface MeadowKeyboardMapperProps {
 export function MeadowKeyboardMapper({ input, keyMap }: MeadowKeyboardMapperProps) {
   useEffect(() => {
     const handleKey = (e: KeyboardEvent, isDown: boolean) => {
+      if (isFormFieldFocused()) return;
+
+      if (getIsMeadowOverlayOpen()) {
+        if (isDown) input.reset();
+        return;
+      }
+
       const action = resolveAction(keyMap, e);
       if (!action) return;
       if (GAME_KEY_CODES.has(e.code) || e.key.startsWith('Arrow')) {
@@ -53,6 +63,21 @@ export function MeadowKeyboardMapper({ input, keyMap }: MeadowKeyboardMapperProp
       input.reset();
     };
   }, [input, keyMap]);
+
+  // Drop any held movement keys when a sheet/modal opens.
+  useEffect(() => {
+    const resetOnOverlay = () => {
+      if (getIsMeadowOverlayOpen()) input.reset();
+    };
+
+    const unsubAuth = useMeadowAuthStore.subscribe(resetOnOverlay);
+    const unsubUi = useMeadowUiStore.subscribe(resetOnOverlay);
+
+    return () => {
+      unsubAuth();
+      unsubUi();
+    };
+  }, [input]);
 
   return null;
 }

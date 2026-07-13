@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useMeadowAuthStore } from '../store/meadowAuthStore';
 import { useMeadowUiStore } from '../store/meadowUiStore';
+import { isFormFieldFocused } from '../utils/meadowInputGuards';
 
 /**
  * ESC stacking: legal modal → auth sheet → hue sheet.
@@ -17,8 +18,7 @@ export function useMeadowOverlayEsc() {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return;
 
-      const tag = document.activeElement?.tagName;
-      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+      if (isFormFieldFocused()) return;
 
       if (legalModal) {
         event.preventDefault();

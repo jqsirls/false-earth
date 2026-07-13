@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useGameStore } from '../store/gameStore';
+import { getIsMeadowOverlayOpen } from '../hooks/useIsMeadowOverlayOpen';
 
 const DOUBLE_TAP_MS = 320;
 const MAX_TAP_MOVE_PX = 28;
@@ -20,6 +21,7 @@ export function useDoubleTapFlight() {
 
     const onPointerUp = (event: PointerEvent) => {
       if (event.button !== 0) return;
+      if (getIsMeadowOverlayOpen()) return;
 
       const { clientX, clientY } = event;
       if (isJoystickZone(clientX, clientY)) return;
