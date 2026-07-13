@@ -1,6 +1,6 @@
 import { Environment, PerformanceMonitor, useGLTF } from "@react-three/drei";
 import { Leva } from "leva";
-import { LevaWrapper, AudioManager, KeyboardMapper, KTX2Preloader, preloadVATAssets } from "@core";
+import { LevaWrapper, AudioManager, KTX2Preloader, preloadVATAssets } from "@core";
 import { Canvas, useLoader } from "@react-three/fiber";
 import { useEffect, Suspense, useMemo, useState } from "react";
 import { DirectionalLight } from "../components/DirectionalLight";
@@ -14,6 +14,7 @@ import { WorldController } from "../components/WorldController";
 import { createContext } from "react";
 import * as THREE from "three/webgpu";
 import { input, keyBindings } from "../core/input/controls";
+import { MeadowKeyboardMapper } from "../core/input/MeadowKeyboardMapper";
 import { AudioLoader, TextureLoader } from 'three';
 import { ROSE_TEXTURES } from "../components/Rose/core/config";
 import { BODY_TEXTURE_PATHS, DETAIL_TEXTURE_PATHS, MODEL_PATHS } from '../components/character/config';
@@ -146,7 +147,7 @@ export default function App() {
             : <Leva hidden />}
         <DeviceDetector />
         <UI />
-        <KeyboardMapper input={input} keyMap={keyBindings} />
+        <MeadowKeyboardMapper input={input} keyMap={keyBindings} />
 
 
         {!gpuError && (
