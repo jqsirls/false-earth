@@ -8,7 +8,7 @@ import {
   startImmersiveVrSession,
   VR_BIND_NOT_READY,
 } from '../core/xr/webXrSession';
-import { isQuestBrowser } from '../core/utils/browserCaps';
+import { isQuestBrowser, isVisionOsBrowser } from '../config/vrProfile';
 import { HintKey } from './ControlsHint';
 import { meadowHudQuietButtonStyle } from './meadowUiStyles';
 
@@ -108,7 +108,7 @@ export function EnterVrButton() {
             fontSize: '0.65rem',
             opacity: 0.75,
             width: '100%',
-            maxWidth: isQuestBrowser() ? '320px' : '280px',
+            maxWidth: isQuestBrowser() || isVisionOsBrowser() ? '320px' : '280px',
             lineHeight: 1.45,
             textAlign: 'center',
             pointerEvents: 'none',

@@ -33,19 +33,39 @@ export function isWebXrSpikeEnabled(): boolean {
   return params.get('webxr') === '1' || params.get('webxr') === 'true';
 }
 
+/** Meta Quest / Oculus built-in browser. */
+export function isQuestBrowser(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent;
+  return /OculusBrowser|Oculus|Quest/i.test(ua) || /Meta Quest/i.test(ua);
+}
+
+/** visionOS Safari / Apple Vision Pro spatial browser. */
+export function isVisionOsBrowser(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent;
+  if (/VisionOS|Vision Pro|visionOS|AppleVisionPro/i.test(ua)) return true;
+  // Spatial Safari reports Macintosh with multi-touch (VP hand tracking).
+  if (/Macintosh/i.test(ua) && !/iPhone|iPad|iPod/i.test(ua) && navigator.maxTouchPoints >= 5) {
+    return /Safari/i.test(ua) && !/Chrome|Chromium|CriOS|Edg|OPR|Firefox|FxiOS/i.test(ua);
+  }
+  return false;
+}
+
 /**
  * Quest WebXR routes through three.js WebGL2 — not the WebGPU canvas context.
- * Required for XRManager.setSession (getContextAttributes + projection layers).
+ * Vision Pro keeps WebGPU and requests the WebXR `webgpu` session feature (three r185+).
  * Desktop ?webxr=1 keeps WebGPU so grass compute + roses stay live for emulation.
  */
 export function shouldForceWebGlRendererBackend(): boolean {
-  if (typeof navigator === 'undefined') return false;
-  const ua = navigator.userAgent;
-  const isQuest = /OculusBrowser|Oculus|Quest/i.test(ua) || /Meta Quest/i.test(ua);
-  return isWebXrSpikeEnabled() && isQuest;
+  if (!isWebXrSpikeEnabled()) return false;
+  return isQuestBrowser();
 }
 
+/** WebGPU compute grass grid for ?webxr=1 preload (desktop emulation). */
 export const VR_GRASS_BLADES_PER_AXIS = 256;
+/** CPU-instanced grass on Quest WebGL XR path. */
+export const VR_WEBGL_GRASS_BLADES_PER_AXIS = 128;
 export const VR_ROSE_INSTANCE_COUNT = 250;
 export const VR_ORB_GROUND_COUNT = 8;
 export const VR_ORB_SKY_COUNT = 2;

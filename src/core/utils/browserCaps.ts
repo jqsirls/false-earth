@@ -8,16 +8,12 @@ import {
   VR_ROSE_INSTANCE_COUNT,
   VR_SHADOW_MAP_HIGH,
   VR_SHADOW_MAP_LOW,
+  VR_WEBGL_GRASS_BLADES_PER_AXIS,
   isWebXrSpikeEnabled,
+  shouldForceWebGlRendererBackend,
 } from '../../config/vrProfile';
+export { isQuestBrowser, isVisionOsBrowser } from '../../config/vrProfile';
 import { useVrStore } from '../store/vrStore';
-
-/** Meta Quest / Oculus built-in browser (not Wolvic or other sideloaded browsers). */
-export function isQuestBrowser(): boolean {
-  if (typeof navigator === 'undefined') return false;
-  const ua = navigator.userAgent;
-  return /OculusBrowser|Oculus|Quest/i.test(ua) || /Meta Quest/i.test(ua);
-}
 
 /** Native Safari (not Chrome/Firefox on iOS). */
 export function isSafari(): boolean {
@@ -91,7 +87,7 @@ export function getSafariCompileTimeoutMs(): number {
 }
 
 export function getDefaultCompileTimeoutMs(): number {
-  return isMemoryConstrainedGpu() ? 20000 : 3000;
+  return isMeadowGpuConstrained() ? 20000 : 3000;
 }
 
 /** Rose VAT + TSL materials are heavy — CDN cold loads often exceed the 3s grass/character budget. */
@@ -151,6 +147,8 @@ export function isWebXrCapProfile(): boolean {
 /** Roses on by default; opt out with ?no-roses=1. Disabled in minimal/lite scenes. */
 export function shouldEnableRoses(): boolean {
   if (shouldUseMinimalScene()) return false;
+  // VAT rose compute requires the WebGPU renderer backend (breaks on headset WebGL XR).
+  if (shouldForceWebGlRendererBackend()) return false;
   if (readSearchParam('no-roses') === '1') return false;
   return true;
 }
@@ -165,6 +163,7 @@ export function getRoseInstanceCount(defaultCount: number): number {
 
 export function getGrassBladesPerAxis(defaultBlades: number): number {
   if (shouldUseMinimalScene()) return 0;
+  if (shouldForceWebGlRendererBackend()) return VR_WEBGL_GRASS_BLADES_PER_AXIS;
   if (isWebXrCapProfile()) return VR_GRASS_BLADES_PER_AXIS;
   if (isQuestBrowser()) return VR_GRASS_BLADES_PER_AXIS;
   if (isPhoneLikeDevice()) return Math.min(defaultBlades, 256);
@@ -203,10 +202,11 @@ export function shouldDeferAmbientOrbs(): boolean {
   return isWebXrCapProfile();
 }
 
-/** Grass compute (WebGPU storage + indirect draw) — unavailable on Quest WebGL XR path. */
+/** Grass compute (WebGPU storage + indirect draw) — unreliable on Quest browsers. */
 export function shouldUseGrassComputePath(): boolean {
   if (shouldUseMinimalScene()) return false;
-  return !(isWebXrSpikeEnabled() && isQuestBrowser());
+  if (isQuestBrowser()) return false;
+  return !shouldForceWebGlRendererBackend();
 }
 
 /** Orb population: research-locked floor (8 field + 2 sky) on constrained GPUs. */
