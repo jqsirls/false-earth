@@ -8,6 +8,7 @@ import {
   shouldUseWebGpuXrOnVisionPro,
 } from '../../config/vrProfile';
 import { logVrSession } from './vrSessionDebug';
+import { applyVrSpawnOffset } from './vrSpawnOffset';
 
 export type VrSessionEndReason = 'user' | 'system' | 'error';
 
@@ -230,6 +231,7 @@ export async function startImmersiveVrSession(
 
   try {
     await xr.setSession(session);
+    await applyVrSpawnOffset(renderer, session);
     logVrSession('set_session_ok', {
       isPresenting: xr.isPresenting,
       referenceSpaceType: xr.getReferenceSpaceType?.(),

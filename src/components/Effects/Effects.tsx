@@ -31,6 +31,7 @@ import {
   MEADOW_FLARE_GHOST_SPACING,
   MEADOW_FLARE_THRESHOLD,
 } from "../../config/meadowVisualGrade";
+import { shouldForceWebGlRendererBackend } from "../../config/vrProfile";
 
 export default function Effects() {
   const { isHighQuality, cameraMode, bloom: bloomCfg, dof: dofCfg, toneMapping: tmCfg, smaa: smaaEnabled, prefersReducedMotion } = useEffectsControls();
@@ -79,6 +80,15 @@ export default function Effects() {
 
   useEffect(() => {
     if (!gl || !scene || !camera || !(gl instanceof WebGPURenderer)) return;
+
+    // WebGL XR (Quest / Vision Pro ?webxr=1): TSL post breaks immersive sessions.
+    if (shouldForceWebGlRendererBackend()) {
+      postProcessingRef.current = null;
+      return () => {
+        postProcessingRef.current = null;
+        camera.layers.enableAll();
+      };
+    }
 
     const renderer = gl as WebGPURenderer;
     const pp = new THREE.PostProcessing(renderer);
@@ -227,16 +237,16 @@ export default function Effects() {
     const xr = gl.xr;
     const xrPresenting = xr?.isPresenting === true;
     if (xrPresenting) {
-      // Wait for three's XR pose/bind — R3F passes the XRFrame into useFrame.
       if (!frame) return;
 
       decaySnapComfort(performance.now());
       uParams.current.snapComfort.value = snapComfortStrength;
       const renderer = gl as unknown as WebGPURenderer;
       renderer.toneMapping = THREE.NoToneMapping;
-      // Stereo render: patchXrRenderCamera redirects R3F's gl.render to xr.getCamera().
       return;
     }
+
+    if (shouldForceWebGlRendererBackend()) return;
 
     if (!postProcessingRef.current) return;
 

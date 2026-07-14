@@ -43,5 +43,18 @@ export function patchWebGpuXrForR3f(renderer: WebGPURenderer): void {
     }
   };
 
+  const onSessionStart = () => {
+    const pending = xr._currentAnimationLoop;
+    if (pending && nativeSetAnimationLoop) {
+      nativeSetAnimationLoop(pending);
+    }
+    logVrSession('xr_patch_sessionstart', {
+      hasPendingLoop: Boolean(pending),
+      isPresenting: xr.isPresenting,
+    });
+  };
+
+  xr.addEventListener('sessionstart', onSessionStart);
+
   xr.__meadowR3fPatched = true;
 }

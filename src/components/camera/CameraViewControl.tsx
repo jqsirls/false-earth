@@ -1,4 +1,5 @@
 import { useGameStore, CameraMode } from '../../core/store/gameStore';
+import { useVrStore } from '../../core/store/vrStore';
 import { CameraControls } from '@react-three/drei';
 import { useFPVCamera } from './hooks/useFPVCamera';
 import { useFollowCamera } from './hooks/useFollowCamera';
@@ -21,6 +22,7 @@ declare global {
 
 export function CameraViewControl({ boneName = 'head' }: Props) {
   const cameraMode = useGameStore((state) => state.cameraMode);
+  const isVrActive = useVrStore((state) => state.isActive);
   const isMobile = useGameStore((state) => state.isMobile);
   const characterRef = useGameStore((state) => state.characterRef);
   const isGameLoaded = useGameStore((state) => state.isGameStarted);
@@ -41,16 +43,18 @@ export function CameraViewControl({ boneName = 'head' }: Props) {
     };
   }, []);
 
+  const cameraRigEnabled = isControlEnabled && !isVrActive;
+
   useFPVCamera({
     characterRef,
     boneName,
-    enabled: cameraMode === CameraMode.FPV && isControlEnabled,
+    enabled: cameraMode === CameraMode.FPV && cameraRigEnabled,
   });
 
   useFollowCamera({
     characterRef,
     controlsRef,
-    enabled: cameraMode === CameraMode.Follow && isControlEnabled,
+    enabled: cameraMode === CameraMode.Follow && cameraRigEnabled,
   });
 
   const characterFlightLiftRef = useGameStore((state) => state.characterFlightLiftRef);
@@ -110,7 +114,7 @@ export function CameraViewControl({ boneName = 'head' }: Props) {
     <CameraControls
       ref={controlsRef}
       makeDefault
-      enabled={cameraMode !== CameraMode.FPV && isControlEnabled}
+      enabled={cameraMode !== CameraMode.FPV && cameraRigEnabled}
       minDistance={2}
       maxDistance={20}
       maxPolarAngle={Math.PI / 2}

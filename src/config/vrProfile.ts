@@ -87,8 +87,8 @@ export function shouldForceWebGlRendererBackend(): boolean {
 
 /** WebGPU compute grass grid for ?webxr=1 preload (desktop emulation). */
 export const VR_GRASS_BLADES_PER_AXIS = 256;
-/** CPU-instanced grass on Quest WebGL XR path. */
-export const VR_WEBGL_GRASS_BLADES_PER_AXIS = 128;
+/** CPU-instanced grass on Quest / VP WebGL XR path (denser than 128² — sparse reads as sticks). */
+export const VR_WEBGL_GRASS_BLADES_PER_AXIS = 200;
 export const VR_ROSE_INSTANCE_COUNT = 250;
 export const VR_ORB_GROUND_COUNT = 8;
 export const VR_ORB_SKY_COUNT = 2;
