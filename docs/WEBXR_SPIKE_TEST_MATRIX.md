@@ -11,7 +11,7 @@
 | HTTPS | Required for WebXR (local dev uses Vite basic SSL) |
 | Spike flag | URL contains `webxr=1` |
 | XR support | `navigator.xr.isSessionSupported('immersive-vr')` true |
-| Session started | Tap `[ START ]`, then top-center `[ ENTER VR ]` appears when supported |
+| Session started | Tap `[ START ]`, then bottom-center `[ ENTER VR ]` appears when supported |
 
 ## Platform matrix
 
@@ -57,7 +57,7 @@ Meadow requests **`immersive-vr`** with **`local-floor`** — not `immersive-ar`
 
 1. **Safari (visionOS):** Settings → Apps → Safari → Advanced → Feature Flags → enable **WebXR Device API** (and related WebXR flags if listed). Restart Safari.
 2. Open `https://booster.storytailor.com?webxr=1` or local `https://localhost:5173?webxr=1`.
-3. Tap `[ START ]`, then top-center `[ ENTER VR ]` when the support probe passes.
+3. Tap `[ START ]`, then bottom-center `[ ENTER VR ]` when the support probe passes.
 4. Optional sanity check in Web Inspector console: `await navigator.xr?.isSessionSupported('immersive-vr')` → `true` with flags on.
 
 VP uses gaze + pinch (transient pointer), not Quest controllers. Locomotion chips: **pinch** = instant; **gaze dwell 0.8 s** = auto-select (off when Reduce Motion is on). Comfort sign-off still requires Quest/PCVR per ship matrix above.

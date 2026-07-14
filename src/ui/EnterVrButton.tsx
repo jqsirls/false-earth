@@ -13,12 +13,17 @@ import { HintKey } from './ControlsHint';
 import { meadowHudQuietButtonStyle } from './meadowUiStyles';
 
 /**
- * Flat-screen [ ENTER VR ] — keycap HUD idiom.
+ * Flat-screen [ ENTER VR ] — bottom-center HUD, above controls hint / joystick.
  * In-session [ EXIT ] lives on the world locomotion ring (PRD C4 / AC5).
  * Hidden unless spike flag + immersive-vr is supported (PRD AC1).
  */
+/** Desktop: above ControlsHint row. Mobile: above joystick / ORBS controls band. */
+const ENTER_VR_BOTTOM_DESKTOP = 'max(100px, calc(88px + env(safe-area-inset-bottom)))';
+const ENTER_VR_BOTTOM_MOBILE = 'max(136px, calc(120px + env(safe-area-inset-bottom)))';
+
 export function EnterVrButton() {
   const isControlEnabled = useGameStore((state) => state.isControlEnabled);
+  const isMobile = useGameStore((state) => state.isMobile);
   const gpuError = useGameStore((state) => state.gpuError);
   const isSupported = useVrStore((state) => state.isSupported);
   const isActive = useVrStore((state) => state.isActive);
@@ -59,9 +64,10 @@ export function EnterVrButton() {
 
   return (
     <div
+      data-meadow-enter-vr
       style={{
         position: 'fixed',
-        top: 'max(16px, env(safe-area-inset-top))',
+        bottom: isMobile ? ENTER_VR_BOTTOM_MOBILE : ENTER_VR_BOTTOM_DESKTOP,
         left: '50%',
         transform: 'translateX(-50%)',
         zIndex: 16,

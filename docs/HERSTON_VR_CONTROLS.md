@@ -9,7 +9,7 @@
 
 1. Put on the headset and open the URL above in the **Quest browser** (or PCVR browser).
 2. Tap **`[ START ]`** on the flat gate.
-3. Tap top-center **`[ ENTER VR ]`** when it appears.
+3. Tap bottom-center **`[ ENTER VR ]`** when it appears.
 4. Seated play is the default (`local-floor`). You should see a small **locomotion ring** in front of you (WALK · RUN · FLY · STOP FLYING · EXIT). It is world-anchored, not head-locked.
 
 ## Quest / PCVR controllers
