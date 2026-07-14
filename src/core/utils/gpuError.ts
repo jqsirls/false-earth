@@ -1,3 +1,5 @@
+import { isQuestBrowser } from './browserCaps';
+
 /** Meadow GPU / scene error codes surfaced on the splash screen. */
 export type MeadowGpuErrorCode =
   | 'WEBGPU_NOT_SUPPORTED'
@@ -87,7 +89,13 @@ export function formatGpuError(error: MeadowGpuError | string | null): MeadowGpu
   return error;
 }
 
+const QUEST_WEBGPU_BODY =
+  'Update Meta Quest Browser to version 146 or newer, then refresh. The flat meadow at booster.storytailor.com still works without ?webxr=1. You can also try Wolvic.';
+
 export function getGpuErrorHeadline(error: MeadowGpuError): string {
+  if (WEBGPU_CODES.has(error.code) && isQuestBrowser()) {
+    return 'Your Quest browser needs a quick update.';
+  }
   if (WEBGPU_CODES.has(error.code)) {
     return "This browser can't run the meadow yet.";
   }
@@ -104,6 +112,9 @@ export function getGpuErrorHeadline(error: MeadowGpuError): string {
 }
 
 export function getGpuErrorBody(error: MeadowGpuError): string {
+  if (WEBGPU_CODES.has(error.code) && isQuestBrowser()) {
+    return QUEST_WEBGPU_BODY;
+  }
   if (WEBGPU_CODES.has(error.code)) {
     return 'Try Chrome or Edge on desktop, or Safari 18+ with WebGPU enabled.';
   }

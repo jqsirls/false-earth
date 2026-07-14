@@ -2,7 +2,13 @@ import { useEffect } from 'react';
 import { useGameStore } from '../core/store/gameStore';
 import { useVrStore } from '../core/store/vrStore';
 import { probeImmersiveVrSupport } from '../core/xr/xrSupport';
-import { getVrRenderer, startImmersiveVrSession } from '../core/xr/webXrSession';
+import {
+  formatVrSessionError,
+  getVrRenderer,
+  startImmersiveVrSession,
+  VR_BIND_NOT_READY,
+} from '../core/xr/webXrSession';
+import { isQuestBrowser } from '../core/utils/browserCaps';
 import { HintKey } from './ControlsHint';
 import { meadowHudQuietButtonStyle } from './meadowUiStyles';
 
@@ -40,13 +46,12 @@ export function EnterVrButton() {
     try {
       const renderer = getVrRenderer();
       if (!renderer) {
-        throw new Error('WebGPU XR renderer not ready');
+        throw new Error(VR_BIND_NOT_READY);
       }
 
       await startImmersiveVrSession(renderer);
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'VR session failed';
-      setLastError(message);
+      setLastError(formatVrSessionError(error));
     } finally {
       setIsEntering(false);
     }
@@ -85,7 +90,15 @@ export function EnterVrButton() {
         <HintKey>ENTER VR</HintKey>
       </button>
       {lastError ? (
-        <span style={{ fontSize: '0.65rem', opacity: 0.75, maxWidth: '280px', textAlign: 'center' }}>
+        <span
+          style={{
+            fontSize: '0.65rem',
+            opacity: 0.75,
+            maxWidth: isQuestBrowser() ? '320px' : '280px',
+            lineHeight: 1.45,
+            textAlign: 'center',
+          }}
+        >
           {lastError}
         </span>
       ) : null}

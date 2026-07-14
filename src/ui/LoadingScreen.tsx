@@ -9,6 +9,7 @@ import { resumeMeadowAudioContext } from "../config/meadowAudio";
 import { prepareMeadowBgm, startMeadowBgm, setMeadowBgmMuted, whenMeadowBgmPrepared } from "../audio/meadowBgmPlayer";
 import { prefersReducedMotion } from "../core/utils/reducedMotion";
 import { formatGpuError, getGpuErrorBody, getGpuErrorHeadline } from "../core/utils/gpuError";
+import { isQuestBrowser } from "../core/utils/browserCaps";
 import gsap from "gsap";
 
 const SPLASH_WEBP = resolveMeadowAsset('/storytailor-splash.webp');
@@ -165,7 +166,7 @@ export function LoadingScreen() {
             <header style={{
                 position: 'relative',
                 textAlign: 'center',
-                maxWidth: '440px',
+                maxWidth: gpuErrorInfo && isQuestBrowser() ? '520px' : '440px',
                 padding: '24px',
                 textShadow: '0 1px 12px rgba(0,0,0,0.65), 0 2px 24px rgba(0,0,0,0.45)',
             }}>

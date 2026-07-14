@@ -11,6 +11,13 @@ import {
 } from '../../config/vrProfile';
 import { useVrStore } from '../store/vrStore';
 
+/** Meta Quest / Oculus built-in browser (not Wolvic or other sideloaded browsers). */
+export function isQuestBrowser(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent;
+  return /OculusBrowser|Oculus|Quest/i.test(ua) || /Meta Quest/i.test(ua);
+}
+
 /** Native Safari (not Chrome/Firefox on iOS). */
 export function isSafari(): boolean {
   if (typeof navigator === 'undefined') return false;
