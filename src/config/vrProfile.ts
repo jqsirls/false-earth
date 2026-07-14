@@ -34,11 +34,15 @@ export function isWebXrSpikeEnabled(): boolean {
 }
 
 /**
- * Quest / PCVR WebXR still routes through three.js WebGL2 — not the WebGPU canvas
- * context. Required for XRManager.setSession (getContextAttributes + projection layers).
+ * Quest WebXR routes through three.js WebGL2 — not the WebGPU canvas context.
+ * Required for XRManager.setSession (getContextAttributes + projection layers).
+ * Desktop ?webxr=1 keeps WebGPU so grass compute + roses stay live for emulation.
  */
 export function shouldForceWebGlRendererBackend(): boolean {
-  return isWebXrSpikeEnabled();
+  if (typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent;
+  const isQuest = /OculusBrowser|Oculus|Quest/i.test(ua) || /Meta Quest/i.test(ua);
+  return isWebXrSpikeEnabled() && isQuest;
 }
 
 export const VR_GRASS_BLADES_PER_AXIS = 256;

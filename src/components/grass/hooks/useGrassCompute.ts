@@ -69,8 +69,12 @@ export function useGrassCompute(
             uniforms.compute.uCameraPosition.value.copy(cameraToUse.position)
         }
 
-        renderer.compute(computeRefs.current.reset)
-        renderer.compute(computeRefs.current.main)
+        try {
+            renderer.compute(computeRefs.current.reset)
+            renderer.compute(computeRefs.current.main)
+        } catch (error) {
+            console.warn('[grass] compute pass failed — renderer may be on WebGL XR path', error)
+        }
     })
 
     return {

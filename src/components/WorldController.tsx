@@ -24,6 +24,7 @@ import { AsyncCompile } from '@core';
 import Rose from './Rose/Rose';
 import Orbs from './Orb/Orbs';
 import GrassWebGPU from './grass/GrassWebGPU';
+import { GrassStaticField } from './grass/GrassStaticField';
 import { Character } from './character';
 import { STORYTAILOR } from '../config/storytailor';
 import { useMeadowCharacterStore } from '../core/store/meadowCharacterStore';
@@ -31,8 +32,12 @@ import { GrassCullingDebug } from '../debug/GrassCullingDebug';
 import {
     getDefaultCompileTimeoutMs,
     getRoseInstanceCount,
-    isMemoryConstrainedGpu,
+    isDebugMode,
+    isMeadowGpuConstrained,
+    isQuestBrowser,
+    shouldDeferAmbientOrbs,
     shouldEnableRoses,
+    shouldUseGrassComputePath,
     shouldUseMinimalScene,
 } from '../core/utils/browserCaps';
 import { SafariGround } from './SafariGround';
@@ -44,19 +49,29 @@ export function WorldController() {
     const setActiveTargets = useGameStore((state) => state.setActiveTargets);
     const setComponentReady = useGameStore((state) => state.setComponentReady);
 
-    const debugMode = new URLSearchParams(window.location.search).get('debug') === 'true';
+    const debugMode = isDebugMode();
     const compileTimeout = getDefaultCompileTimeoutMs();
     const roseCount = getRoseInstanceCount(2000);
     const rosesEnabled = shouldEnableRoses();
     const minimalScene = shouldUseMinimalScene();
+    const grassComputePath = shouldUseGrassComputePath();
+    const deferOrbs = shouldDeferAmbientOrbs();
     const [grassCompileFailed, setGrassCompileFailed] = useState(false);
+    const [orbsReady, setOrbsReady] = useState(!deferOrbs);
 
     const handleGrassCompileFailed = useCallback((id: string) => {
-        if (id === 'grass' && isMemoryConstrainedGpu()) {
-            console.warn('[grass] Shader compile failed on memory-constrained GPU — using static ground fallback');
+        if (id !== 'grass') return;
+        if (isMeadowGpuConstrained() || isQuestBrowser() || !grassComputePath) {
+            console.warn('[grass] Shader compile unavailable — using static grass fallback');
             setGrassCompileFailed(true);
         }
-    }, []);
+    }, [grassComputePath]);
+
+    useEffect(() => {
+        if (!deferOrbs) return;
+        const timer = window.setTimeout(() => setOrbsReady(true), 4000);
+        return () => window.clearTimeout(timer);
+    }, [deferOrbs]);
 
     // Enable eruda console only in debug mode (?debug=true)
     useEffect(() => {
@@ -82,12 +97,18 @@ export function WorldController() {
         };
     }, [debugMode]);
 
-    const { enableEnv, enableGrass, enableCharacter, enableGrassDebug } = useControls('Game.Content', {
+    const contentControls = useControls('Game.Content', {
         enableEnv: { value: true, label: 'Environment' },
         enableCharacter: { value: true, label: '👤 Character' },
         enableGrass: { value: true, label: '🌿 Grass Field' },
         enableGrassDebug: { value: false, label: '🌿 Grass Culling Debug' },
     }, { collapsed: true });
+
+    // Leva persists toggles in localStorage — never let a dev-panel grass/env off leak to prod.
+    const enableEnv = debugMode ? contentControls.enableEnv : true;
+    const enableGrass = debugMode ? contentControls.enableGrass : true;
+    const enableCharacter = debugMode ? contentControls.enableCharacter : true;
+    const enableGrassDebug = debugMode ? contentControls.enableGrassDebug : false;
 
 
     const { timeScale, globalHue } = useControls('Game.System', {
@@ -131,10 +152,16 @@ export function WorldController() {
     const activeTargetIds = useMemo(() => {
         const targets: string[] = [];
         if (rosesEnabled) targets.push('rose');
-        if (enableGrass && !minimalScene && !grassCompileFailed) targets.push('grass');
+        if (enableGrass && !minimalScene && (!grassCompileFailed || !grassComputePath)) targets.push('grass');
         if (enableCharacter) targets.push('character');
         return targets;
-    }, [rosesEnabled, enableGrass, enableCharacter, minimalScene, grassCompileFailed]);
+    }, [rosesEnabled, enableGrass, enableCharacter, minimalScene, grassCompileFailed, grassComputePath]);
+
+    useEffect(() => {
+        if (!minimalScene && enableGrass && (!grassComputePath || grassCompileFailed)) {
+            setComponentReady('grass', true);
+        }
+    }, [minimalScene, enableGrass, grassComputePath, grassCompileFailed, setComponentReady]);
 
     useEffect(() => {
         setActiveTargets(activeTargetIds);
@@ -169,11 +196,11 @@ export function WorldController() {
             )}
 
             {/* Orbs are ambient, never load-blocking — 'orb' is intentionally not in activeTargets */}
-            {!minimalScene && (
+            {!minimalScene && orbsReady && (
                 <Orbs onCompileReady={setComponentReady} compileDebug={debugMode} />
             )}
 
-            {!minimalScene && !grassCompileFailed && (
+            {!minimalScene && enableGrass && !grassCompileFailed && grassComputePath && (
                 <AsyncCompile
                     id="grass"
                     onReady={setComponentReady}
@@ -184,6 +211,10 @@ export function WorldController() {
                     {enableGrassDebug && <GrassCullingDebug />}
                     {!enableGrassDebug && <GrassWebGPU visible={enableGrass} />}
                 </AsyncCompile>
+            )}
+
+            {!minimalScene && enableGrass && (!grassComputePath || grassCompileFailed) && (
+                <GrassStaticField visible={enableGrass} />
             )}
 
             <AsyncCompile

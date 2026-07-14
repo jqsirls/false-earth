@@ -64,6 +64,14 @@ export function isMemoryConstrainedGpu(): boolean {
   return isMobileDevice() || isIosDevice();
 }
 
+/**
+ * Meadow GPU budget — mobile/iOS plus Quest browser (full 1024² grass OOMs on headset).
+ * Used for grass/rose/orb caps and post — not for touch UI layout.
+ */
+export function isMeadowGpuConstrained(): boolean {
+  return isMemoryConstrainedGpu() || isQuestBrowser();
+}
+
 export function getInitialDpr(): number {
   if (typeof window === 'undefined') return 1.5;
   if (isWebXrCapProfile()) return VR_MAX_DPR;
@@ -150,7 +158,7 @@ export function shouldEnableRoses(): boolean {
 export function getRoseInstanceCount(defaultCount: number): number {
   if (!shouldEnableRoses()) return 0;
   if (isWebXrCapProfile()) return Math.min(defaultCount, VR_ROSE_INSTANCE_COUNT);
-  if (isMemoryConstrainedGpu()) return Math.min(defaultCount, 500);
+  if (isMeadowGpuConstrained()) return Math.min(defaultCount, 500);
   if (isSafari()) return Math.min(defaultCount, 500);
   return defaultCount;
 }
@@ -158,8 +166,9 @@ export function getRoseInstanceCount(defaultCount: number): number {
 export function getGrassBladesPerAxis(defaultBlades: number): number {
   if (shouldUseMinimalScene()) return 0;
   if (isWebXrCapProfile()) return VR_GRASS_BLADES_PER_AXIS;
+  if (isQuestBrowser()) return VR_GRASS_BLADES_PER_AXIS;
   if (isPhoneLikeDevice()) return Math.min(defaultBlades, 256);
-  if (isMemoryConstrainedGpu() || isSafari()) return Math.min(defaultBlades, 512);
+  if (isMeadowGpuConstrained() || isSafari()) return Math.min(defaultBlades, 512);
   return defaultBlades;
 }
 
@@ -174,9 +183,9 @@ export function getEffectiveGrassBladeCount(): number {
   return axis * axis;
 }
 
-/** Mobile / iOS load 2K jq-lite textures instead of 4K PNG atlases. Desktop uses full jq. */
+/** Mobile / iOS / Quest load 2K jq-lite textures instead of 4K PNG atlases. Desktop uses full jq. */
 export function getJqTextureRoot(): string {
-  return resolveMeadowAsset(isMemoryConstrainedGpu() ? '/textures/jq-lite' : '/textures/jq');
+  return resolveMeadowAsset(isMeadowGpuConstrained() ? '/textures/jq-lite' : '/textures/jq');
 }
 
 /**
@@ -186,7 +195,18 @@ export function getJqTextureRoot(): string {
  * desktop keeps the full chain.
  */
 export function shouldDisableHeavyPostProcessing(): boolean {
-  return shouldUseMinimalScene() || isMemoryConstrainedGpu() || isWebXrCapProfile();
+  return shouldUseMinimalScene() || isMeadowGpuConstrained() || isWebXrCapProfile();
+}
+
+/** VR / Quest spike — defer ambient orbs until after first seconds in-scene. */
+export function shouldDeferAmbientOrbs(): boolean {
+  return isWebXrCapProfile();
+}
+
+/** Grass compute (WebGPU storage + indirect draw) — unavailable on Quest WebGL XR path. */
+export function shouldUseGrassComputePath(): boolean {
+  if (shouldUseMinimalScene()) return false;
+  return !(isWebXrSpikeEnabled() && isQuestBrowser());
 }
 
 /** Orb population: research-locked floor (8 field + 2 sky) on constrained GPUs. */
@@ -207,7 +227,7 @@ export function getOrbSkyCount(defaultCount: number): number {
  * DoubleSide) and load the 5k-tri decimated sculpt instead of the 20k one.
  */
 export function shouldUseCheapOrbRendering(): boolean {
-  return isMemoryConstrainedGpu();
+  return isMeadowGpuConstrained();
 }
 
 /** Directional shadows — off only in lite escape-hatch scenes. */

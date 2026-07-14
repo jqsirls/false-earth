@@ -10,6 +10,7 @@ import { RoseLOD } from "./RoseLOD";
 import { DEFAULT_ROSE_LOD_CONFIG } from "./core/config";
 import type { RoseLODConfig } from "./core/config";
 import { getRoseCompileTimeoutMs } from "../../core/utils/browserCaps";
+import { ORB_FIELD_MAX_RADIUS } from "../Orb/core/orbConfig";
 
 import { gameEvents } from "../../core/events";
 
@@ -27,7 +28,9 @@ export default function Rose({
     compileDebug?: boolean;
 }) {
     const characterRef = useGameStore((state) => state.characterRef)
+    const isGameStarted = useGameStore((state) => state.isGameStarted)
     const characterPos = useMemo(() => new THREE.Vector3(), [])
+    const fieldBootstrapRef = useMemo(() => ({ done: false }), [])
 
     const { uniforms, config } = useRoseUniforms()
     const { lodBuffers, isLoading } = useRoseLODLoader(count, lodConfig)
@@ -54,6 +57,15 @@ export default function Rose({
         gameEvents.on('beam:hit', onHit);
         return () => gameEvents.off('beam:hit', onHit);
     }, [spawn]);
+
+    // Seed the meadow rose field at START — cosmic beams alone leave the field bare too long.
+    useEffect(() => {
+        if (!isGameStarted || count <= 0 || fieldBootstrapRef.done || isLoading || !vatData) return;
+        fieldBootstrapRef.done = true;
+        const origin = new THREE.Vector3(0, 0, 0);
+        characterRef?.current?.getWorldPosition(origin);
+        spawn(origin, Math.min(count, 512), ORB_FIELD_MAX_RADIUS * 0.85);
+    }, [isGameStarted, count, spawn, isLoading, vatData, characterRef, fieldBootstrapRef]);
 
     if (isLoading || !lodBuffers.length || !vatData) return null
 
