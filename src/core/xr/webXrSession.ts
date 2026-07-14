@@ -9,6 +9,7 @@ import {
 } from '../../config/vrProfile';
 import { logVrSession } from './vrSessionDebug';
 import { applyVrSpawnOffset } from './vrSpawnOffset';
+import { ensureR3fXrAnimationLoop } from './patchWebGpuXrForR3f';
 
 export type VrSessionEndReason = 'user' | 'system' | 'error';
 
@@ -231,6 +232,7 @@ export async function startImmersiveVrSession(
 
   try {
     await xr.setSession(session);
+    ensureR3fXrAnimationLoop(renderer);
     await applyVrSpawnOffset(renderer, session);
     logVrSession('set_session_ok', {
       isPresenting: xr.isPresenting,

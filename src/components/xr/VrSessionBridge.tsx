@@ -5,7 +5,7 @@ import { useVrStore } from '../../core/store/vrStore';
 import { input } from '../../core/input/controls';
 import { useVrControllerInput } from '../../core/input/useVrControllerInput';
 import { applyVrSnapTurn } from '../../core/xr/vrLocomotion';
-import { isVisionOsBrowser } from '../../config/vrProfile';
+import { isVisionOsBrowser, shouldForceWebGlRendererBackend } from '../../config/vrProfile';
 import { isDebugMode } from '../../core/utils/browserCaps';
 import { logVrSession } from '../../core/xr/vrSessionDebug';
 
@@ -31,13 +31,16 @@ export function VrSessionBridge() {
     xr?.addEventListener('sessionend', onSessionEnd);
 
     const previousBackground = scene.background;
-    if (isVisionOsBrowser()) {
+    const previousBackgroundNode = scene.backgroundNode;
+    if (isVisionOsBrowser() || shouldForceWebGlRendererBackend()) {
       scene.background = null;
+      scene.backgroundNode = null;
       logVrSession('scene_background_cleared');
     }
 
     return () => {
       scene.background = previousBackground;
+      scene.backgroundNode = previousBackgroundNode;
       xr?.removeEventListener('sessionstart', onSessionStart);
       xr?.removeEventListener('sessionend', onSessionEnd);
       xrFrameCount.current = 0;

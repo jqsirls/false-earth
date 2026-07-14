@@ -239,8 +239,6 @@ export default function Effects() {
     const webGlBackend = shouldForceWebGlRendererBackend();
 
     if (xrPresenting) {
-      if (!frame) return;
-
       decaySnapComfort(performance.now());
       uParams.current.snapComfort.value = snapComfortStrength;
       const renderer = gl as unknown as WebGPURenderer;

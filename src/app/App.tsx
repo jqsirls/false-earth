@@ -28,6 +28,7 @@ import { setVrRenderer } from '../core/xr/webXrSession';
 import { patchWebGpuXrForR3f } from '../core/xr/patchWebGpuXrForR3f';
 import { patchXrRenderCamera } from '../core/xr/patchXrRenderCamera';
 import { patchVisionOsWebGpuXrScissor } from '../core/xr/patchVisionOsWebGpuXrScissor';
+import { patchVisionOsWebGlXrScissor } from '../core/xr/patchVisionOsWebGlXrScissor';
 import { isVisionOsBrowser, shouldForceWebGlRendererBackend, VR_MAX_DPR } from '../config/vrProfile';
 import { useVrStore } from '../core/store/vrStore';
 import { VrSessionBridge } from '../components/xr/VrSessionBridge';
@@ -215,6 +216,7 @@ export default function App() {
                         patchWebGpuXrForR3f(renderer);
                         patchXrRenderCamera(renderer);
                         patchVisionOsWebGpuXrScissor(renderer);
+                        patchVisionOsWebGlXrScissor(renderer);
                         setVrRenderer(renderer);
                         attachGpuDeviceLostHandler(renderer, (message) => {
                             console.error('[false-earth] GPU device lost:', message);

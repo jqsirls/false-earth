@@ -9,52 +9,53 @@ type XrManagerWithLegacyLoop = WebGPURenderer['xr'] & {
   __meadowR3fPatched?: boolean;
 };
 
+/** Latest callback from R3F xr.setAnimationLoop(handleXRFrame). */
+let meadowR3fXrLoop: XrFrameCallback = null;
+
 /**
- * three.js r185 WebGPURenderer uses common/XRManager, which no longer exposes
- * xr.setAnimationLoop(). @react-three/fiber still calls it on sessionstart to
- * wire advance() into the XR frame — without this shim VR sessions hear audio
- * but render black because R3F's loop never runs while isPresenting.
- *
- * Mirrors WebGLRenderer.XRManager.setAnimationLoop: assign _currentAnimationLoop
- * so XRManager.onAnimationFrame invokes the R3F callback after pose/target setup.
+ * three.js r185 common XRManager has no public setAnimationLoop (unlike WebGL
+ * WebXRManager). @react-three/fiber wires advance() via xr.setAnimationLoop on
+ * sessionstart. Without a shim, _currentAnimationLoop stays the flat rAF loop
+ * (no XRFrame arg) and priority-1 Effects skips render → black immersion on VP.
  */
 export function patchWebGpuXrForR3f(renderer: WebGPURenderer): void {
   const xr = renderer.xr as XrManagerWithLegacyLoop;
   if (!xr || xr.__meadowR3fPatched) return;
 
-  const nativeSetAnimationLoop =
-    typeof xr.setAnimationLoop === 'function'
-      ? xr.setAnimationLoop.bind(xr)
-      : null;
+  const assignLoop = (callback: XrFrameCallback) => {
+    meadowR3fXrLoop = callback;
+    xr._currentAnimationLoop = callback;
+  };
 
   xr.setAnimationLoop = (callback: XrFrameCallback) => {
-    xr._currentAnimationLoop = callback ?? null;
+    assignLoop(callback);
     logVrSession('xr_set_animation_loop', {
       hasCallback: Boolean(callback),
       isPresenting: xr.isPresenting,
-      hasNative: Boolean(nativeSetAnimationLoop),
     });
-    if (nativeSetAnimationLoop) {
-      nativeSetAnimationLoop(callback);
-      return;
-    }
-    if (!xr.isPresenting) {
+    if (!xr.isPresenting && callback) {
       void renderer.setAnimationLoop(callback);
     }
   };
 
-  const onSessionStart = () => {
-    const pending = xr._currentAnimationLoop;
-    if (pending && nativeSetAnimationLoop) {
-      nativeSetAnimationLoop(pending);
-    }
-    logVrSession('xr_patch_sessionstart', {
-      hasPendingLoop: Boolean(pending),
-      isPresenting: xr.isPresenting,
-    });
+  const rewirePresentingLoop = () => {
+    if (!xr.isPresenting || !meadowR3fXrLoop) return;
+    xr._currentAnimationLoop = meadowR3fXrLoop;
+    logVrSession('xr_rewire_animation_loop', { isPresenting: true });
   };
 
-  xr.addEventListener('sessionstart', onSessionStart);
+  xr.addEventListener('sessionstart', rewirePresentingLoop);
+  xr.addEventListener('sessionend', () => {
+    meadowR3fXrLoop = null;
+  });
 
   xr.__meadowR3fPatched = true;
+}
+
+/** Call after xr.setSession() so VP/Quest always run the R3F XR frame callback. */
+export function ensureR3fXrAnimationLoop(renderer: WebGPURenderer): void {
+  const xr = renderer.xr as XrManagerWithLegacyLoop;
+  if (!xr?.isPresenting || !meadowR3fXrLoop) return;
+  xr._currentAnimationLoop = meadowR3fXrLoop;
+  logVrSession('xr_ensure_animation_loop', { isPresenting: true });
 }
