@@ -9,10 +9,13 @@ import {
   VR_SHADOW_MAP_HIGH,
   VR_SHADOW_MAP_LOW,
   VR_WEBGL_GRASS_BLADES_PER_AXIS,
+  isQuestBrowser,
+  isVisionOsBrowser,
   isWebXrSpikeEnabled,
   shouldForceWebGlRendererBackend,
 } from '../../config/vrProfile';
-export { isQuestBrowser, isVisionOsBrowser } from '../../config/vrProfile';
+
+export { isQuestBrowser, isVisionOsBrowser };
 import { useVrStore } from '../store/vrStore';
 
 /** Native Safari (not Chrome/Firefox on iOS). */
