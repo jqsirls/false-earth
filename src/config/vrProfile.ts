@@ -2,6 +2,15 @@
 
 export const VR_SNAP_TURN_DEGREES = 30;
 
+/** Thumbstick deadzone (PRD §2.5.1). */
+export const VR_STICK_DEADZONE = 0.15;
+
+/** Right-stick snap turn fires once per flick past this magnitude. */
+export const VR_SNAP_STICK_THRESHOLD = 0.65;
+
+/** Brief comfort vignette on snap turn (ms). */
+export const VR_SNAP_COMFORT_MS = 220;
+
 /** Vision Pro gaze chip dwell before auto-highlight (pinch still primary). */
 export const VR_GAZE_DWELL_MS = 800;
 

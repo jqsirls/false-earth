@@ -38,6 +38,8 @@ export default function Effects() {
   const characterRef = useGameStore((state) => state.characterRef);
   const characterFlightLiftRef = useGameStore((state) => state.characterFlightLiftRef);
   const isVrActive = useVrStore((state) => state.isActive);
+  const decaySnapComfort = useVrStore((state) => state.decaySnapComfort);
+  const snapComfortStrength = useVrStore((state) => state.snapComfortStrength);
   const { gl, scene, camera } = useThree();
   const beamScene = useContext(BeamSceneContext);
 
@@ -51,6 +53,7 @@ export default function Effects() {
     bloomThresh: uniform(0),
     bloomStr: uniform(0),
     bloomRad: uniform(0),
+    snapComfort: uniform(0),
   });
 
   const vecCache = useMemo(() => ({ cam: new THREE.Vector3(), char: new THREE.Vector3() }), []);
@@ -131,7 +134,7 @@ export default function Effects() {
     finalNode = finalNode.add(beamColor.mul(beamOcclusion));
 
     const vignette = smoothstep(0.2, 0.8, dist);
-    const mask = clamp(float(1.0).sub(vignette), 0.0, 1.0);
+    let mask = clamp(float(1.0).sub(vignette), 0.0, 1.0);
     if (!isVrActive) {
       const helmetOverlay = finalNode.mul(vec4(mask, mask, mask, 1.0)).mul(vec4(0.6, 0.65, 0.7, 1.0));
       finalNode = mix(finalNode, helmetOverlay, uParams.current.helmetStr);
@@ -186,6 +189,10 @@ export default function Effects() {
 
     // No CRT/helmet stereo overlays in VR (PRD §2.4).
     if (isVrActive) {
+      const comfortVignette = smoothstep(float(0.12), float(0.72), dist);
+      const comfortDim = comfortVignette.mul(uParams.current.snapComfort).mul(float(0.5));
+      const comfortMul = float(1.0).sub(comfortDim);
+      finalNode = finalNode.mul(vec4(comfortMul, comfortMul, comfortMul, float(1.0)));
       pp.outputNode = finalNode;
       renderer.toneMapping = tmCfg.enabled ? THREE.ReinhardToneMapping : THREE.NoToneMapping;
       return () => {
@@ -218,6 +225,11 @@ export default function Effects() {
 
   useFrame(() => {
     if (!postProcessingRef.current) return;
+
+    if (isVrActive) {
+      decaySnapComfort(performance.now());
+      uParams.current.snapComfort.value = snapComfortStrength;
+    }
 
     if (isHighQuality && dofCfg.enabled && dofCfg.autofocus && characterRef?.current) {
       camera.getWorldPosition(vecCache.cam);

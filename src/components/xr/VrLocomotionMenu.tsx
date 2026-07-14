@@ -17,7 +17,9 @@ const CHIP_STYLE: CSSProperties = {
   background: 'rgba(255,255,255,0.06)',
   border: '1px solid rgba(255,255,255,0.18)',
   borderRadius: '4px',
-  padding: '6px 10px',
+  padding: '8px 12px',
+  minWidth: '72px',
+  minHeight: '36px',
   cursor: 'pointer',
   textDecoration: 'none',
   transition: 'color 0.2s ease, background 0.2s ease',
@@ -29,8 +31,9 @@ const CHIP_ACTIVE: CSSProperties = {
 };
 
 /**
- * World-anchored locomotion ring stub (PRD §2.5.2).
- * Pinch/click maps the four verbs; dwell highlight is a v1.1 polish pass.
+ * World-anchored locomotion ring (PRD §2.5.2).
+ * Quest/PCVR: aim controller ray at chips and pull trigger to click.
+ * Vision Pro v1.1: pinch or dwell on chips (dwell polish deferred).
  */
 export function VrLocomotionMenu() {
   const groupRef = useRef<THREE.Group>(null);
@@ -112,6 +115,8 @@ export function VrLocomotionMenu() {
       <Html
         center
         distanceFactor={1.4}
+        transform
+        occlude={false}
         style={{ pointerEvents: 'auto', userSelect: 'none' }}
         zIndexRange={[40, 0]}
       >

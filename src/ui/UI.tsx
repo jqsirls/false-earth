@@ -133,7 +133,7 @@ export function UI() {
                 }}>
                     <AudioButton />
 
-                    {isMobile && !isOverlayOpen &&
+                    {isMobile && !isOverlayOpen && !isVrActive &&
                         <TouchJoystick
                             input={input}
                             actions={{

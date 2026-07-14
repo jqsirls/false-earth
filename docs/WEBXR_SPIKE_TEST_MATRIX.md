@@ -27,10 +27,10 @@
 | ID | Test | Expected |
 |----|------|----------|
 | C1 | Seated default | `local-floor` reference space; no forced standing |
-| C2 | Locomotion verbs | WASD walk; Shift run; F or G fly/land; double-tap flight flat-only |
-| C2b | VR snap turn | A/D rotate 30° per press in VR (not strafe); smooth turn off |
+| C2 | Locomotion verbs | WASD walk; Shift run; F/G fly/land; controllers: left stick walk, grip run, right stick snap, Y/X fly, B land |
+| C2b | VR snap turn | A/D or right-stick flick rotate 30° per action in VR (not strafe); smooth turn off; brief comfort vignette on snap |
 | C3 | Stereo safety | No helmet/CRT post overlay in VR |
-| C4 | HUD | Flat HUD hidden in VR; locomotion ring stub + `[ EXIT ]` (world-anchored, not head-locked) |
+| C4 | HUD | Flat HUD hidden in VR; locomotion ring + EXIT (world-anchored, not head-locked); controller trigger clicks chips |
 | C5 | Modals | Auth/Hue/legal sheets not ported; exit VR to use flat UI |
 | C6 | Exit preserve | Exit VR keeps position, orbs, timer, session state |
 
@@ -46,7 +46,7 @@
 
 - Grass grid size is chosen at scene boot; full VR cap reload may require session restart (v1 follow-up).
 - Snap turn rotates view directly; player rig refactor planned for v1.
-- Controller thumbstick + grip run + fly buttons not wired in spike; keyboard + gaze menu stub only.
+- **Quest v1:** Controller thumbstick, grip run, Y/X fly, B land wired in `useVrControllerInput.ts` (xr-standard gamepad).
 - WebGPU + WebXR combo is bleeding-edge; failures surface inline under `[ ENTER VR ]`.
 
 ## Interim testing without Quest/PCVR
@@ -83,7 +83,8 @@ With **`?webxr=1` alone** and no XR support (`navigator.xr` missing or `isSessio
 | Spike flag + caps | `src/config/vrProfile.ts` |
 | Feature detect | `src/core/xr/xrSupport.ts` |
 | Session bind | `src/core/xr/webXrSession.ts` |
-| In-session rules | `src/components/xr/VrSessionBridge.tsx` |
-| Locomotion menu stub | `src/components/xr/VrLocomotionMenu.tsx` |
+| In-session rules | `src/components/xr/VrSessionBridge.tsx`, `src/core/input/useVrControllerInput.ts` |
+| Locomotion menu | `src/components/xr/VrLocomotionMenu.tsx` |
+| Herston test sheet | `docs/HERSTON_VR_CONTROLS.md` |
 | HUD entry | `src/ui/EnterVrButton.tsx` |
 | Device caps | `src/core/utils/browserCaps.ts` (`isVrSceneProfile`) |
