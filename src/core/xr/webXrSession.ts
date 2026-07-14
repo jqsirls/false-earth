@@ -178,12 +178,19 @@ export async function startImmersiveVrSession(
   // Required for Renderer._updateCamera to swap to the XR rig while presenting.
   xr.enabled = true;
 
-  await xr.setSession(session);
-
   const game = useGameStore.getState();
   game.setIsFlying(false);
+  // Flip before setSession so the first XR frame uses the direct render path.
   useVrStore.getState().setIsActive(true);
   useVrStore.getState().setLastError(null);
+
+  try {
+    await xr.setSession(session);
+  } catch (error) {
+    useVrStore.getState().setIsActive(false);
+    session.end().catch(() => undefined);
+    throw error;
+  }
 
   const onEnd = () => {
     useVrStore.getState().setIsActive(false);
