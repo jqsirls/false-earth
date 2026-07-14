@@ -193,12 +193,6 @@ export function WorldController() {
                     <Terrain />
                 )}
             </group>
-            {classicSceneMaterials && (
-                <>
-                    <hemisphereLight args={['#6a8fa8', '#0a1210', 0.55]} />
-                    <ambientLight intensity={0.22} />
-                </>
-            )}
 
             {/* Major components - toggle visibility instead of unmounting */}
             {rosesEnabled && (

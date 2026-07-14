@@ -150,7 +150,8 @@ export function isWebXrCapProfile(): boolean {
 /** Roses on by default; opt out with ?no-roses=1. Disabled in minimal/lite scenes. */
 export function shouldEnableRoses(): boolean {
   if (shouldUseMinimalScene()) return false;
-  // VAT rose compute requires the WebGPU renderer backend (breaks on headset WebGL XR).
+  // VAT rose field uses WebGPU storage + indirect draw — unavailable on Quest/VP WebGL XR.
+  // Honest gap: no CPU rose fallback yet; orbs + grass static field carry the WebGL meadow.
   if (shouldForceWebGlRendererBackend()) return false;
   if (readSearchParam('no-roses') === '1') return false;
   return true;
