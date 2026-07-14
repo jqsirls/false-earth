@@ -8,6 +8,7 @@ import {
   VR_ROSE_INSTANCE_COUNT,
   VR_SHADOW_MAP_HIGH,
   VR_SHADOW_MAP_LOW,
+  isWebXrSpikeEnabled,
 } from '../../config/vrProfile';
 import { useVrStore } from '../store/vrStore';
 
@@ -65,14 +66,14 @@ export function isMemoryConstrainedGpu(): boolean {
 
 export function getInitialDpr(): number {
   if (typeof window === 'undefined') return 1.5;
-  if (isVrSceneProfile()) return VR_MAX_DPR;
+  if (isWebXrCapProfile()) return VR_MAX_DPR;
   if (isMemoryConstrainedGpu() || isSafari()) return 1;
   return Math.min(window.devicePixelRatio || 1, 1.5);
 }
 
 /** Hard ceiling for PerformanceMonitor upscale — mobile and Safari stay at 1. */
 export function getMaxDpr(): number {
-  if (isVrSceneProfile()) return VR_MAX_DPR;
+  if (isWebXrCapProfile()) return VR_MAX_DPR;
   if (isMemoryConstrainedGpu() || isSafari()) return 1;
   return 1.5;
 }
@@ -126,10 +127,17 @@ export function isDebugMode(): boolean {
   return raw === '1' || raw === 'true';
 }
 
-/** Active immersive WebXR session — enables VR scene profile caps. */
+/** Active immersive WebXR session — UI / locomotion only (not perf caps). */
 export function isVrSceneProfile(): boolean {
   if (typeof window === 'undefined') return false;
   return useVrStore.getState().isActive;
+}
+
+/** VR perf caps: in-session or ?webxr=1 preload so grass/roses init at headset budget. */
+export function isWebXrCapProfile(): boolean {
+  if (typeof window === 'undefined') return false;
+  if (useVrStore.getState().isActive) return true;
+  return isWebXrSpikeEnabled();
 }
 
 /** Roses on by default; opt out with ?no-roses=1. Disabled in minimal/lite scenes. */
@@ -141,7 +149,7 @@ export function shouldEnableRoses(): boolean {
 
 export function getRoseInstanceCount(defaultCount: number): number {
   if (!shouldEnableRoses()) return 0;
-  if (isVrSceneProfile()) return Math.min(defaultCount, VR_ROSE_INSTANCE_COUNT);
+  if (isWebXrCapProfile()) return Math.min(defaultCount, VR_ROSE_INSTANCE_COUNT);
   if (isMemoryConstrainedGpu()) return Math.min(defaultCount, 500);
   if (isSafari()) return Math.min(defaultCount, 500);
   return defaultCount;
@@ -149,7 +157,7 @@ export function getRoseInstanceCount(defaultCount: number): number {
 
 export function getGrassBladesPerAxis(defaultBlades: number): number {
   if (shouldUseMinimalScene()) return 0;
-  if (isVrSceneProfile()) return VR_GRASS_BLADES_PER_AXIS;
+  if (isWebXrCapProfile()) return VR_GRASS_BLADES_PER_AXIS;
   if (isPhoneLikeDevice()) return Math.min(defaultBlades, 256);
   if (isMemoryConstrainedGpu() || isSafari()) return Math.min(defaultBlades, 512);
   return defaultBlades;
@@ -178,18 +186,18 @@ export function getJqTextureRoot(): string {
  * desktop keeps the full chain.
  */
 export function shouldDisableHeavyPostProcessing(): boolean {
-  return shouldUseMinimalScene() || isMemoryConstrainedGpu() || isVrSceneProfile();
+  return shouldUseMinimalScene() || isMemoryConstrainedGpu() || isWebXrCapProfile();
 }
 
 /** Orb population: research-locked floor (8 field + 2 sky) on constrained GPUs. */
 export function getOrbGroundCount(defaultCount: number): number {
-  if (isVrSceneProfile()) return Math.min(defaultCount, VR_ORB_GROUND_COUNT);
+  if (isWebXrCapProfile()) return Math.min(defaultCount, VR_ORB_GROUND_COUNT);
   if (isMemoryConstrainedGpu()) return Math.min(defaultCount, 8);
   return defaultCount;
 }
 
 export function getOrbSkyCount(defaultCount: number): number {
-  if (isVrSceneProfile()) return Math.min(defaultCount, VR_ORB_SKY_COUNT);
+  if (isWebXrCapProfile()) return Math.min(defaultCount, VR_ORB_SKY_COUNT);
   if (isMemoryConstrainedGpu()) return Math.min(defaultCount, 2);
   return defaultCount;
 }
@@ -209,7 +217,7 @@ export function shouldEnableDirectionalShadows(): boolean {
 
 export function getShadowMapSize(quality: 'low' | 'high'): number {
   if (!shouldEnableDirectionalShadows()) return 0;
-  if (isVrSceneProfile()) return quality === 'high' ? VR_SHADOW_MAP_HIGH : VR_SHADOW_MAP_LOW;
+  if (isWebXrCapProfile()) return quality === 'high' ? VR_SHADOW_MAP_HIGH : VR_SHADOW_MAP_LOW;
   if (isMemoryConstrainedGpu()) return quality === 'high' ? 1024 : 512;
   if (isSafari()) return quality === 'high' ? 1024 : 768;
   return quality === 'high' ? 2048 : 1024;

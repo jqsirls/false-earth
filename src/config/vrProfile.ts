@@ -33,6 +33,14 @@ export function isWebXrSpikeEnabled(): boolean {
   return params.get('webxr') === '1' || params.get('webxr') === 'true';
 }
 
+/**
+ * Quest / PCVR WebXR still routes through three.js WebGL2 — not the WebGPU canvas
+ * context. Required for XRManager.setSession (getContextAttributes + projection layers).
+ */
+export function shouldForceWebGlRendererBackend(): boolean {
+  return isWebXrSpikeEnabled();
+}
+
 export const VR_GRASS_BLADES_PER_AXIS = 256;
 export const VR_ROSE_INSTANCE_COUNT = 250;
 export const VR_ORB_GROUND_COUNT = 8;

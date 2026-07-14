@@ -68,17 +68,22 @@ export function EnterVrButton() {
       style={{
         position: 'fixed',
         bottom: isMobile ? ENTER_VR_BOTTOM_MOBILE : ENTER_VR_BOTTOM_DESKTOP,
-        left: '50%',
-        transform: 'translateX(-50%)',
+        left: 0,
+        right: 0,
+        width: '100%',
         zIndex: 16,
-        pointerEvents: 'auto',
+        pointerEvents: 'none',
         fontFamily: 'Cousine, monospace',
         fontSize: '0.75rem',
         color: '#ccc',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
+        justifyContent: 'center',
         gap: '6px',
+        boxSizing: 'border-box',
+        paddingLeft: 'max(12px, env(safe-area-inset-left))',
+        paddingRight: 'max(12px, env(safe-area-inset-right))',
       }}
     >
       <button
@@ -90,7 +95,9 @@ export function EnterVrButton() {
           cursor: isEntering ? 'wait' : 'pointer',
           display: 'flex',
           alignItems: 'center',
+          justifyContent: 'center',
           gap: '6px',
+          pointerEvents: 'auto',
         }}
       >
         <HintKey>ENTER VR</HintKey>
@@ -100,9 +107,11 @@ export function EnterVrButton() {
           style={{
             fontSize: '0.65rem',
             opacity: 0.75,
+            width: '100%',
             maxWidth: isQuestBrowser() ? '320px' : '280px',
             lineHeight: 1.45,
             textAlign: 'center',
+            pointerEvents: 'none',
           }}
         >
           {lastError}

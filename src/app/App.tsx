@@ -25,6 +25,8 @@ import { STORYTAILOR } from '../config/storytailor';
 import { CanvasErrorBoundary } from './CanvasErrorBoundary';
 import { getInitialDpr, getMaxDpr, isDebugMode, isMemoryConstrainedGpu, shouldPreloadVatRoses } from '../core/utils/browserCaps';
 import { setVrRenderer } from '../core/xr/webXrSession';
+import { shouldForceWebGlRendererBackend, VR_MAX_DPR } from '../config/vrProfile';
+import { useVrStore } from '../core/store/vrStore';
 import { VrSessionBridge } from '../components/xr/VrSessionBridge';
 import { VrLocomotionMenu } from '../components/xr/VrLocomotionMenu';
 import { MEADOW_FOOTSTEP_PATHS } from '../config/meadowAudio';
@@ -113,12 +115,26 @@ export default function App() {
     const gpuError = useGameStore((state) => state.gpuError);
     const setGpuError = useGameStore((state) => state.setGpuError);
 
+    useEffect(() => {
+        return useVrStore.subscribe((state, prev) => {
+            if (state.isActive && !prev.isActive) {
+                setDpr(VR_MAX_DPR);
+            }
+        });
+    }, []);
+
     // Check WebGPU support on mount
     useEffect(() => {
         const checkWebGPU = async () => {
-            if (!navigator.gpu) {
+            const webxrWebGlPath = shouldForceWebGlRendererBackend();
+            if (!navigator.gpu && !webxrWebGlPath) {
                 setGpuError('WEBGPU_NOT_SUPPORTED');
                 console.error("WebGPU is not supported in this browser");
+                return;
+            }
+            if (webxrWebGlPath) {
+                console.log('WebXR spike: WebGL2 renderer backend for headset compatibility');
+                setGpuError(null);
                 return;
             }
             try {
@@ -164,11 +180,13 @@ export default function App() {
                     position: [20, 20, 30]
                 }}
                 gl={(canvas) => {
+                    const forceWebGlForXr = shouldForceWebGlRendererBackend();
                     const renderer = new WebGPURenderer({
                         ...canvas as any,
                         powerPreference: isMemoryConstrainedGpu() ? 'low-power' : 'high-performance',
                         antialias: !isMemoryConstrainedGpu(),
                         alpha: true,
+                        forceWebGL: forceWebGlForXr,
                     });
                     renderer.setClearColor('#000000');
                     renderer.autoClear = true;
