@@ -25,6 +25,7 @@ import { STORYTAILOR } from '../config/storytailor';
 import { CanvasErrorBoundary } from './CanvasErrorBoundary';
 import { getInitialDpr, getMaxDpr, isDebugMode, isMemoryConstrainedGpu, shouldPreloadVatRoses } from '../core/utils/browserCaps';
 import { setVrRenderer } from '../core/xr/webXrSession';
+import { patchWebGpuXrForR3f } from '../core/xr/patchWebGpuXrForR3f';
 import { shouldForceWebGlRendererBackend, VR_MAX_DPR } from '../config/vrProfile';
 import { useVrStore } from '../core/store/vrStore';
 import { VrSessionBridge } from '../components/xr/VrSessionBridge';
@@ -205,6 +206,7 @@ export default function App() {
                     canvasEl.addEventListener('webglcontextlost', onContextLost);
 
                     return renderer.init().then(() => {
+                        patchWebGpuXrForR3f(renderer);
                         setVrRenderer(renderer);
                         attachGpuDeviceLostHandler(renderer, (message) => {
                             console.error('[false-earth] GPU device lost:', message);

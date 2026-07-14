@@ -224,12 +224,15 @@ export default function Effects() {
   ]);
 
   useFrame(() => {
-    if (!postProcessingRef.current) return;
-
     if (isVrActive) {
       decaySnapComfort(performance.now());
       uParams.current.snapComfort.value = snapComfortStrength;
+      // TSL PostProcessing does not target WebXR swapchains (Quest WebGL / VP WebGPU).
+      gl.render(scene, camera);
+      return;
     }
+
+    if (!postProcessingRef.current) return;
 
     if (isHighQuality && dofCfg.enabled && dofCfg.autofocus && characterRef?.current) {
       camera.getWorldPosition(vecCache.cam);

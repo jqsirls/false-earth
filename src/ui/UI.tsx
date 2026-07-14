@@ -80,14 +80,17 @@ export function UI() {
     }, [hydrateSession]);
 
     return (
-        <div style={{
+        <div
+            data-meadow-ui-root
+            style={{
             position: 'fixed',
             top: 0,
             left: 0,
             width: '100%',
             height: '100%',
             pointerEvents: 'none', // Critical: lets clicks pass through to the 3D canvas
-            zIndex: 10 // Ensure UI is above Canvas
+            zIndex: 10, // Ensure UI is above Canvas
+            visibility: isVrActive ? 'hidden' : undefined,
         }}>
             <LoadingScreen />
             <AuthSheet />

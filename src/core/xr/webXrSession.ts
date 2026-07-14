@@ -8,20 +8,11 @@ export type VrSessionEndReason = 'user' | 'system' | 'error';
 export const VR_BIND_NOT_READY = 'WebGPU XR renderer not ready';
 export const VR_SESSION_TIMEOUT = 'VR_SESSION_TIMEOUT';
 
-const QUEST_VR_BIND_BODY =
-  'WebXR on Quest still needs the browser graphics path, not the meadow WebGPU canvas. Update Meta Quest Browser to version 146 or newer, then try again. The flat meadow at booster.storytailor.com still works without ?webxr=1.';
+const QUEST_VR_BODY =
+  'Update Meta Quest Browser (Settings → About) to version 146 or newer, then try again.';
 
-const QUEST_VR_GENERIC_BODY =
-  'VR could not start. Update Meta Quest Browser to version 146 or newer, then try again. The flat meadow at booster.storytailor.com still works without ?webxr=1. You can also try Wolvic.';
-
-const VISION_PRO_VR_GENERIC_BODY =
-  'VR could not start. In Safari Settings open Feature Flags, enable WebXR, then restart Safari and try Enter VR again.';
-
-const VISION_PRO_VR_TIMEOUT_BODY =
-  'VR did not start in time. In Safari Settings open Feature Flags, enable WebXR, restart Safari, then tap Enter VR again.';
-
-const VISION_PRO_VR_WEBGPU_BODY =
-  'VR needs WebXR with WebGPU on Vision Pro. In Safari Settings open Feature Flags, enable WebXR and WebGPU, restart Safari, then try again.';
+const VISION_PRO_VR_BODY =
+  'WebXR is enabled but VR did not connect. Close other Safari tabs, restart Safari, then try Enter VR again.';
 
 const DESKTOP_VR_GENERIC_BODY =
   'VR could not start in this browser. Refresh once, or try a desktop browser with WebXR enabled.';
@@ -65,8 +56,8 @@ function isVrTimeoutError(message: string): boolean {
 }
 
 function deviceVrGenericBody(): string {
-  if (isQuestBrowser()) return QUEST_VR_GENERIC_BODY;
-  if (isVisionOsBrowser()) return VISION_PRO_VR_GENERIC_BODY;
+  if (isQuestBrowser()) return QUEST_VR_BODY;
+  if (isVisionOsBrowser()) return VISION_PRO_VR_BODY;
   return DESKTOP_VR_GENERIC_BODY;
 }
 
@@ -76,10 +67,10 @@ export function formatVrSessionError(error: unknown): string {
 
   if (raw.includes('WebXR unavailable')) {
     if (isQuestBrowser()) {
-      return 'WebXR is not available in this browser. Update Meta Quest Browser to version 146 or newer, then try again.';
+      return `WebXR is not available in this browser. ${QUEST_VR_BODY}`;
     }
     if (isVisionOsBrowser()) {
-      return 'WebXR is not available. In Safari Settings open Feature Flags, enable WebXR, then restart Safari.';
+      return `WebXR is not available. ${VISION_PRO_VR_BODY}`;
     }
     return 'WebXR is not available in this browser.';
   }
@@ -89,21 +80,15 @@ export function formatVrSessionError(error: unknown): string {
   }
 
   if (isVrTimeoutError(raw)) {
-    if (isVisionOsBrowser()) return VISION_PRO_VR_TIMEOUT_BODY;
-    if (isQuestBrowser()) return QUEST_VR_GENERIC_BODY;
-    return DESKTOP_VR_GENERIC_BODY;
+    return deviceVrGenericBody();
   }
 
   if (raw.includes('webgpu" session feature') || raw.includes('WebGPU XR sessions require')) {
-    if (isVisionOsBrowser()) return VISION_PRO_VR_WEBGPU_BODY;
-    if (isQuestBrowser()) return QUEST_VR_BIND_BODY;
-    return DESKTOP_VR_GENERIC_BODY;
+    return deviceVrGenericBody();
   }
 
   if (isWebGpuXrBackendError(raw) || looksLikeRawJsException(raw)) {
-    if (isQuestBrowser()) return QUEST_VR_BIND_BODY;
-    if (isVisionOsBrowser()) return VISION_PRO_VR_WEBGPU_BODY;
-    return DESKTOP_VR_GENERIC_BODY;
+    return deviceVrGenericBody();
   }
 
   return deviceVrGenericBody();
@@ -189,6 +174,9 @@ export async function startImmersiveVrSession(
     session.end();
     throw new Error(VR_BIND_NOT_READY);
   }
+
+  // Required for Renderer._updateCamera to swap to the XR rig while presenting.
+  xr.enabled = true;
 
   await xr.setSession(session);
 
