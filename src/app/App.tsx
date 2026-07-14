@@ -26,7 +26,8 @@ import { CanvasErrorBoundary } from './CanvasErrorBoundary';
 import { getInitialDpr, getMaxDpr, isDebugMode, isMemoryConstrainedGpu, shouldPreloadVatRoses } from '../core/utils/browserCaps';
 import { setVrRenderer } from '../core/xr/webXrSession';
 import { patchWebGpuXrForR3f } from '../core/xr/patchWebGpuXrForR3f';
-import { shouldForceWebGlRendererBackend, VR_MAX_DPR } from '../config/vrProfile';
+import { patchVisionOsWebGpuXrScissor } from '../core/xr/patchVisionOsWebGpuXrScissor';
+import { isVisionOsBrowser, shouldForceWebGlRendererBackend, VR_MAX_DPR } from '../config/vrProfile';
 import { useVrStore } from '../core/store/vrStore';
 import { VrSessionBridge } from '../components/xr/VrSessionBridge';
 import { VrLocomotionMenu } from '../components/xr/VrLocomotionMenu';
@@ -182,10 +183,13 @@ export default function App() {
                 }}
                 gl={(canvas) => {
                     const forceWebGlForXr = shouldForceWebGlRendererBackend();
+                    // visionOS WebGL XR: MSAA breaks immersive output (PlayCanvas AVP guidance).
+                    const disableAntialias =
+                        forceWebGlForXr && isVisionOsBrowser();
                     const renderer = new WebGPURenderer({
                         ...canvas as any,
                         powerPreference: isMemoryConstrainedGpu() ? 'low-power' : 'high-performance',
-                        antialias: !isMemoryConstrainedGpu(),
+                        antialias: disableAntialias ? false : !isMemoryConstrainedGpu(),
                         alpha: true,
                         forceWebGL: forceWebGlForXr,
                     });
@@ -207,6 +211,7 @@ export default function App() {
 
                     return renderer.init().then(() => {
                         patchWebGpuXrForR3f(renderer);
+                        patchVisionOsWebGpuXrScissor(renderer);
                         setVrRenderer(renderer);
                         attachGpuDeviceLostHandler(renderer, (message) => {
                             console.error('[false-earth] GPU device lost:', message);

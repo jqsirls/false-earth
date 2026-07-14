@@ -52,14 +52,24 @@ export function isVisionOsBrowser(): boolean {
   return false;
 }
 
+/** Emergency opt-in: force WebGL2 XR on Vision Pro (?webxr=1&webgl-xr=1). */
+export function shouldUseWebGlXrFallback(): boolean {
+  if (typeof window === 'undefined') return false;
+  if (!isWebXrSpikeEnabled() || !isVisionOsBrowser()) return false;
+  const raw = new URLSearchParams(window.location.search).get('webgl-xr');
+  return raw === '1' || raw === 'true';
+}
+
 /**
  * Quest WebXR routes through three.js WebGL2 — not the WebGPU canvas context.
- * Vision Pro keeps WebGPU and requests the WebXR `webgpu` session feature (three r185+).
+ * Vision Pro defaults to WebGPU + `webgpu` session feature (three r185+); use
+ * ?webgl-xr=1 only if WebGPU XR still fails after the visionOS scissor patch.
  * Desktop ?webxr=1 keeps WebGPU so grass compute + roses stay live for emulation.
  */
 export function shouldForceWebGlRendererBackend(): boolean {
   if (!isWebXrSpikeEnabled()) return false;
-  return isQuestBrowser();
+  if (isQuestBrowser()) return true;
+  return shouldUseWebGlXrFallback();
 }
 
 /** WebGPU compute grass grid for ?webxr=1 preload (desktop emulation). */
