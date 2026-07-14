@@ -5,7 +5,7 @@ import {
   isQuestBrowser,
   isVisionOsBrowser,
   shouldForceWebGlRendererBackend,
-  shouldUseWebGlXrFallback,
+  shouldUseWebGpuXrOnVisionPro,
 } from '../../config/vrProfile';
 
 export type VrSessionEndReason = 'user' | 'system' | 'error';
@@ -135,9 +135,9 @@ async function requestImmersiveVrSession(): Promise<XRSession> {
   const tryRequest = (init: XRSessionInit) =>
     withTimeout(navigator.xr!.requestSession('immersive-vr', init), timeoutMs, VR_SESSION_TIMEOUT);
 
-  // Vision Pro: WebGPU XR via the `webgpu` session feature (three.js r185+).
-  // Skip when ?webgl-xr=1 forces the WebGL2 backend fallback.
-  if (isVisionOsBrowser() && !shouldUseWebGlXrFallback()) {
+  // Vision Pro WebGPU XR via the `webgpu` session feature (three.js r185+).
+  // Default VP path is WebGL2 XR; only request webgpu when &webgpu-xr=1.
+  if (isVisionOsBrowser() && shouldUseWebGpuXrOnVisionPro()) {
     try {
       return await tryRequest({ optionalFeatures: ['local-floor', 'webgpu'] });
     } catch (firstError) {
