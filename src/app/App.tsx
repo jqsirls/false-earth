@@ -26,6 +26,7 @@ import { CanvasErrorBoundary } from './CanvasErrorBoundary';
 import { getInitialDpr, getMaxDpr, isDebugMode, isMemoryConstrainedGpu, shouldPreloadVatRoses } from '../core/utils/browserCaps';
 import { setVrRenderer } from '../core/xr/webXrSession';
 import { patchWebGpuXrForR3f } from '../core/xr/patchWebGpuXrForR3f';
+import { patchXrRenderCamera } from '../core/xr/patchXrRenderCamera';
 import { patchVisionOsWebGpuXrScissor } from '../core/xr/patchVisionOsWebGpuXrScissor';
 import { isVisionOsBrowser, shouldForceWebGlRendererBackend, VR_MAX_DPR } from '../config/vrProfile';
 import { useVrStore } from '../core/store/vrStore';
@@ -212,6 +213,7 @@ export default function App() {
 
                     return renderer.init().then(() => {
                         patchWebGpuXrForR3f(renderer);
+                        patchXrRenderCamera(renderer);
                         patchVisionOsWebGpuXrScissor(renderer);
                         setVrRenderer(renderer);
                         attachGpuDeviceLostHandler(renderer, (message) => {

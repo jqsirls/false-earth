@@ -7,6 +7,7 @@ import {
   shouldForceWebGlRendererBackend,
   shouldUseWebGpuXrOnVisionPro,
 } from '../../config/vrProfile';
+import { logVrSession } from './vrSessionDebug';
 
 export type VrSessionEndReason = 'user' | 'system' | 'error';
 
@@ -142,11 +143,17 @@ async function requestImmersiveVrSession(): Promise<XRSession> {
 
   const timeoutMs = isVisionOsBrowser() ? 45000 : 20000;
 
+  logVrSession('request_session_start', {
+    quest: isQuestBrowser(),
+    visionPro: isVisionOsBrowser(),
+    webglBackend: shouldForceWebGlRendererBackend(),
+    webgpuXr: shouldUseWebGpuXrOnVisionPro(),
+  });
+
   const tryRequest = (init: XRSessionInit) =>
     withTimeout(navigator.xr!.requestSession('immersive-vr', init), timeoutMs, VR_SESSION_TIMEOUT);
 
-  // Vision Pro WebGPU XR via the `webgpu` session feature (three.js r185+).
-  // Default VP path is WebGL2 XR; only request webgpu when &webgpu-xr=1.
+  // visionOS: immersive-ar is unsupported — immersive-vr only (Apple / W3C, 2025+).
   if (isVisionOsBrowser() && shouldUseWebGpuXrOnVisionPro()) {
     try {
       return await tryRequest({ optionalFeatures: ['local-floor', 'webgpu'] });
@@ -177,6 +184,17 @@ async function requestImmersiveVrSession(): Promise<XRSession> {
 }
 
 function prepareRendererForXr(renderer: WebGPURenderer): void {
+  const xr = renderer.xr;
+  if (xr) {
+    try {
+      xr.setReferenceSpaceType('local-floor');
+    } catch (error) {
+      logVrSession('reference_space_type_failed', {
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
   if (!shouldForceWebGlRendererBackend()) return;
   // MSAA on the WebGL XR layer blacks out visionOS output (PlayCanvas AVP guidance).
   renderer.samples = 0;
@@ -192,10 +210,12 @@ export async function startImmersiveVrSession(
   prepareRendererForXr(renderer);
 
   const session = await requestImmersiveVrSession();
+  logVrSession('session_acquired', { mode: session.mode, visibilityState: session.visibilityState });
 
   const xr = renderer.xr;
   if (!xr) {
     session.end();
+    logVrSession('session_aborted', { reason: 'no_xr_manager' });
     throw new Error(VR_BIND_NOT_READY);
   }
 
@@ -210,17 +230,26 @@ export async function startImmersiveVrSession(
 
   try {
     await xr.setSession(session);
+    logVrSession('set_session_ok', {
+      isPresenting: xr.isPresenting,
+      referenceSpaceType: xr.getReferenceSpaceType?.(),
+    });
   } catch (error) {
     session.end().catch(() => undefined);
     sessionEnteredByUser = false;
+    logVrSession('set_session_failed', {
+      message: error instanceof Error ? error.message : String(error),
+    });
     throw error;
   }
 
   useVrStore.getState().setIsActive(true);
+  logVrSession('store_active_true');
 
   const onEnd = () => {
     const elapsedMs = performance.now() - sessionStartedAtMs;
     const endedEarly = sessionEnteredByUser && elapsedMs < 4000;
+    logVrSession('session_end', { elapsedMs: Math.round(elapsedMs), endedEarly });
     useVrStore.getState().setIsActive(false);
     if (endedEarly && !useVrStore.getState().lastError) {
       useVrStore.getState().setLastError(formatVrSessionError(new Error(VR_SESSION_ENDED_EARLY)));

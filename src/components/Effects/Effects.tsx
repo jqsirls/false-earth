@@ -227,15 +227,14 @@ export default function Effects() {
     const xr = gl.xr;
     const xrPresenting = xr?.isPresenting === true;
     if (xrPresenting) {
-      // three's XR loop only provides a frame object; rendering before pose/bind is black.
+      // Wait for three's XR pose/bind — R3F passes the XRFrame into useFrame.
       if (!frame) return;
 
       decaySnapComfort(performance.now());
       uParams.current.snapComfort.value = snapComfortStrength;
       const renderer = gl as unknown as WebGPURenderer;
       renderer.toneMapping = THREE.NoToneMapping;
-      const renderCamera = xr.enabled ? xr.getCamera() : camera;
-      renderer.render(scene, renderCamera);
+      // Stereo render: patchXrRenderCamera redirects R3F's gl.render to xr.getCamera().
       return;
     }
 

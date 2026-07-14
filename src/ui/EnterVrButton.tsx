@@ -1,7 +1,7 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useGameStore } from '../core/store/gameStore';
 import { useVrStore } from '../core/store/vrStore';
-import { probeImmersiveVrSupport } from '../core/xr/xrSupport';
+import { probeVrPreview, formatVrPreviewBlockedMessage } from '../core/xr/xrSupport';
 import {
   formatVrSessionError,
   getVrRenderer,
@@ -33,17 +33,61 @@ export function EnterVrButton() {
   const setIsEntering = useVrStore((state) => state.setIsEntering);
   const setLastError = useVrStore((state) => state.setLastError);
 
+  const [previewBlocked, setPreviewBlocked] = useState<string | null>(null);
+
   useEffect(() => {
     let cancelled = false;
-    void probeImmersiveVrSupport().then((supported) => {
-      if (!cancelled) setIsSupported(supported);
+    void probeVrPreview().then((probe) => {
+      if (cancelled) return;
+      setIsSupported(probe.supported);
+      setPreviewBlocked(probe.supported ? null : formatVrPreviewBlockedMessage(probe.reason));
     });
     return () => {
       cancelled = true;
     };
   }, [setIsSupported]);
 
-  if (!isControlEnabled || gpuError || !isSupported || isActive) return null;
+  if (!isControlEnabled || gpuError || !isSupported || isActive) {
+    if (previewBlocked && isControlEnabled && !gpuError && !isActive) {
+      return (
+        <div
+          data-meadow-enter-vr
+          style={{
+            position: 'fixed',
+            bottom: isMobile ? ENTER_VR_BOTTOM_MOBILE : ENTER_VR_BOTTOM_DESKTOP,
+            left: 0,
+            right: 0,
+            width: '100%',
+            zIndex: 16,
+            pointerEvents: 'none',
+            fontFamily: 'Cousine, monospace',
+            fontSize: '0.65rem',
+            color: '#ccc',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '6px',
+            boxSizing: 'border-box',
+            paddingLeft: 'max(12px, env(safe-area-inset-left))',
+            paddingRight: 'max(12px, env(safe-area-inset-right))',
+          }}
+        >
+          <span
+            style={{
+              opacity: 0.8,
+              maxWidth: '320px',
+              lineHeight: 1.45,
+              textAlign: 'center',
+            }}
+          >
+            {previewBlocked}
+          </span>
+        </div>
+      );
+    }
+    return null;
+  }
 
   const onClick = async () => {
     setLastError(null);
