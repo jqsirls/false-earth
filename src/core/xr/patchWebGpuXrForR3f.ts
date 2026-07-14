@@ -5,6 +5,7 @@ type XrFrameCallback = ((time: number, frame?: XRFrame) => void) | null;
 type XrManagerWithLegacyLoop = WebGPURenderer['xr'] & {
   setAnimationLoop?: (callback: XrFrameCallback) => void;
   _currentAnimationLoop?: XrFrameCallback;
+  __meadowR3fPatched?: boolean;
 };
 
 /**
@@ -18,12 +19,23 @@ type XrManagerWithLegacyLoop = WebGPURenderer['xr'] & {
  */
 export function patchWebGpuXrForR3f(renderer: WebGPURenderer): void {
   const xr = renderer.xr as XrManagerWithLegacyLoop;
-  if (!xr || typeof xr.setAnimationLoop === 'function') return;
+  if (!xr || xr.__meadowR3fPatched) return;
+
+  const nativeSetAnimationLoop =
+    typeof xr.setAnimationLoop === 'function'
+      ? xr.setAnimationLoop.bind(xr)
+      : null;
 
   xr.setAnimationLoop = (callback: XrFrameCallback) => {
     xr._currentAnimationLoop = callback ?? null;
+    if (nativeSetAnimationLoop) {
+      nativeSetAnimationLoop(callback);
+      return;
+    }
     if (!xr.isPresenting) {
       void renderer.setAnimationLoop(callback);
     }
   };
+
+  xr.__meadowR3fPatched = true;
 }

@@ -12,18 +12,22 @@ export type VrSessionEndReason = 'user' | 'system' | 'error';
 
 export const VR_BIND_NOT_READY = 'WebGPU XR renderer not ready';
 export const VR_SESSION_TIMEOUT = 'VR_SESSION_TIMEOUT';
+export const VR_SESSION_ENDED_EARLY = 'VR_SESSION_ENDED_EARLY';
 
 const QUEST_VR_BODY =
   'Update Meta Quest Browser (Settings → About) to version 146 or newer, then try again.';
 
 const VISION_PRO_VR_BODY =
-  'WebXR is enabled but VR did not connect. Close other Safari tabs, restart Safari, then try Enter VR again.';
+  'WebXR started but did not stay connected. Close other Safari tabs, restart Safari, then try Enter VR again.';
 
 const DESKTOP_VR_GENERIC_BODY =
   'VR could not start in this browser. Refresh once, or try a desktop browser with WebXR enabled.';
 
 const RENDERER_NOT_READY_BODY =
   'The meadow is still loading. Press START first, wait a moment, then try Enter VR again.';
+
+const VR_ENDED_UNEXPECTEDLY_BODY =
+  'VR stopped before the meadow could render. Try Enter VR again. If it keeps happening, restart Safari and reload this page.';
 
 function looksLikeRawJsException(message: string): boolean {
   return (
@@ -84,6 +88,10 @@ export function formatVrSessionError(error: unknown): string {
     return RENDERER_NOT_READY_BODY;
   }
 
+  if (raw === VR_SESSION_ENDED_EARLY) {
+    return VR_ENDED_UNEXPECTEDLY_BODY;
+  }
+
   if (isVrTimeoutError(raw)) {
     return deviceVrGenericBody();
   }
@@ -100,6 +108,8 @@ export function formatVrSessionError(error: unknown): string {
 }
 
 let vrRendererRef: WebGPURenderer | null = null;
+let sessionStartedAtMs = 0;
+let sessionEnteredByUser = false;
 
 export function setVrRenderer(renderer: WebGPURenderer | null): void {
   vrRendererRef = renderer;
@@ -149,7 +159,7 @@ async function requestImmersiveVrSession(): Promise<XRSession> {
     }
   }
 
-  // Quest WebGL XR path — do not request the webgpu session feature.
+  // Quest / Vision Pro WebGL XR path — do not request the webgpu session feature.
   if (isQuestBrowser() || shouldForceWebGlRendererBackend()) {
     try {
       return await tryRequest({ requiredFeatures: ['local-floor'] });
@@ -166,12 +176,20 @@ async function requestImmersiveVrSession(): Promise<XRSession> {
   }
 }
 
+function prepareRendererForXr(renderer: WebGPURenderer): void {
+  if (!shouldForceWebGlRendererBackend()) return;
+  // MSAA on the WebGL XR layer blacks out visionOS output (PlayCanvas AVP guidance).
+  renderer.samples = 0;
+}
+
 export async function startImmersiveVrSession(
   renderer: WebGPURenderer,
 ): Promise<void> {
   if (!navigator.xr) {
     throw new Error('WebXR unavailable in this browser');
   }
+
+  prepareRendererForXr(renderer);
 
   const session = await requestImmersiveVrSession();
 
@@ -181,31 +199,40 @@ export async function startImmersiveVrSession(
     throw new Error(VR_BIND_NOT_READY);
   }
 
-  // Required for Renderer._updateCamera to swap to the XR rig while presenting.
   xr.enabled = true;
 
   const game = useGameStore.getState();
   game.setIsFlying(false);
-  // Flip before setSession so the first XR frame uses the direct render path.
-  useVrStore.getState().setIsActive(true);
+
+  sessionEnteredByUser = true;
+  sessionStartedAtMs = performance.now();
   useVrStore.getState().setLastError(null);
 
   try {
     await xr.setSession(session);
   } catch (error) {
-    useVrStore.getState().setIsActive(false);
     session.end().catch(() => undefined);
+    sessionEnteredByUser = false;
     throw error;
   }
 
+  useVrStore.getState().setIsActive(true);
+
   const onEnd = () => {
+    const elapsedMs = performance.now() - sessionStartedAtMs;
+    const endedEarly = sessionEnteredByUser && elapsedMs < 4000;
     useVrStore.getState().setIsActive(false);
+    if (endedEarly && !useVrStore.getState().lastError) {
+      useVrStore.getState().setLastError(formatVrSessionError(new Error(VR_SESSION_ENDED_EARLY)));
+    }
+    sessionEnteredByUser = false;
     session.removeEventListener('end', onEnd);
   };
   session.addEventListener('end', onEnd);
 }
 
 export async function endImmersiveVrSession(renderer: WebGPURenderer): Promise<void> {
+  sessionEnteredByUser = false;
   const session = renderer.xr?.getSession();
   if (session) {
     await session.end();

@@ -205,7 +205,12 @@ export function shouldDeferAmbientOrbs(): boolean {
   return isWebXrCapProfile();
 }
 
-/** Grass compute (WebGPU storage + indirect draw) — unreliable on Quest browsers. */
+/** WebGL XR path (Quest / Vision Pro ?webxr=1) — classic materials, no compute grass. */
+export function shouldUseClassicSceneMaterials(): boolean {
+  return shouldForceWebGlRendererBackend();
+}
+
+/** Grass compute (WebGPU storage + indirect draw) — unreliable on Quest / WebGL XR browsers. */
 export function shouldUseGrassComputePath(): boolean {
   if (shouldUseMinimalScene()) return false;
   if (isQuestBrowser()) return false;

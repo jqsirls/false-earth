@@ -223,17 +223,19 @@ export default function Effects() {
     isVrActive,
   ]);
 
-  useFrame(() => {
-    // gl.xr.isPresenting is authoritative — React isVrActive can lag sessionstart.
-    const xrPresenting = gl.xr?.isPresenting === true;
+  useFrame((_state, _delta, frame) => {
+    const xr = gl.xr;
+    const xrPresenting = xr?.isPresenting === true;
     if (xrPresenting) {
+      // three's XR loop only provides a frame object; rendering before pose/bind is black.
+      if (!frame) return;
+
       decaySnapComfort(performance.now());
       uParams.current.snapComfort.value = snapComfortStrength;
-      // TSL PostProcessing does not target WebXR swapchains (Quest WebGL / VP WebGPU).
-      // Tone mapping via an intermediate framebuffer breaks WebGPU XR output.
       const renderer = gl as unknown as WebGPURenderer;
       renderer.toneMapping = THREE.NoToneMapping;
-      renderer.render(scene, camera);
+      const renderCamera = xr.enabled ? xr.getCamera() : camera;
+      renderer.render(scene, renderCamera);
       return;
     }
 

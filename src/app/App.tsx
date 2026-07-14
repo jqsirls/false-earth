@@ -190,6 +190,7 @@ export default function App() {
                         ...canvas as any,
                         powerPreference: isMemoryConstrainedGpu() ? 'low-power' : 'high-performance',
                         antialias: disableAntialias ? false : !isMemoryConstrainedGpu(),
+                        samples: forceWebGlForXr ? 0 : undefined,
                         alpha: true,
                         forceWebGL: forceWebGlForXr,
                     });

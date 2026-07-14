@@ -39,8 +39,10 @@ import {
     shouldEnableRoses,
     shouldUseGrassComputePath,
     shouldUseMinimalScene,
+    shouldUseClassicSceneMaterials,
 } from '../core/utils/browserCaps';
 import { SafariGround } from './SafariGround';
+import { TerrainWebGL } from './TerrainWebGL';
 import { usePrefersReducedMotion } from '../core/utils/reducedMotion';
 
 export function WorldController() {
@@ -55,6 +57,7 @@ export function WorldController() {
     const rosesEnabled = shouldEnableRoses();
     const minimalScene = shouldUseMinimalScene();
     const grassComputePath = shouldUseGrassComputePath();
+    const classicSceneMaterials = shouldUseClassicSceneMaterials();
     const deferOrbs = shouldDeferAmbientOrbs();
     const [grassCompileFailed, setGrassCompileFailed] = useState(false);
     const [orbsReady, setOrbsReady] = useState(!deferOrbs);
@@ -182,8 +185,20 @@ export function WorldController() {
             <group visible={enableEnv}>
                 <StarrySky />
                 <CosmicSystem />
-                {grassCompileFailed ? <SafariGround /> : <Terrain />}
+                {classicSceneMaterials ? (
+                    <TerrainWebGL />
+                ) : grassCompileFailed ? (
+                    <SafariGround />
+                ) : (
+                    <Terrain />
+                )}
             </group>
+            {classicSceneMaterials && (
+                <>
+                    <hemisphereLight args={['#6a8fa8', '#0a1210', 0.55]} />
+                    <ambientLight intensity={0.22} />
+                </>
+            )}
 
             {/* Major components - toggle visibility instead of unmounting */}
             {rosesEnabled && (
