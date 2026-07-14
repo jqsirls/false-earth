@@ -236,6 +236,8 @@ export default function Effects() {
   useFrame((_state, _delta, frame) => {
     const xr = gl.xr;
     const xrPresenting = xr?.isPresenting === true;
+    const webGlBackend = shouldForceWebGlRendererBackend();
+
     if (xrPresenting) {
       if (!frame) return;
 
@@ -243,10 +245,25 @@ export default function Effects() {
       uParams.current.snapComfort.value = snapComfortStrength;
       const renderer = gl as unknown as WebGPURenderer;
       renderer.toneMapping = THREE.NoToneMapping;
+
+      // R3F skips gl.render when useFrame has priority > 0 — must render in XR.
+      if (webGlBackend || !postProcessingRef.current) {
+        const renderCamera = xr.enabled ? xr.getCamera() : camera;
+        renderer.render(scene, renderCamera);
+      } else {
+        postProcessingRef.current.render();
+      }
       return;
     }
 
-    if (shouldForceWebGlRendererBackend()) return;
+    // WebGL XR backend: TSL post is skipped — flat ?webxr=1 preview must render directly.
+    if (webGlBackend) {
+      const renderer = gl as unknown as WebGPURenderer;
+      renderer.toneMapping = tmCfg.enabled ? THREE.ReinhardToneMapping : THREE.NoToneMapping;
+      renderer.toneMappingExposure = Math.pow(tmCfg.exposure, 4.0);
+      gl.render(scene, camera);
+      return;
+    }
 
     if (!postProcessingRef.current) return;
 
