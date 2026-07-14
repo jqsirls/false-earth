@@ -3,7 +3,7 @@
 **URL:** https://booster.storytailor.com?webxr=1  
 **Gate:** `?webxr=1` stays required until Quest headset sign-off.  
 **Platforms this build targets:** Meta Quest browser + desktop PCVR (Link / Air Link / native PCVR browser).  
-**Vision Pro:** Locomotion menu chips work with pinch or Bluetooth keyboard today; gaze dwell polish is v1.1.
+**Vision Pro:** Gaze or transient-pointer ray on a chip for **0.8 s dwell** (chip brightens, then selects). **Pinch** selects instantly. With **Reduce Motion** on, dwell is off — pinch or Bluetooth keyboard only.
 
 ## Before you start
 
@@ -21,8 +21,17 @@
 | **Snap turn 30°** | Right thumbstick **left/right flick** (one turn per flick; return stick to center to turn again). Brief edge vignette on turn. |
 | **Fly** | **Y** (left controller) or **X** (right controller) — short press toggles flight on. |
 | **Stop flying** | Press **Y** or **X** again while flying, or press **B** (right) to land. |
-| **Locomotion menu** | Aim controller ray at ring chips; **trigger** to click WALK / RUN / FLY / STOP FLYING. |
-| **Exit VR** | **EXIT** chip on the ring, or headset system Home / exit. Session/orbs/timer should persist on flat. |
+| **Locomotion menu** | Aim controller ray at ring chips; **trigger** for instant select, or **dwell 0.8 s** on target chip. |
+| **Exit VR** | **EXIT** chip on the ring (dwell or trigger), or headset system Home / exit. Session/orbs/timer should persist on flat. |
+
+## Vision Pro (gaze + pinch)
+
+| Action | Control |
+|--------|---------|
+| **Aim** | Look at a chip, or pinch-drag transient pointer over the ring |
+| **Select** | **Pinch** for instant select (primary). Or hold gaze/pointer on chip **0.8 s** — chip brightens, then confirms |
+| **Reduce Motion** | Dwell disabled; pinch or keyboard only |
+| **Idle** | Ring fades to 25% opacity after 8 s with no gaze or interaction; full opacity returns on aim |
 
 ## Bluetooth keyboard (all devices)
 
@@ -58,4 +67,5 @@ Double-tap flight is **flat touch/mouse only** — not in VR.
 | Controller poll | `src/core/input/useVrControllerInput.ts` |
 | Session bridge | `src/components/xr/VrSessionBridge.tsx` |
 | Locomotion ring | `src/components/xr/VrLocomotionMenu.tsx` |
+| Menu raycast/dwell | `src/core/xr/vrMenuRaycast.ts` |
 | Snap turn helper | `src/core/xr/vrLocomotion.ts` |

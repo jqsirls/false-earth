@@ -14,6 +14,18 @@ export const VR_SNAP_COMFORT_MS = 220;
 /** Vision Pro gaze chip dwell before auto-highlight (pinch still primary). */
 export const VR_GAZE_DWELL_MS = 800;
 
+/** Locomotion ring fades to this opacity after idle (PRD §2.5.2). */
+export const VR_MENU_IDLE_OPACITY = 0.25;
+
+/** Full opacity while user is interacting with the ring. */
+export const VR_MENU_ACTIVE_OPACITY = 0.92;
+
+/** Idle time before locomotion ring fades (ms). */
+export const VR_MENU_IDLE_FADE_MS = 8000;
+
+/** Chip confirm pulse duration after select (ms). */
+export const VR_MENU_CHIP_PULSE_MS = 200;
+
 /** Spike gate: opt-in via ?webxr=1 until Quest+PCVR v1 ship proof. */
 export function isWebXrSpikeEnabled(): boolean {
   if (typeof window === 'undefined') return false;

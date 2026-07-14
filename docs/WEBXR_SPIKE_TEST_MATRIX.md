@@ -2,7 +2,7 @@
 
 **Status:** Spike (PRD build step 2)  
 **Gate:** `?webxr=1` on `https://booster.storytailor.com` or local `https://localhost:5173?webxr=1`  
-**Ship target:** Quest browser + desktop PCVR at native refresh before removing the gate (v1). Vision Pro is v1.1.
+**Ship target:** Quest browser + desktop PCVR at native refresh before removing the gate (v1). Vision Pro gaze dwell ships with this build (pinch remains primary).
 
 ## Preconditions
 
@@ -19,7 +19,7 @@
 |----------|-------|---------------|
 | Meta Quest browser | v1 spike | Enters `immersive-vr` with `local-floor`; seated floor plausible; 10 min no comfort abort |
 | Desktop PCVR (Link/Air Link or native PCVR browser) | v1 spike | Same session path as Quest |
-| Apple Vision Pro | v1.1 | Deferred after Quest+PCVR green |
+| Apple Vision Pro | v1.1 comfort | Gaze/transient-pointer **0.8 s dwell** + pinch instant select on locomotion ring; reduce-motion disables dwell |
 | Flat Chrome/Firefox desktop | control | No `[ ENTER VR ]` without spike flag; flat unchanged |
 
 ## Comfort checks (PRD §2.4)
@@ -30,7 +30,7 @@
 | C2 | Locomotion verbs | WASD walk; Shift run; F/G fly/land; controllers: left stick walk, grip run, right stick snap, Y/X fly, B land |
 | C2b | VR snap turn | A/D or right-stick flick rotate 30° per action in VR (not strafe); smooth turn off; brief comfort vignette on snap |
 | C3 | Stereo safety | No helmet/CRT post overlay in VR |
-| C4 | HUD | Flat HUD hidden in VR; locomotion ring + EXIT (world-anchored, not head-locked); controller trigger clicks chips |
+| C4 | HUD | Flat HUD hidden in VR; locomotion ring + EXIT (world-anchored, not head-locked); controller trigger instant or 0.8 s dwell on chips; 8 s idle fade to 25% |
 | C5 | Modals | Auth/Hue/legal sheets not ported; exit VR to use flat UI |
 | C6 | Exit preserve | Exit VR keeps position, orbs, timer, session state |
 
@@ -51,7 +51,7 @@
 
 ## Interim testing without Quest/PCVR
 
-### Vision Pro interim testing (v1.1 target, useful spike smoke)
+### Vision Pro interim testing (gaze dwell + pinch)
 
 Meadow requests **`immersive-vr`** with **`local-floor`** — not `immersive-ar`. Vision Pro Safari supports `immersive-vr`; do not expect an AR passthrough session.
 
@@ -60,7 +60,7 @@ Meadow requests **`immersive-vr`** with **`local-floor`** — not `immersive-ar`
 3. Tap `[ START ]`, then top-center `[ ENTER VR ]` when the support probe passes.
 4. Optional sanity check in Web Inspector console: `await navigator.xr?.isSessionSupported('immersive-vr')` → `true` with flags on.
 
-VP uses gaze + pinch (transient pointer), not Quest controllers — comfort and locomotion sign-off still require Quest/PCVR per ship matrix above.
+VP uses gaze + pinch (transient pointer), not Quest controllers. Locomotion chips: **pinch** = instant; **gaze dwell 0.8 s** = auto-select (off when Reduce Motion is on). Comfort sign-off still requires Quest/PCVR per ship matrix above.
 
 ### Chrome Immersive Web Emulator caveats
 
@@ -85,6 +85,7 @@ With **`?webxr=1` alone** and no XR support (`navigator.xr` missing or `isSessio
 | Session bind | `src/core/xr/webXrSession.ts` |
 | In-session rules | `src/components/xr/VrSessionBridge.tsx`, `src/core/input/useVrControllerInput.ts` |
 | Locomotion menu | `src/components/xr/VrLocomotionMenu.tsx` |
+| Menu raycast/dwell | `src/core/xr/vrMenuRaycast.ts` |
 | Herston test sheet | `docs/HERSTON_VR_CONTROLS.md` |
 | HUD entry | `src/ui/EnterVrButton.tsx` |
 | Device caps | `src/core/utils/browserCaps.ts` (`isVrSceneProfile`) |
