@@ -14,6 +14,7 @@ import {
   MEADOW_CHARACTER_PLAY_LABELS,
   otherMeadowCharacter,
 } from '../config/meadowCharacter';
+import { scheduleInactiveMeadowCharacterPreload } from '../config/meadowCharacterPreload';
 import { BuyLightsLink } from './BuyLightsLink';
 import {
   meadowClickableCss,
@@ -130,6 +131,12 @@ export function LegalModal() {
     }
     return undefined;
   }, [legalModal]);
+
+  // Warm the other character rig while the visitor reads About (easter-egg switch path).
+  useEffect(() => {
+    if (legalModal !== 'about') return;
+    scheduleInactiveMeadowCharacterPreload(activeCharacter);
+  }, [legalModal, activeCharacter]);
 
   if (!legalModal) return null;
 

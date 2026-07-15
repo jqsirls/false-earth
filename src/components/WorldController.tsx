@@ -180,8 +180,27 @@ export function WorldController() {
     });
 
     return <>
-        {/* Environment - use group visibility to avoid remounting */}
+        {/* Character first — highest compile/upload priority so Booster is visible ASAP. */}
         <Suspense fallback={null}>
+            <AsyncCompile
+                id="character"
+                priority
+                visibleDuringIdle
+                readyOnCompile
+                onReady={setComponentReady}
+                debug={debugMode}
+                timeout={compileTimeout}
+            >
+                <Suspense fallback={null}>
+                    <Character
+                        key={activeCharacter}
+                        position={[0, 0, 0]}
+                        scale={STORYTAILOR.useJqCharacter ? STORYTAILOR.characterScale : 1}
+                        visible={enableCharacter}
+                    />
+                </Suspense>
+            </AsyncCompile>
+
             <group visible={enableEnv}>
                 <StarrySky />
                 <CosmicSystem />
@@ -194,7 +213,6 @@ export function WorldController() {
                 )}
             </group>
 
-            {/* Major components - toggle visibility instead of unmounting */}
             {rosesEnabled && (
                 <Rose
                     count={roseCount}
@@ -204,7 +222,6 @@ export function WorldController() {
                 />
             )}
 
-            {/* Orbs are ambient, never load-blocking — 'orb' is intentionally not in activeTargets */}
             {!minimalScene && orbsReady && (
                 <Orbs onCompileReady={setComponentReady} compileDebug={debugMode} />
             )}
@@ -225,22 +242,6 @@ export function WorldController() {
             {!minimalScene && enableGrass && (!grassComputePath || grassCompileFailed) && (
                 <GrassStaticField visible={enableGrass} />
             )}
-
-            <AsyncCompile
-                id="character"
-                onReady={setComponentReady}
-                debug={debugMode}
-                timeout={compileTimeout}
-            >
-                <Suspense fallback={null}>
-                    <Character
-                        key={activeCharacter}
-                        position={[0, 0, 0]}
-                        scale={STORYTAILOR.useJqCharacter ? STORYTAILOR.characterScale : 1}
-                        visible={enableCharacter}
-                    />
-                </Suspense>
-            </AsyncCompile>
         </Suspense>
     </>
 }

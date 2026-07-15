@@ -80,14 +80,14 @@ export function LoadingScreen() {
             return;
         }
 
-        // START when Booster + BGM are ready — roses/grass may still compile in the background.
-        if (characterReady && bgmReady) {
+        // START when Booster is compiled — roses/grass/BGM may still warm in the background.
+        if (characterReady) {
             const t = setTimeout(() => setIsReadyToStart(true), 200);
             return () => clearTimeout(t);
         }
 
         setIsReadyToStart(false);
-    }, [characterReady, gpuError, bgmReady]);
+    }, [characterReady, gpuError]);
 
     const handleStart = () => {
         if (!isReadyToStart || gpuError || hasStartedRef.current) return;
