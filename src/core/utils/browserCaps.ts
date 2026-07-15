@@ -150,8 +150,8 @@ export function isWebXrCapProfile(): boolean {
 /** Roses on by default; opt out with ?no-roses=1. Disabled in minimal/lite scenes. */
 export function shouldEnableRoses(): boolean {
   if (shouldUseMinimalScene()) return false;
-  // VAT rose field uses WebGPU storage + indirect draw — unavailable on Quest/VP WebGL XR.
-  // Honest gap: no CPU rose fallback yet; orbs + grass static field carry the WebGL meadow.
+  // VAT rose field uses WebGPU storage + indirect draw — unavailable on Quest WebGL XR.
+  // Vision Pro ?webxr=1 uses WebGPU compute grass (desktop parity); Quest keeps WebGL fallback.
   if (shouldForceWebGlRendererBackend()) return false;
   if (readSearchParam('no-roses') === '1') return false;
   return true;
@@ -206,7 +206,7 @@ export function shouldDeferAmbientOrbs(): boolean {
   return isWebXrCapProfile();
 }
 
-/** WebGL XR path (Quest / Vision Pro ?webxr=1) — classic materials, no compute grass. */
+/** WebGL XR path (Quest ?webxr=1, or VP &webgl-xr=1 escape hatch) — classic materials, no compute grass. */
 export function shouldUseClassicSceneMaterials(): boolean {
   return shouldForceWebGlRendererBackend();
 }

@@ -179,7 +179,57 @@ npm run dev
 
 ---
 
-## 5. Related docs
+## 5. VR preview testing (Quest + Vision Pro, remote testers)
+
+Local LAN dev doesn't work for remote testers; Vercel **preview deploys** do.
+
+### Deploy a preview
+
+```bash
+cd experiences/false-earth
+npm run deploy:preview   # vercel deploy with preview build env baked in
+```
+
+Previews use `VITE_MEADOW_ASSET_BASE=/meadow-assets` (same-origin Vercel rewrite →
+CDN) because S3 bucket CORS only allows the production origins. Known quirk: the
+rewrite can serve corrupt edge-cached bodies for large MP3s (BGM may glitch;
+non-fatal). If preview origins `https://booster-meadow-*-storytailor.vercel.app`
+are ever added to the S3 bucket CORS allowlist
+(`storytailor-assets-production-326181217496`), switch `deploy:preview` to the
+direct CDN base for full speed and no MP3 quirk.
+
+### Getting testers through deployment protection
+
+Preview URLs sit behind Vercel SSO. Options, best first:
+
+1. **Protection Bypass for Automation** (stable, no expiry): Vercel dashboard →
+   `booster-meadow` → Settings → Deployment Protection → Protection Bypass for
+   Automation → generate secret. Testers open
+   `https://<deployment>.vercel.app/?x-vercel-protection-bypass=<SECRET>&x-vercel-set-bypass-cookie=true&webxr=1`
+   once; the cookie persists for that deployment.
+2. **Shareable link** (expires ~23h): deployment page → Share, or ask the agent
+   to mint one. `?webxr=1` survives the share redirect.
+
+### Live-iteration alternative: Cloudflare quick tunnel
+
+For rapid HMR iteration on headsets without deploying:
+
+```bash
+npm run dev:tunnel                                   # Vite on http://localhost:5173 (tunnel provides TLS)
+cloudflared tunnel --url http://localhost:5173       # prints https://<random>.trycloudflare.com
+```
+
+Trusted cert (WebXR-safe), WebSockets/HMR work, no account needed. Vite allows
+`.trycloudflare.com` hosts via `server.allowedHosts`. Quick tunnels are
+testing-only (200 concurrent request cap); URL changes each run.
+
+### VR gate reminder (all environments)
+
+`?webxr=1` + HTTPS + `[ START ]` pressed, then `[ ENTER VR ]` appears
+bottom-center when `immersive-vr` is supported (`docs/WEBXR_SPIKE_TEST_MATRIX.md`).
+Quest browser ≥ v146; Vision Pro Safari needs WebXR feature flags enabled.
+
+## 6. Related docs
 
 - `docs/MEADOW_IDENTITY_BACKEND_ASK.md` — Supabase OTP + Memberstack enrichment (**approved**; edge functions deployed 2026-07-10)
 - `docs/MEADOW_BACKEND_ASK_P2.md` — **superseded** password bridge

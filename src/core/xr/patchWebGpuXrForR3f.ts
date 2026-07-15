@@ -46,7 +46,9 @@ export function patchWebGpuXrForR3f(renderer: WebGPURenderer): void {
 
   xr.addEventListener('sessionstart', rewirePresentingLoop);
   xr.addEventListener('sessionend', () => {
-    meadowR3fXrLoop = null;
+    if (meadowR3fXrLoop && !xr.isPresenting) {
+      void renderer.setAnimationLoop(meadowR3fXrLoop);
+    }
   });
 
   xr.__meadowR3fPatched = true;

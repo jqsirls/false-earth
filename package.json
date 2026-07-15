@@ -6,9 +6,12 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:tunnel": "VITE_NO_HTTPS=1 vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "deploy:preview": "npx -y vercel@latest deploy --build-env VITE_BASE_PATH=/ --build-env VITE_MEADOW_ASSET_BASE=/meadow-assets --build-env VITE_MEADOW_AUTH_URL=https://lendybmmnlqelrhkhdyc.supabase.co/functions/v1/meadow-auth",
+    "deploy:prod": "npx -y vercel@latest deploy --prod --yes --build-env VITE_BASE_PATH=/ --build-env VITE_MEADOW_ASSET_BASE=/meadow-assets --build-env VITE_MEADOW_AUTH_URL=https://lendybmmnlqelrhkhdyc.supabase.co/functions/v1/meadow-auth"
   },
   "devDependencies": {
     "@vitejs/plugin-basic-ssl": "^2.1.0",

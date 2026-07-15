@@ -81,7 +81,7 @@ export default function Effects() {
   useEffect(() => {
     if (!gl || !scene || !camera || !(gl instanceof WebGPURenderer)) return;
 
-    // WebGL XR (Quest / Vision Pro ?webxr=1): TSL post breaks immersive sessions.
+    // WebGL XR (Quest ?webxr=1): TSL post breaks immersive sessions.
     if (shouldForceWebGlRendererBackend()) {
       postProcessingRef.current = null;
       return () => {

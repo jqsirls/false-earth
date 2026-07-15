@@ -33,6 +33,11 @@ export function isWebXrSpikeEnabled(): boolean {
   return params.get('webxr') === '1' || params.get('webxr') === 'true';
 }
 
+/** Headset browsers that may show [ ENTER VR ] when ?webxr=1 and immersive-vr is supported. */
+export function isVrHeadsetBrowser(): boolean {
+  return isQuestBrowser() || isVisionOsBrowser();
+}
+
 /** Meta Quest / Oculus built-in browser. */
 export function isQuestBrowser(): boolean {
   if (typeof navigator === 'undefined') return false;
@@ -53,35 +58,36 @@ export function isVisionOsBrowser(): boolean {
 }
 
 /**
- * Vision Pro WebGPU+WebXR still clips to black on visionOS even with the scissor
- * patch (WebKit #315274). Default ?webxr=1 on VP to the WebGL2 XR path
- * (PlayCanvas AVP guidance). Add &webgpu-xr=1 to retry WebGPU after fixes.
+ * Vision Pro ?webxr=1 uses WebGPU compute grass + TSL terrain (desktop parity).
+ * Emergency escape hatch only: &webgl-xr=1 forces the degraded WebGL2 XR path.
  */
-export function shouldUseWebGpuXrOnVisionPro(): boolean {
+export function shouldForceWebGlXrOnVisionPro(): boolean {
   if (typeof window === 'undefined') return false;
   if (!isWebXrSpikeEnabled() || !isVisionOsBrowser()) return false;
   const params = new URLSearchParams(window.location.search);
-  const webglLegacy = params.get('webgl-xr');
-  if (webglLegacy === '1' || webglLegacy === 'true') return false;
-  const webgpu = params.get('webgpu-xr');
-  return webgpu === '1' || webgpu === 'true';
+  return params.get('webgl-xr') === '1' || params.get('webgl-xr') === 'true';
 }
 
-/** @deprecated Use shouldForceWebGlRendererBackend on Vision Pro. */
-export function shouldUseWebGlXrFallback(): boolean {
+/** Vision Pro immersive-vr with the WebGPU session feature (default on ?webxr=1). */
+export function shouldUseWebGpuXrOnVisionPro(): boolean {
   if (!isWebXrSpikeEnabled() || !isVisionOsBrowser()) return false;
-  return !shouldUseWebGpuXrOnVisionPro();
+  return !shouldForceWebGlXrOnVisionPro();
+}
+
+/** @deprecated Use shouldForceWebGlXrOnVisionPro. */
+export function shouldUseWebGlXrFallback(): boolean {
+  return shouldForceWebGlXrOnVisionPro();
 }
 
 /**
  * Quest WebXR routes through three.js WebGL2 — not the WebGPU canvas context.
- * Vision Pro ?webxr=1 defaults to WebGL2 XR; &webgpu-xr=1 opts into WebGPU.
+ * Vision Pro ?webxr=1 keeps WebGPU (compute grass) unless &webgl-xr=1.
  * Desktop ?webxr=1 keeps WebGPU so grass compute + roses stay live for emulation.
  */
 export function shouldForceWebGlRendererBackend(): boolean {
   if (!isWebXrSpikeEnabled()) return false;
   if (isQuestBrowser()) return true;
-  if (isVisionOsBrowser()) return !shouldUseWebGpuXrOnVisionPro();
+  if (isVisionOsBrowser()) return shouldForceWebGlXrOnVisionPro();
   return false;
 }
 

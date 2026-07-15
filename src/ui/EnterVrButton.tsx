@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useGameStore } from '../core/store/gameStore';
 import { useVrStore } from '../core/store/vrStore';
-import { probeVrPreview, formatVrPreviewBlockedMessage } from '../core/xr/xrSupport';
+import { probeVrPreview } from '../core/xr/xrSupport';
 import {
   formatVrSessionError,
   getVrRenderer,
@@ -15,7 +15,7 @@ import { meadowHudQuietButtonStyle } from './meadowUiStyles';
 /**
  * Flat-screen [ ENTER VR ] — bottom-center HUD, above controls hint / joystick.
  * In-session [ EXIT ] lives on the world locomotion ring (PRD C4 / AC5).
- * Hidden unless spike flag + immersive-vr is supported (PRD AC1).
+ * Shown only on Quest / Vision Pro with ?webxr=1 and immersive-vr support.
  */
 /** Desktop: above ControlsHint row. Mobile: above joystick / ORBS controls band. */
 const ENTER_VR_BOTTOM_DESKTOP = 'max(100px, calc(88px + env(safe-area-inset-bottom)))';
@@ -33,14 +33,11 @@ export function EnterVrButton() {
   const setIsEntering = useVrStore((state) => state.setIsEntering);
   const setLastError = useVrStore((state) => state.setLastError);
 
-  const [previewBlocked, setPreviewBlocked] = useState<string | null>(null);
-
   useEffect(() => {
     let cancelled = false;
     void probeVrPreview().then((probe) => {
       if (cancelled) return;
       setIsSupported(probe.supported);
-      setPreviewBlocked(probe.supported ? null : formatVrPreviewBlockedMessage(probe.reason));
     });
     return () => {
       cancelled = true;
@@ -48,44 +45,6 @@ export function EnterVrButton() {
   }, [setIsSupported]);
 
   if (!isControlEnabled || gpuError || !isSupported || isActive) {
-    if (previewBlocked && isControlEnabled && !gpuError && !isActive) {
-      return (
-        <div
-          data-meadow-enter-vr
-          style={{
-            position: 'fixed',
-            bottom: isMobile ? ENTER_VR_BOTTOM_MOBILE : ENTER_VR_BOTTOM_DESKTOP,
-            left: 0,
-            right: 0,
-            width: '100%',
-            zIndex: 16,
-            pointerEvents: 'none',
-            fontFamily: 'Cousine, monospace',
-            fontSize: '0.65rem',
-            color: '#ccc',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '6px',
-            boxSizing: 'border-box',
-            paddingLeft: 'max(12px, env(safe-area-inset-left))',
-            paddingRight: 'max(12px, env(safe-area-inset-right))',
-          }}
-        >
-          <span
-            style={{
-              opacity: 0.8,
-              maxWidth: '320px',
-              lineHeight: 1.45,
-              textAlign: 'center',
-            }}
-          >
-            {previewBlocked}
-          </span>
-        </div>
-      );
-    }
     return null;
   }
 
