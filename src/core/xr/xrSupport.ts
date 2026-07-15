@@ -1,4 +1,4 @@
-import { isWebXrSpikeEnabled } from '../../config/vrProfile';
+import { isVrHeadsetBrowser, isWebXrSpikeEnabled } from '../../config/vrProfile';
 
 export type VrPreviewProbe = {
   supported: boolean;
@@ -17,6 +17,9 @@ export async function probeImmersiveVrSupport(): Promise<boolean> {
 export async function probeVrPreview(): Promise<VrPreviewProbe> {
   if (!isWebXrSpikeEnabled()) {
     return { supported: false, reason: 'webxr_flag_off' };
+  }
+  if (!isVrHeadsetBrowser()) {
+    return { supported: false, reason: 'not_vr_headset' };
   }
   if (typeof navigator === 'undefined' || !navigator.xr) {
     return { supported: false, reason: 'navigator_xr_missing' };
