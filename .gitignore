@@ -7,4 +7,10 @@ dist
 
 # local verification artifacts
 .verify-*/
+.verify-*.mjs
+*.mjs
+!tools/**/*.mjs
+output/
 .playwright-cli/
+.DS_Store
+meadow-post-start.png

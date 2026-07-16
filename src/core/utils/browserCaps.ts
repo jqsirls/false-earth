@@ -211,7 +211,8 @@ export function shouldUseClassicSceneMaterials(): boolean {
   return shouldForceWebGlRendererBackend();
 }
 
-/** Grass compute (WebGPU storage + indirect draw) — unreliable on Quest / WebGL XR browsers. */
+/** Grass compute (WebGPU storage + indirect draw) — sacred on flat meadow.
+ *  Off on Quest / WebGL XR and explicit lite escape hatches — see docs/UPSTREAM_DELTA.md */
 export function shouldUseGrassComputePath(): boolean {
   if (shouldUseMinimalScene()) return false;
   if (isQuestBrowser()) return false;

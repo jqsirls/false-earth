@@ -9,7 +9,7 @@ import {
 } from '../../config/vrProfile';
 import { logVrSession } from './vrSessionDebug';
 import { applyVrSpawnOffset } from './vrSpawnOffset';
-import { ensureR3fXrAnimationLoop } from './patchWebGpuXrForR3f';
+import { ensureR3fXrAnimationLoop } from './applyMeadowXrPatches';
 
 export type VrSessionEndReason = 'user' | 'system' | 'error';
 

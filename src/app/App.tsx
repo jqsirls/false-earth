@@ -22,10 +22,7 @@ import { STORYTAILOR } from '../config/storytailor';
 import { CanvasErrorBoundary } from './CanvasErrorBoundary';
 import { getInitialDpr, getMaxDpr, isDebugMode, isMemoryConstrainedGpu, shouldPreloadVatRoses } from '../core/utils/browserCaps';
 import { setVrRenderer } from '../core/xr/webXrSession';
-import { patchWebGpuXrForR3f } from '../core/xr/patchWebGpuXrForR3f';
-import { patchXrRenderCamera } from '../core/xr/patchXrRenderCamera';
-import { patchVisionOsWebGpuXrScissor } from '../core/xr/patchVisionOsWebGpuXrScissor';
-import { patchVisionOsWebGlXrScissor } from '../core/xr/patchVisionOsWebGlXrScissor';
+import { applyMeadowXrPatches } from '../core/xr/applyMeadowXrPatches';
 import { isVisionOsBrowser, isWebXrSpikeEnabled, shouldForceWebGlRendererBackend, VR_MAX_DPR } from '../config/vrProfile';
 import { useVrStore } from '../core/store/vrStore';
 import { VrSessionBridge } from '../components/xr/VrSessionBridge';
@@ -170,10 +167,7 @@ export default function App() {
 
                     return renderer.init().then(() => {
                         if (isWebXrSpikeEnabled()) {
-                            patchWebGpuXrForR3f(renderer);
-                            patchXrRenderCamera(renderer);
-                            patchVisionOsWebGpuXrScissor(renderer);
-                            patchVisionOsWebGlXrScissor(renderer);
+                            applyMeadowXrPatches(renderer);
                         }
                         setVrRenderer(renderer);
                         attachGpuDeviceLostHandler(renderer, (message) => {

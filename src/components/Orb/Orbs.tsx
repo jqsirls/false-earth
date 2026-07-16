@@ -14,7 +14,7 @@ import {
   getOrbSkyCount,
   shouldUseCheapOrbRendering,
 } from '../../core/utils/browserCaps';
-import { resolveMeadowAsset } from '../../config/meadowAssets';
+import { resolveMeadowAsset } from '../../config/meadow';
 import { createOrbMaterial } from './core/orbMaterial';
 import { orbDrift, orbOmegaFromRandom } from './core/orbMotion';
 import {

@@ -33,6 +33,20 @@ import {
 } from "../../config/meadowVisualGrade";
 import { shouldForceWebGlRendererBackend } from "../../config/vrProfile";
 
+type ToneMappingConfig = { enabled: boolean; exposure: number };
+
+/** Direct scene render — WebGL XR path skips TSL post (Quest / VP escape hatch). */
+function renderSceneDirect(
+  renderer: WebGPURenderer,
+  scene: THREE.Scene,
+  camera: THREE.Camera,
+  toneMapping: ToneMappingConfig,
+): void {
+  renderer.toneMapping = toneMapping.enabled ? THREE.ReinhardToneMapping : THREE.NoToneMapping;
+  renderer.toneMappingExposure = Math.pow(toneMapping.exposure, 4.0);
+  renderer.render(scene, camera);
+}
+
 export default function Effects() {
   const { isHighQuality, cameraMode, bloom: bloomCfg, dof: dofCfg, toneMapping: tmCfg, smaa: smaaEnabled, prefersReducedMotion } = useEffectsControls();
 
@@ -247,7 +261,7 @@ export default function Effects() {
       // R3F skips gl.render when useFrame has priority > 0 — must render in XR.
       if (webGlBackend || !postProcessingRef.current) {
         const renderCamera = xr.enabled ? xr.getCamera() : camera;
-        renderer.render(scene, renderCamera);
+        renderSceneDirect(renderer, scene, renderCamera, { enabled: false, exposure: tmCfg.exposure });
       } else {
         postProcessingRef.current.render();
       }
@@ -256,10 +270,7 @@ export default function Effects() {
 
     // WebGL XR backend: TSL post is skipped — flat ?webxr=1 preview must render directly.
     if (webGlBackend) {
-      const renderer = gl as unknown as WebGPURenderer;
-      renderer.toneMapping = tmCfg.enabled ? THREE.ReinhardToneMapping : THREE.NoToneMapping;
-      renderer.toneMappingExposure = Math.pow(tmCfg.exposure, 4.0);
-      gl.render(scene, camera);
+      renderSceneDirect(gl as unknown as WebGPURenderer, scene, camera, tmCfg);
       return;
     }
 
