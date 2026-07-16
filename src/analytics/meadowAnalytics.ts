@@ -100,7 +100,7 @@ function dispatchMeadowEvent(payload: MeadowEventPayload): void {
 
   sendMeadowBeacon(payload);
 
-  if (import.meta.env.DEV || !MEADOW_ANALYTICS_URL) {
+  if (import.meta.env.DEV) {
     console.info('[meadow analytics]', payload);
   }
 }

@@ -20,7 +20,7 @@ import { CosmicSystem } from './cosmic/CosmicSystem';
 import { Terrain } from './Terrain';
 import { StarrySky } from './background/StarrySky';
 import { useGameStore } from '../core/store/gameStore';
-import { AsyncCompile } from '@core';
+import { AsyncCompile } from '../core/canvas/AsyncCompile';
 import Rose from './Rose/Rose';
 import Orbs from './Orb/Orbs';
 import GrassWebGPU from './grass/GrassWebGPU';
@@ -189,6 +189,7 @@ export function WorldController() {
         <Suspense fallback={null}>
             <AsyncCompile
                 id="character"
+                compileKey={activeCharacter}
                 priority
                 visibleDuringIdle
                 readyOnCompile
