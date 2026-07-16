@@ -77,17 +77,20 @@ export default function App() {
         });
     }, []);
 
-    // Check WebGPU support on mount
     useEffect(() => {
         const checkWebGPU = async () => {
             const webxrWebGlPath = shouldForceWebGlRendererBackend();
             if (!navigator.gpu && !webxrWebGlPath) {
                 setGpuError('WEBGPU_NOT_SUPPORTED');
-                console.error("WebGPU is not supported in this browser");
+                if (import.meta.env.DEV) {
+                    console.warn('WebGPU is not supported in this browser');
+                }
                 return;
             }
             if (webxrWebGlPath) {
-                console.log('WebXR spike: WebGL2 renderer backend for headset compatibility');
+                if (import.meta.env.DEV) {
+                    console.info('WebXR spike: WebGL2 renderer backend for headset compatibility');
+                }
                 setGpuError(null);
                 return;
             }
@@ -95,14 +98,17 @@ export default function App() {
                 const adapter = await navigator.gpu.requestAdapter();
                 if (!adapter) {
                     setGpuError('NO_GPU_ADAPTER');
-                    console.error("No GPU adapter found");
+                    if (import.meta.env.DEV) {
+                        console.warn('No GPU adapter found');
+                    }
                     return;
                 }
-                console.log('WebGPU initialized successfully');
-                setGpuError(null); // Clear any previous errors
+                setGpuError(null);
             } catch (e) {
                 setGpuError('GPU_INIT_FAILED');
-                console.error("WebGPU initialization failed:", e);
+                if (import.meta.env.DEV) {
+                    console.warn('WebGPU initialization failed:', e);
+                }
             }
         };
         checkWebGPU();

@@ -44,7 +44,7 @@ export default function Effects() {
   const { gl, scene, camera } = useThree();
   const beamScene = useContext(BeamSceneContext);
 
-  const postProcessingRef = useRef<THREE.PostProcessing | null>(null);
+  const postProcessingRef = useRef<THREE.RenderPipeline | null>(null);
 
   const uParams = useRef({
     focusDist: uniform(0),
@@ -91,7 +91,7 @@ export default function Effects() {
     }
 
     const renderer = gl as WebGPURenderer;
-    const pp = new THREE.PostProcessing(renderer);
+    const pp = new THREE.RenderPipeline(renderer);
     postProcessingRef.current = pp;
 
     const scenePass = pass(scene, camera);

@@ -46,13 +46,14 @@ function buildPartMaterial(
   maps: PartTextureMaps,
   vertexNode?: ReturnType<typeof Fn>,
 ): THREE.MeshStandardNodeMaterial {
+  // Only pass optional maps when present — three.js warns on undefined emissiveMap/alphaMap.
   const mat = new THREE.MeshStandardNodeMaterial({
     map: maps.map,
     normalMap: maps.normalMap,
     roughnessMap: maps.roughnessMap,
     metalnessMap: maps.metalnessMap,
-    emissiveMap: maps.emissiveMap,
-    alphaMap: maps.alphaMap,
+    ...(maps.emissiveMap ? { emissiveMap: maps.emissiveMap } : {}),
+    ...(maps.alphaMap ? { alphaMap: maps.alphaMap } : {}),
     metalness: maps.metalnessMap ? 1 : 0.35,
     roughness: maps.roughnessMap ? 1 : 0.55,
     emissive: new THREE.Color(0xffffff),
@@ -296,7 +297,9 @@ export function useStorytailorCharacterAssets(
       applyMeshMaterials(child, jqTextures, vertexNode, helmetMaterialsAcc);
     });
 
-    console.info(`[JQ] Mixamo rig + runtime PNG textures from ${isMemoryConstrainedGpu() ? '/textures/jq-lite/' : '/textures/jq/'}`);
+    if (import.meta.env.DEV) {
+      console.info(`[JQ] Mixamo rig + runtime PNG textures from ${isMemoryConstrainedGpu() ? '/textures/jq-lite/' : '/textures/jq/'}`);
+    }
 
     alignJqSceneToGround(clonedScene);
 

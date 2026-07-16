@@ -121,7 +121,9 @@ class MeadowBgmPlayer {
     this.index = 0
     this.audio.muted = this.muted
     this.audio.volume = 1
-    console.info(`${LOG_PREFIX} starting playlist (${this.urls.length} tracks)`)
+    if (import.meta.env.DEV) {
+      console.info(`${LOG_PREFIX} starting playlist (${this.urls.length} tracks)`)
+    }
     this.playIndex(0, { fromUserGesture: true })
   }
 
@@ -216,7 +218,9 @@ class MeadowBgmPlayer {
       void playPromise
         .then(() => {
           if (generation !== this.playGeneration) return
-          console.info(`${LOG_PREFIX} playing`, url)
+          if (import.meta.env.DEV) {
+            console.info(`${LOG_PREFIX} playing`, url)
+          }
           notifyPlayback(!this.muted)
         })
         .catch((err: unknown) => {

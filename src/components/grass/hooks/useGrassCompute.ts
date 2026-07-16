@@ -12,13 +12,15 @@ import { WebGPURenderer } from 'three/webgpu'
 
 export function useGrassCompute(
     uniforms: any,
-    cameraToUse: THREE.Camera
+    cameraToUse: THREE.Camera,
+    onComputeFailed?: () => void,
 ) {
     const { gl } = useThree()
     const [lodBuffers, setLodBuffers] = useState<LODBufferConfig[]>([])
 
     const computeRefs = useRef<{ main: any, reset: any } | null>(null)
     const grassDataRef = useRef<ReturnType<typeof createGrassData> | null>(null)
+    const computeFailedRef = useRef(false)
 
     useEffect(() => {
         const bladesPerAxis = getEffectiveGrassBladesPerAxis()
@@ -57,7 +59,7 @@ export function useGrassCompute(
 
 
     useFrame(() => {
-        if (!computeRefs.current) return
+        if (!computeRefs.current || computeFailedRef.current) return
         const renderer = gl as unknown as WebGPURenderer
 
         if (cameraToUse) {
@@ -73,7 +75,9 @@ export function useGrassCompute(
             renderer.compute(computeRefs.current.reset)
             renderer.compute(computeRefs.current.main)
         } catch (error) {
-            console.warn('[grass] compute pass failed — renderer may be on WebGL XR path', error)
+            computeFailedRef.current = true
+            console.warn('[grass] compute pass failed — switching to static grass fallback', error)
+            onComputeFailed?.()
         }
     })
 

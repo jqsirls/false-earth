@@ -9,7 +9,11 @@ import { useGameStore } from '../../core/store/gameStore'
 import { useGrassUniforms } from './hooks/useGrassUniforms'
 import { useGrassCompute } from './hooks/useGrassCompute'
 
-export default function GrassWebGPU({ cullCamera, visible = true }: GrassProps = {} as GrassProps) {
+export default function GrassWebGPU({
+  cullCamera,
+  visible = true,
+  onComputeFailed,
+}: GrassProps = {} as GrassProps) {
   const { camera: defaultCamera } = useThree()
   const groupRef = useRef<THREE.Group>(null)
 
@@ -20,7 +24,7 @@ export default function GrassWebGPU({ cullCamera, visible = true }: GrassProps =
   const characterPos = useMemo(() => new THREE.Vector3(), [])
 
   const { uniforms, params } = useGrassUniforms()
-  const { lodBuffers, grassData } = useGrassCompute(uniforms, cameraToUse)
+  const { lodBuffers, grassData } = useGrassCompute(uniforms, cameraToUse, onComputeFailed)
 
   // Use centralized grid snapping hook
   useGridSnapping({

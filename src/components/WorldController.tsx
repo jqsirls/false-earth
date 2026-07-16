@@ -63,12 +63,17 @@ export function WorldController() {
     const [orbsReady, setOrbsReady] = useState(!deferOrbs);
 
     const handleGrassCompileFailed = useCallback((id: string) => {
-        if (id !== 'grass') return;
+        if (id !== 'grass' || grassCompileFailed) return;
         if (isMeadowGpuConstrained() || isQuestBrowser() || !grassComputePath) {
             console.warn('[grass] Shader compile unavailable — using static grass fallback');
             setGrassCompileFailed(true);
         }
-    }, [grassComputePath]);
+    }, [grassComputePath, grassCompileFailed]);
+
+    const handleGrassComputeFailed = useCallback(() => {
+        if (grassCompileFailed) return;
+        setGrassCompileFailed(true);
+    }, [grassCompileFailed]);
 
     useEffect(() => {
         if (!deferOrbs) return;
@@ -235,7 +240,12 @@ export function WorldController() {
                     timeout={compileTimeout}
                 >
                     {enableGrassDebug && <GrassCullingDebug />}
-                    {!enableGrassDebug && <GrassWebGPU visible={enableGrass} />}
+                    {!enableGrassDebug && (
+                      <GrassWebGPU
+                        visible={enableGrass}
+                        onComputeFailed={() => handleGrassComputeFailed()}
+                      />
+                    )}
                 </AsyncCompile>
             )}
 

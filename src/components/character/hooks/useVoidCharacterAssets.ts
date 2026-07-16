@@ -63,8 +63,8 @@ function buildVoidPartMaterial(
     normalMap: maps.normalMap,
     roughnessMap: maps.roughnessMap,
     metalnessMap: maps.metalnessMap,
-    emissiveMap: maps.emissiveMap,
-    alphaMap: maps.alphaMap,
+    ...(maps.emissiveMap ? { emissiveMap: maps.emissiveMap } : {}),
+    ...(maps.alphaMap ? { alphaMap: maps.alphaMap } : {}),
     metalness: maps.metalnessMap ? 1 : 0.3,
     roughness: maps.roughnessMap ? 1 : 0.55,
     emissive: new THREE.Color(0xffffff),
@@ -267,7 +267,7 @@ export function useVoidCharacterAssets(
 
     alignVoidSceneToGround(clonedScene);
 
-    {
+    if (import.meta.env.DEV) {
       const box = new THREE.Box3().setFromObject(clonedScene);
       const size = box.getSize(new THREE.Vector3());
       console.info(
