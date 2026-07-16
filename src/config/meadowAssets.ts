@@ -6,15 +6,18 @@
 const rawBase = (import.meta.env.VITE_MEADOW_ASSET_BASE as string | undefined)?.trim() ?? '';
 const configuredBase = rawBase.replace(/\/$/, '');
 
-/** Direct CDN — `/meadow-assets` Vercel rewrite can serve corrupt edge-cached bodies for large MP3s. */
+/** Direct CDN — `/meadow-assets` Vercel rewrite breaks large crossOrigin texture loads (e.g. 21MB helmet Normal). */
 const PRODUCTION_CDN_BASE = 'https://assets.storytailor.dev/meadow';
 
 /**
- * Production loads heavy assets from CDN (CORS-enabled for booster.storytailor.com).
+ * Production always uses direct CDN (CORS-enabled for booster.storytailor.com).
+ * The Vercel `/meadow-assets` rewrite is kept for legacy same-origin URLs but must not
+ * be the runtime base — it fails on large PNG/MP3 bodies with crossOrigin anonymous.
  * Local dev leaves the base empty so `public/` is used on localhost.
  */
-export const MEADOW_ASSET_BASE =
-  configuredBase || (import.meta.env.PROD ? PRODUCTION_CDN_BASE : '');
+export const MEADOW_ASSET_BASE = import.meta.env.PROD
+  ? PRODUCTION_CDN_BASE
+  : configuredBase;
 
 /** Resolve a `/public/…` path against MEADOW_ASSET_BASE when set. */
 export function resolveMeadowAsset(path: string): string {
