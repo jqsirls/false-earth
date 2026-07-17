@@ -5,7 +5,8 @@
 **Target:** `booster.storytailor.com?webxr=1` on Apple Vision Pro (Safari, visionOS) and Meta Quest Browser.  
 **Deploy:** `dpl_FRjTGtJgPW7fA3zDLhE76wj4BC3f` → `https://booster.storytailor.com` (2026-07-17)  
 **Automated verify:** Chrome Playwright `tools/verify-vr-prod.mjs` — flat + `?webxr=1` + Quest-UA ENTER VR gate — green (screenshots in `output/vr-verify-2026-07-17/`).  
-**Git:** `1f0f6eb` on `storytailor/main`
+**Git:** `1f0f6eb` on `storytailor/main`  
+**Flat sacred:** `booster.storytailor.com` without `?webxr=1` must keep WebGPU compute grass + roses.
 
 ---
 
