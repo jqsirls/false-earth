@@ -197,9 +197,17 @@ function prepareRendererForXr(renderer: WebGPURenderer): void {
     }
   }
 
-  if (!shouldForceWebGlRendererBackend()) return;
-  // MSAA on the WebGL XR layer blacks out visionOS output (PlayCanvas AVP guidance).
-  renderer.samples = 0;
+  // WebGPU XR does not support MSAA (three.js XRManager._validateWebGPUSession).
+  // visionOS WebGL XR: MSAA blacks out immersive output (PlayCanvas AVP guidance).
+  if (shouldForceWebGlRendererBackend() || shouldUseWebGpuXrOnVisionPro()) {
+    renderer.samples = 0;
+  }
+}
+
+function sessionHasFeature(session: XRSession, feature: string): boolean {
+  const features = (session as XRSession & { enabledFeatures?: string[] }).enabledFeatures;
+  if (!Array.isArray(features)) return false;
+  return features.includes(feature);
 }
 
 export async function startImmersiveVrSession(
@@ -212,7 +220,28 @@ export async function startImmersiveVrSession(
   prepareRendererForXr(renderer);
 
   const session = await requestImmersiveVrSession();
-  logVrSession('session_acquired', { mode: session.mode, visibilityState: session.visibilityState });
+  const enabledFeatures =
+    (session as XRSession & { enabledFeatures?: string[] }).enabledFeatures ?? [];
+  logVrSession('session_acquired', {
+    mode: session.mode,
+    visibilityState: session.visibilityState,
+    enabledFeatures,
+    hasWebgpuFeature: sessionHasFeature(session, 'webgpu'),
+    hasLocalFloor: sessionHasFeature(session, 'local-floor'),
+  });
+
+  // WebGPU renderer + immersive session without the webgpu feature → setSession throws
+  // or presents black. Fail closed with a clear path rather than a silent compositor kill.
+  if (
+    shouldUseWebGpuXrOnVisionPro() &&
+    !shouldForceWebGlRendererBackend() &&
+    enabledFeatures.length > 0 &&
+    !sessionHasFeature(session, 'webgpu')
+  ) {
+    session.end().catch(() => undefined);
+    logVrSession('session_aborted', { reason: 'webgpu_feature_missing', enabledFeatures });
+    throw new Error('WebGPU XR sessions require the "webgpu" session feature');
+  }
 
   const xr = renderer.xr;
   if (!xr) {
@@ -237,6 +266,8 @@ export async function startImmersiveVrSession(
     logVrSession('set_session_ok', {
       isPresenting: xr.isPresenting,
       referenceSpaceType: xr.getReferenceSpaceType?.(),
+      cameras: xr.getCamera?.()?.cameras?.length ?? 0,
+      enabledFeatures,
     });
   } catch (error) {
     session.end().catch(() => undefined);

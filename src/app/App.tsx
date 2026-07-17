@@ -138,14 +138,17 @@ export default function App() {
                 }}
                 gl={(canvas) => {
                     const forceWebGlForXr = shouldForceWebGlRendererBackend();
-                    // visionOS WebGL XR: MSAA breaks immersive output (PlayCanvas AVP guidance).
-                    const disableAntialias =
-                        forceWebGlForXr && isVisionOsBrowser();
+                    // visionOS: MSAA breaks WebGL XR; WebGPU XR also requires samples=0
+                    // (three.js XRManager._validateWebGPUSession).
+                    const disableMsaaForXr =
+                        isWebXrSpikeEnabled() && isVisionOsBrowser();
                     const renderer = new WebGPURenderer({
                         ...canvas as any,
                         powerPreference: isMemoryConstrainedGpu() ? 'low-power' : 'high-performance',
-                        antialias: disableAntialias ? false : !isMemoryConstrainedGpu(),
-                        samples: forceWebGlForXr ? 0 : undefined,
+                        antialias: disableMsaaForXr || forceWebGlForXr
+                            ? false
+                            : !isMemoryConstrainedGpu(),
+                        samples: forceWebGlForXr || disableMsaaForXr ? 0 : undefined,
                         alpha: true,
                         forceWebGL: forceWebGlForXr,
                     });

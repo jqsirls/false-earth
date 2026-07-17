@@ -1,213 +1,113 @@
 # Vision Pro WebXR Audit — Booster's Meadow
 
-**Date:** 2026-07-15  
-**Scope:** Audit only — no VR behavior changes in this document.  
-**Target:** `booster.storytailor.com?webxr=1` on Apple Vision Pro (Safari, visionOS).  
-**Recent deploys reviewed:** `cea9619`, `d97bf40`, `377827a`, `28481a6`, `08e262c`.
+**Date:** 2026-07-17 (fix pass + verification)  
+**Prior audit:** 2026-07-15 (audit-only)  
+**Target:** `booster.storytailor.com?webxr=1` on Apple Vision Pro (Safari, visionOS) and Meta Quest Browser.  
+**Deploy:** `dpl_FRjTGtJgPW7fA3zDLhE76wj4BC3f` → `https://booster.storytailor.com` (2026-07-17)  
+**Automated verify:** Chrome Playwright `scripts/verify-vr-prod.mjs` — flat + `?webxr=1` + Quest-UA ENTER VR gate — green (screenshots in `output/vr-verify-2026-07-17/`).  
+**Flat sacred:** `booster.storytailor.com` without `?webxr=1` must keep WebGPU compute grass + roses.
 
 ---
 
-## Executive summary
+## Executive summary (2026-07-17)
 
-Vision Pro ENTER VR fails or ends within seconds because the meadow stacks **three.js r185 WebGPURenderer + WebGPU XR session feature + React Three Fiber XR animation-loop wiring + TSL post-processing** on a **still-maturing WebKit WebGPU/WebXR compositor**. Recent commits improved symptoms (render-loop shim, scissor patches, WebGL fallback path) but the **default flat path** (`?webxr=1` without `&webgl-xr=1`) still requests **`immersive-vr` with optional `webgpu`** and runs the full WebGPU compute-grass scene through custom XR frame rendering in `Effects.tsx`.
+Vision Pro ENTER VR failed or ended within seconds because the meadow stacked **three.js r185 WebGPURenderer + WebGPU XR + R3F animation-loop wiring + TSL post-processing** on a maturing WebKit compositor. The **2026-07-17 fix pass** addresses the in-repo root causes:
 
-The **official** long-term fix is not more scissor hacks — it is aligning with **three.js XRManager + WebGPURenderer WebXR** as documented in r185, ensuring **R3F's `xr.setAnimationLoop` contract** is satisfied without private `_currentAnimationLoop` mutation, and validating against **Apple's WebXR guidance** (WWDC24 session + WebKit feature flags) on device.
+| Root cause | Status |
+|------------|--------|
+| R3F ↔ XRManager `setAnimationLoop` / flat-restore clobber | **Fixed** — `patchWebGpuXrForR3f.ts` snapshots flat loop; does not replace XRManager's `_onAnimationFrame` while presenting |
+| TSL PostProcessing vs XR swapchain | **Fixed** — immersive frames always `renderLayers` + `renderer.render(scene, xr.getCamera())`; post torn down while `isVrActive` |
+| WebKit scissor bug 315274 | **Mitigated** — visionOS scissor no-ops while presenting (WebGPU + WebGL); upstream WebKit still owns the real fix |
+| Flat camera double-render | **Mitigated** — `patchXrRenderCamera` + Effects priority-1 owns immersive render |
+| MSAA on WebGPU / visionOS XR | **Fixed** — `samples: 0` / antialias off for VP `?webxr=1` and Quest WebGL XR |
+| Session without `webgpu` feature on WebGPU path | **Fixed** — fail closed after `enabledFeatures` check |
+| Quest spawn inside Booster | **Already fixed** — `applyVrSpawnOffset` |
+| Quest WebGL terrain/grass | **Already fixed** — `GrassStaticField` + `TerrainWebGL` when `shouldForceWebGlRendererBackend()` |
+
+**Still needs physical headset sign-off** (cannot be fully proven from desktop CI): stereo immersion, controller comfort, gaze/pinch on VP, Quest Browser WebGPU-XR absence → WebGL path. Automated proofs cover flat prod + `?webxr=1` boot + immersive code-path instrumentation under `?debug=1`.
 
 ---
 
-## Symptom catalog (production)
-
-| Symptom | User-facing copy | Likely layer |
-|--------|------------------|--------------|
-| Button never appears | (no ENTER VR) | `probeVrPreview` / feature flags / not on headset |
-| "Meadow is still loading" | `RENDERER_NOT_READY_BODY` | `getVrRenderer()` null before `renderer.init()` |
-| Session starts then black / immediate exit | `VR_ENDED_UNEXPECTEDLY_BODY` | Render loop, wrong camera, scissor, or post path |
-| Timeout | Generic device body | `requestSession` 45s cap on visionOS |
-| WebGPU session feature rejected | Generic device body | Browser lacks stable `webgpu` XR binding |
-
----
-
-## Architecture (as shipped)
+## Architecture (as shipped after fix)
 
 ```mermaid
 flowchart TD
   A[User taps ENTER VR] --> B[EnterVrButton]
   B --> C[webXrSession.startImmersiveVrSession]
-  C --> D{Vision Pro default}
-  D -->|shouldUseWebGpuXrOnVisionPro| E["requestSession(immersive-vr, webgpu)"]
-  D -->|&webgl-xr=1| F["forceWebGL renderer + WebGL XR"]
-  E --> G[xr.setSession]
-  G --> H[patchWebGpuXrForR3f / ensureR3fXrAnimationLoop]
-  H --> I[Effects useFrame priority 1]
-  I --> J{TSL post active?}
-  J -->|WebGPU VP| K[postProcessing.render in XR]
-  J -->|WebGL XR| L[renderer.render scene xr.getCamera]
+  C --> D{Device}
+  D -->|Vision Pro default| E["requestSession(immersive-vr, webgpu)"]
+  D -->|Quest / VP &webgl-xr=1| F["forceWebGL + WebGL XR"]
+  E --> G{enabledFeatures has webgpu?}
+  G -->|no| X[Fail closed — clear error]
+  G -->|yes| H[xr.setSession]
+  F --> H
+  H --> I[ensureR3fXrAnimationLoop]
+  I --> J[applyVrSpawnOffset]
+  J --> K[Effects useFrame priority 1]
+  K --> L["renderLayers + render scene xr.getCamera — NO TSL post"]
 ```
 
 **Key files**
 
 | File | Role |
 |------|------|
-| `src/ui/EnterVrButton.tsx` | UI gate; requires `isControlEnabled` + `probeVrPreview` |
-| `src/core/xr/webXrSession.ts` | Session request, `webgpu` feature on VP, error sanitization |
-| `src/core/xr/patchWebGpuXrForR3f.ts` | **Shim** — adds `setAnimationLoop` to r185 WebGPU XRManager |
-| `src/core/xr/patchXrRenderCamera.ts` | Redirect `renderer.render` to `xr.getCamera()` while presenting |
-| `src/core/xr/patchVisionOsWebGpuXrScissor.ts` | **Workaround** — no `setScissorRect` while presenting |
-| `src/core/xr/patchVisionOsWebGlXrScissor.ts` | Same for WebGL scissor on `&webgl-xr=1` |
-| `src/config/vrProfile.ts` | VP defaults WebGPU XR; Quest forces WebGL backend |
-| `src/app/App.tsx` | Renderer init, VR patches gated on `?webxr=1` |
-| `src/components/Effects/Effects.tsx` | **Owns XR render** at `useFrame(..., 1)` |
-| `src/components/xr/VrSessionBridge.tsx` | Locomotion; clears scene background on WebGL XR |
+| `src/core/xr/applyMeadowXrPatches.ts` | Ordered patch entry (only when `?webxr=1`) |
+| `src/core/xr/patchWebGpuXrForR3f.ts` | R3F `setAnimationLoop` shim + flat restore |
+| `src/core/xr/patchXrRenderCamera.ts` | Redirect `renderer.render` → `xr.getCamera()` while presenting |
+| `src/core/xr/patchVisionOsWebGpuXrScissor.ts` | No `setScissorRect` while presenting (WebKit 315274) |
+| `src/core/xr/patchVisionOsWebGlXrScissor.ts` | Same for WebGL scissor on VP escape hatch |
+| `src/components/Effects/Effects.tsx` | Immersive = direct XR camera render; flat keeps meadow grade |
+| `src/config/vrProfile.ts` | VP → WebGPU compute; Quest → WebGL backend |
+| `src/ui/EnterVrButton.tsx` | ENTER VR only when headset + immersive-vr supported |
 
 ---
 
-## Root-cause hypotheses (ranked by confidence)
+## What was fixed in code (2026-07-17)
 
-### 1. R3F ↔ three.js WebGPU XR animation-loop gap — **HIGH**
-
-**Evidence**
-
-- `patchWebGpuXrForR3f.ts` documents that **three.js r185 WebGPU `XRManager` lacks public `setAnimationLoop`**, while `@react-three/fiber` wires XR via `xr.setAnimationLoop(handleXRFrame)` on `sessionstart`.
-- Without the shim, `_currentAnimationLoop` stays the flat `requestAnimationFrame` loop **without an `XRFrame`**, and `Effects` `useFrame` at priority 1 is responsible for XR rendering — if the loop never receives `frame`, output is black.
-- `ensureR3fXrAnimationLoop` is called after `setSession` — timing-sensitive.
-
-**Official fix direction**
-
-- Upgrade to a three.js build where **WebGPURenderer XRManager exposes the same animation-loop API as WebGL XRManager**, or use R3F's documented WebXR entry (`@react-three/xr` / Canvas `gl` XR flags) once WebGPU XR is first-class.
-- Remove private `_currentAnimationLoop` writes; use **renderer.setAnimationLoop** per [WebGPURenderer manual](https://threejs.org/manual/en/webgpurenderer.html).
-
-**References**
-
-- [three.js PR #30346 — WebGPURenderer XRManager](https://github.com/mrdoob/three.js/pull/30346)
-- [three.js r185 — Add support for WebXR with WebGPU (#33583)](https://github.com/mrdoob/three.js/releases/tag/r185)
-- Meadow: `src/core/xr/patchWebGpuXrForR3f.ts`
+1. **Immersive render path** — Never call TSL `PostProcessing.render()` while `xr.isPresenting`. Use `xr.renderLayers()` then `renderer.render(scene, xr.getCamera())` with tone mapping only.
+2. **Animation loop** — Preserve XRManager's pre-session flat loop; wire R3F `handleXRFrame` into `_currentAnimationLoop` without clobbering the restore target; restore via public `renderer.setAnimationLoop` on session end.
+3. **MSAA** — Force `samples: 0` for Vision Pro `?webxr=1` (WebGPU XR requirement) and Quest WebGL XR.
+4. **Feature gate** — After `requestSession`, if WebGPU path and `enabledFeatures` is present but lacks `webgpu`, end session and throw (maps to device-safe copy).
+5. **Scene background** — Clear `scene.background` / `backgroundNode` for all immersive sessions (not WebGL-only).
+6. **Debug** — `?debug=1` logs `enabledFeatures`, camera count, frame n via `window.__meadowVrLog`.
 
 ---
 
-### 2. WebGPU XR + TSL PostProcessing on visionOS — **HIGH**
+## Still needs physical headset sign-off
 
-**Evidence**
+| Check | Device | Pass criteria |
+|-------|--------|---------------|
+| ENTER VR stays up > 10s | Vision Pro | No early black / `VR_ENDED_UNEXPECTEDLY` |
+| Compute grass visible in stereo | Vision Pro | Meadow blades, not stick field |
+| Gaze 0.8s + pinch on locomotion ring | Vision Pro | WALK / FLY / EXIT work |
+| ENTER VR + controllers | Quest | Walk/run/snap/fly; spawn not inside Booster |
+| EXIT preserves orbs/timer | Both | Flat HUD restores correctly |
+| Flat without `?webxr=1` | Both | Unchanged WebGPU meadow (VP/desktop) or prior Quest flat behavior |
 
-- On Vision Pro default path, `shouldForceWebGlRendererBackend()` is **false**, so `Effects` builds a full **TSL `PostProcessing`** graph (bloom, DOF, meadow grade, film grain).
-- XR branch calls `postProcessingRef.current.render()` when presenting and not on WebGL backend (`Effects.tsx` ~247–253).
-- WebGPU XR compositor on Safari is newer than WebGL XR; post chains that assume flat swapchain dimensions may fail silently or end the session.
+Use production only: `https://booster.storytailor.com?webxr=1&debug=1`  
+Inspect `window.__meadowVrLog` for `set_session_ok`, `xr_ensure_animation_loop`, `xr_frame` with `cameras >= 1`.
 
-**Official fix direction**
-
-- Per three.js docs, call **`xr.renderLayers()`** where required before scene render in XR workflows ([XRManager](https://threejs.org/docs/pages/XRManager.html)).
-- For MVP VP proof: **immersive scene render without TSL post** (tone mapping only), then re-enable post once validated — not as permanent WebGL fallback, but as staged WebGPU XR bring-up.
-- Validate with minimal three.js `webgpu_xr` example on device before reintroducing meadow grade.
-
-**References**
-
-- [XRManager.renderLayers()](https://threejs.org/docs/pages/XRManager.html)
-- Meadow: `src/components/Effects/Effects.tsx`
+Emergency VP escape: `?webxr=1&webgl-xr=1` (degraded WebGL + CPU grass — not the official path).
 
 ---
 
-### 3. WebKit scissor / compositor contract (bug 315274) — **MEDIUM–HIGH**
+## Symptom catalog
 
-**Evidence**
-
-- `patchVisionOsWebGpuXrScissor.ts` cites WebKit [bug 315274](https://bugs.webkit.org/show_bug.cgi?id=315274): **any** `GPURenderPassEncoder.setScissorRect` during immersive WebGPU XR can clip to black on visionOS.
-- PlayCanvas engine [#8756](https://github.com/playcanvas/engine/issues/8756) reported the same class of failure on AVP.
-- Patch no-ops scissor while `renderer.xr.isPresenting` — reduces symptom but does not fix upstream callers that may set scissor through other paths.
-
-**Official fix direction**
-
-- WebKit fix on their side; track bug 315274.
-- Engine-side: honor **Compositor Contract** (three.js r185 changelog item) and avoid scissor during XR on visionOS until WebKit confirms fixed.
+| Symptom | User-facing copy | Likely layer |
+|--------|------------------|--------------|
+| Button never appears | (no ENTER VR) | Not headset / no immersive-vr / missing `?webxr=1` |
+| "Meadow is still loading" | `RENDERER_NOT_READY_BODY` | Renderer not init / START not pressed |
+| Session starts then black / immediate exit | `VR_ENDED_UNEXPECTEDLY_BODY` | Was post/loop/camera — retest after 2026-07-17 |
+| Timeout | Device body | `requestSession` 45s cap on visionOS |
+| WebGPU session feature rejected | Device body | `enabledFeatures` missing `webgpu` |
 
 ---
 
-### 4. `webgpu` session feature availability / adapter mismatch — **MEDIUM**
+## Official long-term (not blocking this ship)
 
-**Evidence**
-
-- `webXrSession.ts` requests `{ optionalFeatures: ['local-floor', 'webgpu'] }` on VP when `shouldUseWebGpuXrOnVisionPro()`.
-- three.js [PR #33497](https://github.com/mrdoob/three.js/pull/33497) discusses **WebGPU page + WebGL XR fallback** when session lacks `webgpu` feature — meadow partially implements this via `forceWebGL` but VP default avoids it.
-- If Safari grants session **without** `webgpu` but renderer stays on WebGPU backend, `setSession` / bind may fail or present black.
-
-**Official fix direction**
-
-- After `requestSession`, inspect `session.enabledFeatures` (or equivalent) and **require WebGPU XR binding only when feature granted**; otherwise follow three.js documented fallback path explicitly (not ad-hoc scissor hacks).
-- Long term: `GPUAdapter.features` / standardized WebGPU+XR capability probe (discussed in three.js PR #33497).
-
----
-
-### 5. Flat-camera render after XR bind — **MEDIUM**
-
-**Evidence**
-
-- `patchXrRenderCamera.ts` patches `renderer.render` to swap in `xr.getCamera()` while presenting — needed because R3F calls `gl.render(scene, state.camera)` after `useFrame`.
-- If patch order fails or a code path bypasses patched `render`, Vision Pro shows black or corrupt swapchain.
-
-**Official fix direction**
-
-- Use R3F XR mode where framework passes XR array camera consistently, or render via `XRManager` APIs only during presentation.
-
----
-
-### 6. MSAA / samples on XR layer — **LOW–MEDIUM**
-
-**Evidence**
-
-- `App.tsx` sets `samples: 0` and `antialias: false` when `forceWebGlForXr && isVisionOsBrowser()` — PlayCanvas AVP guidance.
-- **Default VP WebGPU path** may still use MSAA defaults incompatible with immersive layer.
-
-**Official fix direction**
-
-- Align WebGPU XR layer creation with Apple / PlayCanvas AVP guidance (no MSAA on immersive layer).
-
----
-
-### 7. Operational / gating — **LOW**
-
-**Evidence**
-
-- ENTER VR hidden until `isControlEnabled` (camera reset after START) — users who tap too early see "still loading".
-- `?webxr=1` required; WebXR Device API must be enabled in Safari Advanced → Feature Flags on device ([WebKit blog](https://webkit.org/blog/15162/introducing-natural-input-for-webxr-in-apple-vision-pro/)).
-
----
-
-## What "official fix" looks like (no permanent hacks)
-
-1. **Capability probe at boot (once)**  
-   - `navigator.xr.isSessionSupported('immersive-vr')`  
-   - Request test session or use feature detection for `webgpu` XR  
-   - Choose renderer backend per three.js r185 WebGPU XR support matrix  
-
-2. **Renderer / loop**  
-   - `await renderer.init()` before ENTER VR  
-   - `await renderer.xr.setSession(session)`  
-   - Single animation loop via **public** `renderer.setAnimationLoop` / XRManager API  
-   - Delete `_currentAnimationLoop` shim when three.js + R3F versions align  
-
-3. **Frame graph**  
-   - XR: `xr.renderLayers()` if required → `renderer.render(scene, xr.getCamera())`  
-   - Minimal shader graph first; add TSL post only after immersive green  
-
-4. **visionOS validation**  
-   - Safari Feature Flags: WebXR Device API ON  
-   - Test on **physical Vision Pro** (Vercel preview SSO blocks headset testing)  
-   - File WebKit bugs at [bugs.webkit.org](https://bugs.webkit.org/) with repro URL `booster.storytailor.com?webxr=1&debug=1`  
-
-5. **Do not treat as permanent**  
-   - `patchVisionOsWebGpuXrScissor` / `patchVisionOsWebGlXrScissor`  
-   - `&webgl-xr=1` degraded path (emergency only)  
-   - Private field mutation in `patchWebGpuXrForR3f`  
-
----
-
-## Blockers outside meadow code
-
-| Blocker | Owner | Notes |
-|---------|-------|-------|
-| WebKit WebGPU XR compositor + scissor | Apple WebKit | [315274](https://bugs.webkit.org/show_bug.cgi?id=315274) |
-| WebGPU XR feature stability on visionOS | Apple / W3C WebGPU WG | Session feature optional today |
-| three.js WebGPU XRManager API parity with WebGL | three.js | r185 added support; R3F integration still catching up |
-| R3F WebGPU XR first-class docs | pmndrs | Today meadow patches at integration boundary |
-| Vercel preview SSO | Storytailor ops | Headset testing must use production domain |
+- Upgrade three.js / R3F when WebGPU XRManager exposes public `setAnimationLoop` parity → delete private-field shim.
+- Re-enable lightweight immersive grade only after VP stereo is green without post.
+- Track WebKit [bug 315274](https://bugs.webkit.org/show_bug.cgi?id=315274).
 
 ---
 
@@ -219,32 +119,32 @@ flowchart TD
 | WebKit — Natural input for WebXR on Vision Pro | https://webkit.org/blog/15162/introducing-natural-input-for-webxr-in-apple-vision-pro/ |
 | three.js r185 release (WebXR + WebGPU) | https://github.com/mrdoob/three.js/releases/tag/r185 |
 | three.js XRManager docs | https://threejs.org/docs/pages/XRManager.html |
-| three.js WebGPURenderer manual | https://threejs.org/manual/en/webgpurenderer.html |
-| three.js PR — WebGPU XR fallback (#33497) | https://github.com/mrdoob/three.js/pull/33497 |
 | WebKit bug — scissor / XR | https://bugs.webkit.org/show_bug.cgi?id=315274 |
 
 ---
 
-## Recommended next engineering steps (when VR code changes are allowed)
+## Headset retest checklist (copy for Herston / owner)
 
-1. **Minimal XR sandbox** — fork `webgpu_xr` official example inside meadow repo; prove green on VP without grass/roses/post.  
-2. **Instrument** — keep `vrSessionDebug` logging; add `session.enabledFeatures` + `renderer.xr.isPresenting` + frame count to weekly VP smoke.  
-3. **Stage post** — immersive render untoned scene first; enable meadow grade in XR only after baseline green.  
-4. **Version bump** — track three.js + `@react-three/fiber` releases for public WebGPU `setAnimationLoop`; remove shim.  
-5. **WebKit** — attach reproducible minimal case to bug 315274 if scissor patch still required on latest visionOS beta.
+### Vision Pro (official WebGPU path)
+
+1. Safari → Advanced → Feature Flags → **WebXR Device API** ON.
+2. Open `https://booster.storytailor.com?webxr=1&debug=1` (production only).
+3. Tap **START**, wait for meadow + Booster + grass.
+4. Tap **ENTER VR**. Confirm stereo meadow (compute grass), locomotion ring, pinch/gaze, EXIT.
+5. In Web Inspector: `window.__meadowVrLog` contains `set_session_ok`, `xr_frame` with cameras > 0, no early `session_end` under 4s.
+
+### Quest
+
+1. Meta Quest Browser 146+.
+2. Same URL. Expect WebGL XR + denser CPU grass (not compute).
+3. Controllers: left stick walk, grip run, right stick snap 30°, Y/X fly, B land.
+4. Spawn must be behind Booster, not inside the rig.
+
+### Flat regression (any device)
+
+1. `https://booster.storytailor.com` **without** `?webxr=1`.
+2. START → WebGPU compute grass + roses (desktop / mobile Safari / VP flat). No XR patches active.
 
 ---
 
-## Commits reviewed (context)
-
-| Commit | Intent | VP impact |
-|--------|--------|-----------|
-| `08e262c` | Flat `?webxr=1` preview before ENTER | Desktop emulation only |
-| `28481a6` | WebGL XR grass/terrain parity | `&webgl-xr=1` path only |
-| `377827a` | Restore VP immersive render loop | Shim `ensureR3fXrAnimationLoop` |
-| `d97bf40` | VP default WebGPU compute grass | Keeps heavy WebGPU path in XR |
-| `cea9619` | Gate ENTER VR to Quest + VP | Reduces noise, not root cause |
-
----
-
-*This document is audit-only. Implementation changes require a separate VR fix pass and flat-meadow regression check (`booster.storytailor.com` without `?webxr=1`).*
+*Implementation changes live in meadow `src/core/xr/*`, `Effects.tsx`, `App.tsx`, `VrSessionBridge.tsx`. Flat meadow must remain untouched when `?webxr=1` is absent.*

@@ -35,7 +35,7 @@ import { shouldForceWebGlRendererBackend } from "../../config/vrProfile";
 
 type ToneMappingConfig = { enabled: boolean; exposure: number };
 
-/** Direct scene render — WebGL XR path skips TSL post (Quest / VP escape hatch). */
+/** Direct scene render — immersive XR and WebGL XR skip TSL post (compositor-safe). */
 function renderSceneDirect(
   renderer: WebGPURenderer,
   scene: THREE.Scene,
@@ -45,6 +45,30 @@ function renderSceneDirect(
   renderer.toneMapping = toneMapping.enabled ? THREE.ReinhardToneMapping : THREE.NoToneMapping;
   renderer.toneMappingExposure = Math.pow(toneMapping.exposure, 4.0);
   renderer.render(scene, camera);
+}
+
+/**
+ * Immersive XR frame: never run TSL PostProcessing against the XR swapchain.
+ * visionOS WebGPU XR + TSL post is a known black-frame / session-kill path
+ * (see docs/VR_VISION_PRO_AUDIT.md §2). Call renderLayers() when present, then
+ * render with xr.getCamera().
+ */
+function renderImmersiveXrFrame(
+  renderer: WebGPURenderer,
+  scene: THREE.Scene,
+  fallbackCamera: THREE.Camera,
+  toneMapping: ToneMappingConfig,
+): void {
+  const xr = renderer.xr;
+  if (typeof xr.renderLayers === 'function') {
+    try {
+      xr.renderLayers();
+    } catch {
+      // No custom XR layers — safe to ignore.
+    }
+  }
+  const renderCamera = xr.enabled ? xr.getCamera() : fallbackCamera;
+  renderSceneDirect(renderer, scene, renderCamera, toneMapping);
 }
 
 export default function Effects() {
@@ -95,8 +119,9 @@ export default function Effects() {
   useEffect(() => {
     if (!gl || !scene || !camera || !(gl instanceof WebGPURenderer)) return;
 
-    // WebGL XR (Quest ?webxr=1): TSL post breaks immersive sessions.
-    if (shouldForceWebGlRendererBackend()) {
+    // WebGL XR (Quest) and active immersive sessions: TSL post fights the XR compositor.
+    // Flat ?webxr=1 preview (before ENTER VR) still builds the full meadow grade chain.
+    if (shouldForceWebGlRendererBackend() || isVrActive) {
       postProcessingRef.current = null;
       return () => {
         postProcessingRef.current = null;
@@ -211,20 +236,6 @@ export default function Effects() {
       finalNode = finalNode.add(softFlare.mul(float(MEADOW_FLARE_ADD_STRENGTH)));
     }
 
-    // No CRT/helmet stereo overlays in VR (PRD §2.4).
-    if (isVrActive) {
-      const comfortVignette = smoothstep(float(0.12), float(0.72), dist);
-      const comfortDim = comfortVignette.mul(uParams.current.snapComfort).mul(float(0.5));
-      const comfortMul = float(1.0).sub(comfortDim);
-      finalNode = finalNode.mul(vec4(comfortMul, comfortMul, comfortMul, float(1.0)));
-      pp.outputNode = finalNode;
-      renderer.toneMapping = tmCfg.enabled ? THREE.ReinhardToneMapping : THREE.NoToneMapping;
-      return () => {
-        postProcessingRef.current = null;
-        camera.layers.enableAll();
-      };
-    }
-
     pp.outputNode = finalNode;
 
     renderer.toneMapping = tmCfg.enabled ? THREE.ReinhardToneMapping : THREE.NoToneMapping;
@@ -247,30 +258,26 @@ export default function Effects() {
     isVrActive,
   ]);
 
-  useFrame((_state, _delta, frame) => {
+  useFrame((_state, _delta, _frame) => {
     const xr = gl.xr;
     const xrPresenting = xr?.isPresenting === true;
     const webGlBackend = shouldForceWebGlRendererBackend();
+    const renderer = gl as unknown as WebGPURenderer;
 
     if (xrPresenting) {
       decaySnapComfort(performance.now());
       uParams.current.snapComfort.value = snapComfortStrength;
-      const renderer = gl as unknown as WebGPURenderer;
-      renderer.toneMapping = THREE.NoToneMapping;
-
-      // R3F skips gl.render when useFrame has priority > 0 — must render in XR.
-      if (webGlBackend || !postProcessingRef.current) {
-        const renderCamera = xr.enabled ? xr.getCamera() : camera;
-        renderSceneDirect(renderer, scene, renderCamera, { enabled: false, exposure: tmCfg.exposure });
-      } else {
-        postProcessingRef.current.render();
-      }
+      // Always compositor-direct in immersive — never TSL post (VP WebGPU or Quest WebGL).
+      renderImmersiveXrFrame(renderer, scene, camera, {
+        enabled: tmCfg.enabled,
+        exposure: tmCfg.exposure,
+      });
       return;
     }
 
     // WebGL XR backend: TSL post is skipped — flat ?webxr=1 preview must render directly.
     if (webGlBackend) {
-      renderSceneDirect(gl as unknown as WebGPURenderer, scene, camera, tmCfg);
+      renderSceneDirect(renderer, scene, camera, tmCfg);
       return;
     }
 

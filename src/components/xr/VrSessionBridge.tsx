@@ -32,11 +32,13 @@ export function VrSessionBridge() {
 
     const previousBackground = scene.background;
     const previousBackgroundNode = scene.backgroundNode;
-    if (shouldForceWebGlRendererBackend()) {
-      scene.background = null;
-      scene.backgroundNode = null;
-      logVrSession('scene_background_cleared');
-    }
+    // Clear opaque scene background in ALL immersive paths — XR compositor owns clear.
+    // (Previously WebGL-only; WebGPU XR on VP also blacks out with a solid background.)
+    scene.background = null;
+    scene.backgroundNode = null;
+    logVrSession('scene_background_cleared', {
+      webglBackend: shouldForceWebGlRendererBackend(),
+    });
 
     return () => {
       scene.background = previousBackground;
@@ -69,10 +71,13 @@ export function VrSessionBridge() {
     if (!gl.xr?.isPresenting || !frame) return;
 
     xrFrameCount.current += 1;
-    if (isDebugMode() && (xrFrameCount.current <= 3 || xrFrameCount.current % 120 === 0)) {
+    if (isDebugMode() && (xrFrameCount.current <= 5 || xrFrameCount.current % 120 === 0)) {
+      const cam = gl.xr.getCamera();
       logVrSession('xr_frame', {
         n: xrFrameCount.current,
-        cameras: gl.xr.getCamera().cameras.length,
+        cameras: cam.cameras.length,
+        hasPose: cam.cameras.length > 0,
+        webglBackend: shouldForceWebGlRendererBackend(),
       });
     }
   });

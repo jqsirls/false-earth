@@ -57,8 +57,10 @@ Double-tap flight is **flat touch/mouse only** — not in VR.
 
 ## Known blockers (honest)
 
-- **WebGPU + WebXR** is bleeding-edge on Quest. If `[ ENTER VR ]` shows *WebGPU XR renderer not ready* or the session dies immediately, that is a **browser/GPU stack limit**, not missing controller code. There is **no WebGL fallback** in this meadow build — fixing that would be a separate render-path project.
+- **Quest** uses the **WebGL2 XR** path automatically (`forceWebGL`) with CPU grass — not WebGPU compute. Controllers and spawn offset are implemented; browser/GPU limits can still end a session early.
+- **Vision Pro** default is **WebGPU XR + compute grass**. If the session dies immediately, reload with `?webxr=1&debug=1` and check `window.__meadowVrLog`. Emergency only: `?webxr=1&webgl-xr=1` (degraded WebGL).
 - Desktop Chrome **Immersive Web Emulator** is smoke-only; it is not a substitute for this headset test.
+- Full stereo sign-off still requires a physical Quest + Vision Pro pass (see `docs/VR_VISION_PRO_AUDIT.md`).
 
 ## Code map
 

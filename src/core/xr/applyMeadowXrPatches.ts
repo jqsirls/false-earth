@@ -11,13 +11,16 @@ import { patchVisionOsWebGlXrScissor } from './patchVisionOsWebGlXrScissor';
  *
  * | Patch | Problem solved |
  * |-------|----------------|
- * | patchWebGpuXrForR3f | r185 XRManager lacks public setAnimationLoop; R3F never receives XRFrame |
+ * | patchWebGpuXrForR3f | r185 XRManager lacks public setAnimationLoop; R3F never receives XRFrame; preserves flat restore loop |
  * | patchXrRenderCamera | R3F renders with flat camera while presenting → black swapchain |
  * | patchVisionOsWebGpuXrScissor | WebKit misreads GPURenderPassEncoder.setScissorRect in WebGPU XR |
  * | patchVisionOsWebGlXrScissor | Same scissor bug on visionOS WebGL XR escape hatch |
  *
  * Vision Pro scissor patches are no-ops on Quest/desktop. WebGL scissor patch only runs when
  * forceWebGL backend is active (&webgl-xr=1 on VP).
+ *
+ * Companion (not patches): Effects.tsx immersive path always renders direct with xr.getCamera()
+ * — never TSL PostProcessing against the XR swapchain.
  */
 export function applyMeadowXrPatches(renderer: WebGPURenderer): void {
   patchWebGpuXrForR3f(renderer);
